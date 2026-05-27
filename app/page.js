@@ -1,0 +1,551 @@
+"use client";
+import { useState, useEffect } from "react";
+import { supabase } from "./supabase";
+ 
+const CATEGORIES = [
+  { icon: "🌸", name: "Parfums" },
+  { icon: "👗", name: "Vêtements" },
+  { icon: "👟", name: "Chaussures" },
+  { icon: "📱", name: "Téléphones" },
+  { icon: "🪢", name: "Ceintures" },
+  { icon: "👜", name: "Sacs" },
+  { icon: "💍", name: "Bijoux" },
+  { icon: "💻", name: "Ordinateurs" },
+];
+ 
+const STATUTS = ["Commande reçue", "En préparation", "En livraison", "Livré"];
+const genNumero = () => "CMD-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+const SUPABASE_URL = "https://nuhpdqioggxznceqvpvx.supabase.co";
+ 
+export default function TrouveTout() {
+  const [page, setPage] = useState("boutique");
+  const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [favorites, setFavorites] = useState({});
+  const [panier, setPanier] = useState([]);
+  const [showPanier, setShowPanier] = useState(false);
+  const [showCommande, setShowCommande] = useState(false);
+  const [commandeOk, setCommandeOk] = useState(null);
+  const [form, setForm] = useState({ nom: "", telephone: "", ville: "", adresse: "" });
+  const [produits, setProduits] = useState([]);
+  const [commandes, setCommandes] = useState([]);
+  const [numeroSuivi, setNumeroSuivi] = useState("");
+  const [commandeTrouvee, setCommandeTrouvee] = useState(null);
+  const [adminOk, setAdminOk] = useState(false);
+  const [adminCode, setAdminCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [newProduct, setNewProduct] = useState({ emoji: "🌸", title: "", description: "", price: "", etat: "Neuf", category: "Parfums", location: "" });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+ 
+  useEffect(() => { chargerProduits(); }, []);
+ 
+  const chargerProduits = async () => {
+    const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false });
+    if (data) setProduits(data);
+  };
+ 
+  const chargerCommandes = async () => {
+    const { data } = await supabase.from("commandes").select("*").order("created_at", { ascending: false });
+    if (data) setCommandes(data);
+  };
+ 
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    return `${SUPABASE_URL}/storage/v1/object/public/produits/${imagePath}`;
+  };
+ 
+  const ajouterAuPanier = (product) => {
+    setPanier((prev) => {
+      const existe = prev.find((p) => p.id === product.id);
+      if (existe) return prev.map((p) => p.id === product.id ? { ...p, qty: p.qty + 1 } : p);
+      return [...prev, { ...product, qty: 1 }];
+    });
+  };
+ 
+  const retirerDuPanier = (id) => setPanier((prev) => prev.filter((p) => p.id !== id));
+  const changerQty = (id, delta) => setPanier((prev) => prev.map((p) => p.id === id ? { ...p, qty: Math.max(1, p.qty + delta) } : p));
+  const total = panier.reduce((acc, p) => acc + p.price * p.qty, 0);
+  const nbPanier = panier.reduce((acc, p) => acc + p.qty, 0);
+ 
+  const passerCommande = async () => {
+    if (!form.nom || !form.telephone || !form.ville || !form.adresse) { alert("Remplis tous les champs !"); return; }
+    setLoading(true);
+    const numero = genNumero();
+    const { data, error } = await supabase.from("commandes").insert([{ numero, nom: form.nom, telephone: form.telephone, ville: form.ville, adresse: form.adresse, articles: panier, total, statut: "Commande reçue" }]).select().single();
+    if (error) { alert("Erreur ! Réessaie."); setLoading(false); return; }
+    setCommandeOk(data);
+    setPanier([]);
+    setShowCommande(false);
+    setShowPanier(false);
+    setForm({ nom: "", telephone: "", ville: "", adresse: "" });
+    setLoading(false);
+  };
+ 
+  const changerStatut = async (id, statut) => {
+    await supabase.from("commandes").update({ statut }).eq("id", id);
+    chargerCommandes();
+  };
+ 
+  const chercherCommande = async () => {
+    const { data } = await supabase.from("commandes").select("*").ilike("numero", numeroSuivi).single();
+    setCommandeTrouvee(data || "introuvable");
+  };
+ 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+ 
+  const ajouterProduit = async () => {
+    if (!newProduct.title || !newProduct.price || !newProduct.location) { alert("Remplis tous les champs !"); return; }
+    setLoading(true);
+    let imagePath = null;
+    if (imageFile) {
+      const fileName = `${Date.now()}-${imageFile.name}`;
+      const { error: uploadError } = await supabase.storage.from("produits").upload(fileName, imageFile);
+      if (!uploadError) imagePath = fileName;
+    }
+    await supabase.from("produits").insert([{ ...newProduct, price: parseInt(newProduct.price), image: imagePath }]);
+    await chargerProduits();
+    setShowAddProduct(false);
+    setNewProduct({ emoji: "🌸", title: "", description: "", price: "", etat: "Neuf", category: "Parfums", location: "" });
+    setImageFile(null);
+    setImagePreview(null);
+    setLoading(false);
+  };
+ 
+  const supprimerProduit = async (id) => {
+    if (!confirm("Supprimer ce produit ?")) return;
+    await supabase.from("produits").delete().eq("id", id);
+    chargerProduits();
+  };
+ 
+  const filtered = produits.filter((p) => {
+    const matchSearch = !search || p.title.toLowerCase().includes(search.toLowerCase());
+    const matchCat = !activeCategory || p.category === activeCategory;
+    return matchSearch && matchCat;
+  });
+ 
+  const inp = { width: "100%", padding: "11px 14px", background: "#1C2035", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#fff", fontSize: 13, fontFamily: "DM Sans, sans-serif", outline: "none" };
+ 
+  return (
+    <div style={{ minHeight: "100vh", background: "#0B0E18", color: "#fff", fontFamily: "DM Sans, sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #0B0E18; }
+        input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.3); }
+        .cat:hover { border-color: #00A86B !important; background: rgba(0,168,107,0.09) !important; cursor: pointer; }
+        .card:hover { transform: translateY(-4px); border-color: rgba(0,168,107,0.4) !important; }
+        .bg:hover { background: #007A4D !important; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+        @keyframes fi { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes si { from{transform:translateX(100%)} to{transform:translateX(0)} }
+        @keyframes pi { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+      `}</style>
+ 
+      <nav style={{ display: "flex", alignItems: "center", padding: "0 2rem", height: 62, background: "rgba(11,14,24,0.96)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "sticky", top: 0, zIndex: 100, gap: "1rem", flexWrap: "wrap" }}>
+        <div onClick={() => setPage("boutique")} style={{ fontFamily: "Syne", fontSize: 21, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
+          Trouve<span style={{ color: "#00A86B" }}>Tout</span>
+          <span style={{ display: "inline-block", width: 7, height: 7, background: "#F5C842", borderRadius: "50%", marginLeft: 3, verticalAlign: "middle", marginBottom: 3 }} />
+        </div>
+        {page === "boutique" && (
+          <div style={{ flex: 1, maxWidth: 440, display: "flex", alignItems: "center", background: "#1C2035", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 11, padding: "0 14px", gap: 8 }}>
+            <span>🔍</span>
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cherche un produit…" style={{ background: "none", border: "none", outline: "none", color: "#fff", fontSize: 13, padding: "11px 0", flex: 1, fontFamily: "DM Sans" }} />
+            {search && <span onClick={() => setSearch("")} style={{ cursor: "pointer", color: "rgba(255,255,255,0.35)", fontSize: 18 }}>×</span>}
+          </div>
+        )}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          <button onClick={() => setPage("suivi")} style={{ padding: "8px 14px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>📦 Suivi</button>
+          {page === "boutique" && (
+            <button onClick={() => setShowPanier(true)} style={{ position: "relative", padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", color: "#00A86B", cursor: "pointer", fontFamily: "DM Sans", fontWeight: 500 }}>
+              🛒 Panier
+              {nbPanier > 0 && <span style={{ position: "absolute", top: -8, right: -8, background: "#F5C842", color: "#0B0E18", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>{nbPanier}</span>}
+            </button>
+          )}
+          <button onClick={() => { setAdminOk(false); setPage("admin"); chargerCommandes(); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "#00A86B", border: "none", color: "#fff", fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>⚙️ Admin</button>
+        </div>
+      </nav>
+ 
+      {page === "boutique" && (
+        <>
+          <div style={{ position: "relative", minHeight: 420, display: "flex", alignItems: "center", overflow: "hidden", background: "linear-gradient(135deg, #0B0E18 0%, #161926 100%)" }}>
+            <div style={{ position: "relative", zIndex: 2, padding: "3rem 2.5rem" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,168,107,0.12)", border: "1px solid rgba(0,168,107,0.28)", borderRadius: 999, padding: "6px 16px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>
+                <span style={{ width: 7, height: 7, background: "#00A86B", borderRadius: "50%", animation: "pulse 2s infinite", display: "inline-block" }} />
+                Livraison partout au Bénin
+              </div>
+              <h1 style={{ fontFamily: "Syne", fontSize: "clamp(2rem,5vw,3rem)", fontWeight: 800, lineHeight: 1.1, marginBottom: "1rem", letterSpacing: "-0.02em" }}>
+                Mode, Tech & Style<br />
+                <span style={{ color: "#00A86B" }}>livrés partout</span> au<br />
+                <span style={{ color: "#F5C842" }}>Bénin</span>
+              </h1>
+              <p style={{ color: "rgba(255,255,255,0.48)", fontSize: 15, lineHeight: 1.75, marginBottom: "2rem", maxWidth: 420 }}>
+                Commande en ligne — Paiement à la livraison — Cotonou, Porto-Novo, Calavi, Parakou, Ouidah.
+              </p>
+              <div style={{ display: "flex", gap: "2.5rem" }}>
+                {[[produits.length + "+", "Produits"], ["2j max", "Livraison"], ["98%", "Satisfaits"]].map(([n, l]) => (
+                  <div key={l}>
+                    <div style={{ fontFamily: "Syne", fontSize: "1.8rem", fontWeight: 800, color: "#00A86B" }}>{n}</div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 3 }}>{l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+ 
+          <section style={{ padding: "2rem 2rem 1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}>
+              <h2 style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 700 }}>Catégories</h2>
+              <span onClick={() => setActiveCategory(null)} style={{ fontSize: 13, color: "#00A86B", marginLeft: "auto", cursor: "pointer" }}>Tout voir</span>
+            </div>
+            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8 }}>
+              {CATEGORIES.map((cat) => (
+                <div key={cat.name} className="cat" onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)} style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, background: activeCategory === cat.name ? "rgba(0,168,107,0.12)" : "#161926", border: `1px solid ${activeCategory === cat.name ? "#00A86B" : "rgba(255,255,255,0.08)"}`, borderRadius: 14, padding: "10px 18px", whiteSpace: "nowrap", transition: "all 0.18s" }}>
+                  <span style={{ fontSize: "1.4rem" }}>{cat.icon}</span>
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>{cat.name}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+ 
+          <section style={{ padding: "1rem 2rem 3rem" }}>
+            <h2 style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>
+              {activeCategory || "Tous les produits"}
+              {activeCategory && <span onClick={() => setActiveCategory(null)} style={{ fontSize: 12, color: "#00A86B", marginLeft: 10, cursor: "pointer", fontWeight: 400 }}>× effacer</span>}
+            </h2>
+            {filtered.length === 0 && (
+              <div style={{ textAlign: "center", padding: "4rem", color: "rgba(255,255,255,0.25)" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🛍️</div>
+                Aucun produit — Ajoute-en depuis l'Admin !
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
+              {filtered.map((item, idx) => (
+                <div key={item.id} className="card" style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, overflow: "hidden", cursor: "pointer", transition: "transform 0.18s, border-color 0.18s", animation: "fi 0.3s ease both", animationDelay: `${idx * 0.04}s` }}>
+                  <div style={{ height: 180, background: "#1C2035", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                    {getImageUrl(item.image) ? (
+                      <img src={getImageUrl(item.image)} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <span style={{ fontSize: "3rem" }}>{item.emoji}</span>
+                    )}
+                    <span style={{ position: "absolute", top: 10, left: 10, background: "#00A86B", color: "#fff", fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 6 }}>{item.etat}</span>
+                    <span onClick={(e) => { e.stopPropagation(); setFavorites((prev) => ({ ...prev, [item.id]: !prev[item.id] })); }} style={{ position: "absolute", top: 10, right: 10, background: "rgba(0,0,0,0.45)", borderRadius: 8, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, cursor: "pointer" }}>{favorites[item.id] ? "❤️" : "🤍"}</span>
+                  </div>
+                  <div style={{ padding: "12px 14px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 4 }}>{item.title}</div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>📍 {item.location}</div>
+                    <div style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 800, color: "#00A86B", marginBottom: 10 }}>
+                      {item.price.toLocaleString()} <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "DM Sans", fontWeight: 400 }}>FCFA</span>
+                    </div>
+                    <button onClick={() => ajouterAuPanier(item)} className="bg" style={{ width: "100%", padding: "9px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", transition: "background 0.18s" }}>
+                      🛒 Ajouter au panier
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+ 
+          <footer style={{ background: "#0D1020", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "1.8rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
+            <div style={{ fontFamily: "Syne", fontSize: 18, fontWeight: 800 }}>
+              Trouve<span style={{ color: "#00A86B" }}>Tout</span>
+              <span style={{ display: "inline-block", width: 7, height: 7, background: "#F5C842", borderRadius: "50%", marginLeft: 3, verticalAlign: "middle", marginBottom: 3 }} />
+            </div>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>© 2025 TrouveTout · Cotonou · Porto-Novo · Parakou · Ouidah · Calavi</span>
+          </footer>
+        </>
+      )}
+ 
+      {page === "suivi" && (
+        <div style={{ maxWidth: 500, margin: "4rem auto", padding: "0 1.5rem" }}>
+          <h2 style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, marginBottom: "0.5rem" }}>📦 Suivre ma commande</h2>
+          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: "2rem" }}>Entre ton numéro de commande</p>
+          <div style={{ display: "flex", gap: 10, marginBottom: "2rem" }}>
+            <input type="text" value={numeroSuivi} onChange={(e) => setNumeroSuivi(e.target.value)} placeholder="Ex: CMD-AB12CD" style={{ ...inp, flex: 1 }} />
+            <button onClick={chercherCommande} className="bg" style={{ padding: "11px 20px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", whiteSpace: "nowrap" }}>Chercher</button>
+          </div>
+          {commandeTrouvee === "introuvable" && (
+            <div style={{ background: "#1C2035", borderRadius: 14, padding: "2rem", textAlign: "center", color: "rgba(255,255,255,0.4)" }}>❌ Aucune commande trouvée</div>
+          )}
+          {commandeTrouvee && commandeTrouvee !== "introuvable" && (
+            <div style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "1.5rem", animation: "pi 0.3s ease" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
+                <div>
+                  <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: "1rem" }}>{commandeTrouvee.numero}</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>{new Date(commandeTrouvee.created_at).toLocaleString("fr-FR")}</div>
+                </div>
+                <span style={{ background: "rgba(0,168,107,0.15)", color: "#00A86B", padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>{commandeTrouvee.statut}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem", gap: 4 }}>
+                {STATUTS.map((s, i) => {
+                  const cur = STATUTS.indexOf(commandeTrouvee.statut);
+                  const done = i <= cur;
+                  return (
+                    <div key={s} style={{ display: "flex", alignItems: "center", flex: 1 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: done ? "#00A86B" : "#1C2035", border: `2px solid ${done ? "#00A86B" : "rgba(255,255,255,0.1)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{done ? "✓" : i + 1}</div>
+                      {i < STATUTS.length - 1 && <div style={{ flex: 1, height: 2, background: i < cur ? "#00A86B" : "rgba(255,255,255,0.1)" }} />}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+                {STATUTS.map((s) => <span key={s} style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "center", flex: 1 }}>{s}</span>)}
+              </div>
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "1rem" }}>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Client : <span style={{ color: "#fff" }}>{commandeTrouvee.nom}</span></div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Ville : <span style={{ color: "#fff" }}>{commandeTrouvee.ville}</span></div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Total : <span style={{ color: "#00A86B", fontWeight: 700 }}>{commandeTrouvee.total.toLocaleString()} FCFA</span></div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+ 
+      {page === "admin" && !adminOk && (
+        <div style={{ maxWidth: 400, margin: "5rem auto", padding: "0 1.5rem", textAlign: "center" }}>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔐</div>
+          <h2 style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, marginBottom: "0.5rem" }}>Espace Admin</h2>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, marginBottom: "1.5rem" }}>Entre le mot de passe</p>
+          <input type="password" value={adminCode} onChange={(e) => setAdminCode(e.target.value)} placeholder="Mot de passe" style={{ ...inp, marginBottom: 12, textAlign: "center" }} />
+          <button onClick={() => { if (adminCode === "admin123") setAdminOk(true); else alert("Mot de passe incorrect !"); }} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>Accéder</button>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: "1rem" }}>Mot de passe : admin123</p>
+        </div>
+      )}
+ 
+      {page === "admin" && adminOk && (
+        <div style={{ padding: "2rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
+            <h2 style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800 }}>⚙️ Tableau de bord</h2>
+            <div style={{ display: "flex", gap: 10 }}>
+              {[[commandes.length, "Commandes", "#00A86B"], [commandes.reduce((a, c) => a + c.total, 0).toLocaleString(), "FCFA total", "#F5C842"], [produits.length, "Produits", "#3B82F6"]].map(([n, l, c]) => (
+                <div key={l} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px 20px", textAlign: "center" }}>
+                  <div style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, color: c }}>{n}</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+ 
+          <button onClick={() => setShowAddProduct(true)} className="bg" style={{ padding: "12px 24px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: "2rem" }}>
+            + Ajouter un produit
+          </button>
+ 
+          <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Mes produits</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 12, marginBottom: "2.5rem" }}>
+            {produits.map((p) => (
+              <div key={p.id} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden", display: "flex", alignItems: "center", gap: 12, padding: "10px 14px" }}>
+                {getImageUrl(p.image) ? (
+                  <img src={getImageUrl(p.image)} alt={p.title} style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 8 }} />
+                ) : (
+                  <span style={{ fontSize: "2rem" }}>{p.emoji}</span>
+                )}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 3 }}>{p.title}</div>
+                  <div style={{ fontSize: 12, color: "#00A86B", fontWeight: 700 }}>{p.price.toLocaleString()} FCFA</div>
+                </div>
+                <span onClick={() => supprimerProduit(p.id)} style={{ cursor: "pointer", color: "rgba(255,80,80,0.7)", fontSize: 18 }}>🗑</span>
+              </div>
+            ))}
+          </div>
+ 
+          <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Commandes reçues</h3>
+          {commandes.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "3rem", color: "rgba(255,255,255,0.25)" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📭</div>Aucune commande pour l'instant
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {commandes.map((cmd) => (
+                <div key={cmd.id} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "1.2rem 1.5rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
+                    <div>
+                      <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: "1rem", marginBottom: 3 }}>{cmd.numero}</div>
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{new Date(cmd.created_at).toLocaleString("fr-FR")}</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontFamily: "Syne", fontWeight: 800, color: "#00A86B", fontSize: "1.1rem" }}>{cmd.total.toLocaleString()} FCFA</span>
+                      <select value={cmd.statut} onChange={(e) => changerStatut(cmd.id, e.target.value)} style={{ background: "#1C2035", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", padding: "6px 10px", fontSize: 13, fontFamily: "DM Sans", cursor: "pointer", outline: "none" }}>
+                        {STATUTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>CLIENT</div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{cmd.nom}</div>
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{cmd.telephone}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>LIVRAISON</div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{cmd.ville}</div>
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{cmd.adresse}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>ARTICLES</div>
+                      {cmd.articles && cmd.articles.map((a, i) => (
+                        <div key={i} style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{a.emoji} {a.title} × {a.qty}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+ 
+      {showPanier && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex" }}>
+          <div onClick={() => setShowPanier(false)} style={{ flex: 1, background: "rgba(0,0,0,0.6)" }} />
+          <div style={{ width: 400, background: "#161926", borderLeft: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", animation: "si 0.3s ease" }}>
+            <div style={{ padding: "1.5rem", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h2 style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 700 }}>🛒 Panier ({nbPanier})</h2>
+              <span onClick={() => setShowPanier(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
+              {panier.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "3rem", color: "rgba(255,255,255,0.3)" }}>
+                  <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🛒</div>Panier vide
+                </div>
+              ) : panier.map((p) => (
+                <div key={p.id} style={{ background: "#1C2035", borderRadius: 12, padding: "12px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
+                  {getImageUrl(p.image) ? (
+                    <img src={getImageUrl(p.image)} alt={p.title} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
+                  ) : (
+                    <span style={{ fontSize: "2rem" }}>{p.emoji}</span>
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 3 }}>{p.title}</div>
+                    <div style={{ fontSize: 12, color: "#00A86B", fontWeight: 700 }}>{(p.price * p.qty).toLocaleString()} FCFA</div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button onClick={() => changerQty(p.id, -1)} style={{ width: 26, height: 26, borderRadius: 6, background: "#0B0E18", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer", fontSize: 14 }}>−</button>
+                    <span style={{ fontSize: 13, fontWeight: 600, minWidth: 20, textAlign: "center" }}>{p.qty}</span>
+                    <button onClick={() => changerQty(p.id, 1)} style={{ width: 26, height: 26, borderRadius: 6, background: "#0B0E18", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer", fontSize: 14 }}>+</button>
+                    <span onClick={() => retirerDuPanier(p.id)} style={{ cursor: "pointer", color: "rgba(255,100,100,0.7)", fontSize: 16, marginLeft: 4 }}>🗑</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {panier.length > 0 && (
+              <div style={{ padding: "1.5rem", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+                  <span style={{ color: "rgba(255,255,255,0.6)" }}>Total</span>
+                  <span style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 800, color: "#00A86B" }}>{total.toLocaleString()} FCFA</span>
+                </div>
+                <button onClick={() => { setShowPanier(false); setShowCommande(true); }} className="bg" style={{ width: "100%", padding: "13px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>Commander →</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+ 
+      {showCommande && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 480, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>📦 Infos de livraison</h2>
+              <span onClick={() => setShowCommande(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
+            </div>
+            <div style={{ background: "#1C2035", borderRadius: 12, padding: "12px 16px", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>{nbPanier} article(s)</div>
+              <div style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 800, color: "#00A86B" }}>{total.toLocaleString()} FCFA</div>
+            </div>
+            {[["nom", "Nom complet", "Ex: Jean Dupont", "text"], ["telephone", "Téléphone", "+229 97 00 00 00", "tel"], ["ville", "Ville", "Cotonou, Porto-Novo…", "text"], ["adresse", "Adresse précise", "Quartier, repère…", "text"]].map(([key, label, ph, type]) => (
+              <div key={key} style={{ marginBottom: "1rem" }}>
+                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>{label}</label>
+                <input type={type} placeholder={ph} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} style={inp} />
+              </div>
+            ))}
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: "1.5rem" }}>💰 Paiement à la livraison</div>
+            <button onClick={passerCommande} disabled={loading} className="bg" style={{ width: "100%", padding: "14px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans" }}>
+              {loading ? "Envoi…" : "✅ Confirmer la commande"}
+            </button>
+          </div>
+        </div>
+      )}
+ 
+      {showAddProduct && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 480, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>➕ Ajouter un produit</h2>
+              <span onClick={() => setShowAddProduct(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
+            </div>
+ 
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📸 Photo du produit</label>
+              <div style={{ border: "2px dashed rgba(255,255,255,0.15)", borderRadius: 12, padding: "1.5rem", textAlign: "center", cursor: "pointer", position: "relative" }}
+                onClick={() => document.getElementById("photo-input").click()}>
+                {imagePreview ? (
+                  <img src={imagePreview} alt="preview" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 8 }} />
+                ) : (
+                  <div>
+                    <div style={{ fontSize: "2rem", marginBottom: 8 }}>📷</div>
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Clique pour ajouter une photo</div>
+                  </div>
+                )}
+                <input id="photo-input" type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }} />
+              </div>
+            </div>
+ 
+            {[["title", "Nom du produit", "Ex: Parfum Hugo Boss 100ml", "text"], ["price", "Prix (FCFA)", "Ex: 18500", "number"], ["location", "Ville", "Ex: Cotonou, Akpakpa", "text"], ["description", "Description", "Décris le produit…", "text"]].map(([key, label, ph, type]) => (
+              <div key={key} style={{ marginBottom: "1rem" }}>
+                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>{label}</label>
+                <input type={type} placeholder={ph} value={newProduct[key]} onChange={(e) => setNewProduct({ ...newProduct, [key]: e.target.value })} style={inp} />
+              </div>
+            ))}
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Catégorie</label>
+              <select value={newProduct.category} onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} style={{ ...inp, cursor: "pointer" }}>
+                {CATEGORIES.map((c) => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+              </select>
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Emoji (si pas de photo)</label>
+              <select value={newProduct.emoji} onChange={(e) => setNewProduct({ ...newProduct, emoji: e.target.value })} style={{ ...inp, cursor: "pointer" }}>
+                {["🌸", "👗", "👟", "📱", "🪢", "👜", "💍", "💻", "👒", "🕶️", "⌚", "🎒"].map((e) => <option key={e} value={e}>{e}</option>)}
+              </select>
+            </div>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>État</label>
+              <select value={newProduct.etat} onChange={(e) => setNewProduct({ ...newProduct, etat: e.target.value })} style={{ ...inp, cursor: "pointer" }}>
+                {["Neuf", "Comme neuf", "Bon état", "Usagé"].map((e) => <option key={e} value={e}>{e}</option>)}
+              </select>
+            </div>
+            <button onClick={ajouterProduit} disabled={loading} className="bg" style={{ width: "100%", padding: "14px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans" }}>
+              {loading ? "Ajout en cours…" : "✅ Ajouter le produit"}
+            </button>
+          </div>
+        </div>
+      )}
+ 
+      {commandeOk && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "#161926", borderRadius: 20, padding: "3rem 2rem", width: "100%", maxWidth: 420, textAlign: "center", animation: "pi 0.3s ease", border: "1px solid rgba(0,168,107,0.3)" }}>
+            <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🎉</div>
+            <h2 style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, marginBottom: "1rem", color: "#00A86B" }}>Commande confirmée !</h2>
+            <div style={{ background: "#1C2035", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Ton numéro de commande</div>
+              <div style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, color: "#F5C842", letterSpacing: "0.05em" }}>{commandeOk.numero}</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>Garde ce numéro pour suivre ta livraison</div>
+            </div>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 1.7, marginBottom: "2rem" }}>
+              Tu seras contacté sur le <strong style={{ color: "#fff" }}>{commandeOk.telephone}</strong> pour la livraison.
+            </p>
+            <button onClick={() => setCommandeOk(null)} className="bg" style={{ padding: "12px 32px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>
+              Continuer les achats
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
