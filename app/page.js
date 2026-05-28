@@ -18,9 +18,9 @@ const VILLES_BENIN = ["Cotonou", "Porto-Novo", "Abomey-Calavi", "Parakou", "Ouid
 const PLAGES_LIVRAISON = ["1-3 jours", "3-7 jours", "1-2 semaines", "2-3 semaines", "Sur commande"];
 const genNumero = () => "CMD-" + Math.random().toString(36).substring(2, 8).toUpperCase();
 const SUPABASE_URL = "https://nuhpdqioggxznceqvpvx.supabase.co";
-const ADMIN_PWD = "Benin2025@!";
-const MOMO_NUMERO = "+229 57577895";
 const SUPPORT_EMAIL = "nahofalgbadamassi@gmail.com";
+const MOMO_NUMERO = "+229 57577895";
+const ADMIN_EMAIL = "nahofalgbadamassi@gmail.com";
 
 const PAIEMENTS = [
   { id: "mtn", label: "MTN MoMo", icon: "💛" },
@@ -41,62 +41,46 @@ const sendEmail = async (to, subject, html) => {
   }
 };
 
-const emailConfirmationCommande = (commande, client) => `
+const emailCode = (code, nom) => `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0B0E18; color: #fff; padding: 2rem; border-radius: 16px;">
   <div style="text-align: center; margin-bottom: 2rem;">
-    <h1 style="color: #00A86B; font-size: 2rem; margin: 0;">TrouveTout<span style="color: #F5C842;">•</span></h1>
+    <h1 style="color: #00A86B; font-size: 2rem; margin: 0;">Fast<span style="color: #F5C842;">Buy 229</span></h1>
     <p style="color: rgba(255,255,255,0.5); margin: 0.5rem 0 0;">Marketplace #1 au Bénin</p>
   </div>
-  <div style="background: #161926; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center;">
-    <p style="color: rgba(255,255,255,0.5); margin: 0 0 0.5rem;">🎉 Commande confirmée !</p>
-    <h2 style="color: #F5C842; font-size: 1.8rem; letter-spacing: 0.1em; margin: 0;">${commande.numero}</h2>
-    <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin: 0.5rem 0 0;">Garde ce numéro pour suivre ta livraison</p>
-  </div>
-  <div style="background: #161926; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
-    <h3 style="color: #00A86B; margin: 0 0 1rem;">📦 Détails de la commande</h3>
-    ${commande.articles?.map(a => `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08);">
-      <span>${a.emoji} ${a.title} × ${a.qty}</span>
-      <span style="color: #00A86B;">${(a.price * a.qty).toLocaleString()} FCFA</span>
-    </div>`).join("")}
-    <div style="display: flex; justify-content: space-between; padding: 1rem 0 0; font-size: 1.1rem; font-weight: bold;">
-      <span>Total</span>
-      <span style="color: #00A86B;">${commande.total?.toLocaleString()} FCFA</span>
-    </div>
-  </div>
-  <div style="background: #161926; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
-    <h3 style="color: #00A86B; margin: 0 0 1rem;">🚚 Livraison</h3>
-    <p style="margin: 0 0 0.5rem;">📍 ${commande.ville} — ${commande.adresse}</p>
-    <p style="margin: 0; color: rgba(255,255,255,0.5);">Délai : 2 semaines maximum</p>
-  </div>
-  ${commande.paiement !== "livraison" ? `
-  <div style="background: rgba(245,200,66,0.1); border: 1px solid rgba(245,200,66,0.3); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center;">
-    <h3 style="color: #F5C842; margin: 0 0 1rem;">💰 Finalise ton paiement</h3>
-    <p style="margin: 0 0 0.5rem;">Envoie <strong style="color: #00A86B;">${commande.total?.toLocaleString()} FCFA</strong></p>
-    <p style="margin: 0 0 0.5rem;">au numéro <strong style="font-size: 1.3rem;">${MOMO_NUMERO}</strong></p>
-    <p style="margin: 0;">Référence : <strong style="color: #F5C842;">${commande.numero}</strong></p>
-  </div>` : ""}
-  <div style="text-align: center; color: rgba(255,255,255,0.4); font-size: 12px;">
-    <p>Des questions ? Écris-nous à <a href="mailto:${SUPPORT_EMAIL}" style="color: #00A86B;">${SUPPORT_EMAIL}</a></p>
-    <p>© 2025 TrouveTout Bénin</p>
-  </div>
-</div>`;
-
-const emailCodeConnexion = (code) => `
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0B0E18; color: #fff; padding: 2rem; border-radius: 16px;">
-  <div style="text-align: center; margin-bottom: 2rem;">
-    <h1 style="color: #00A86B; font-size: 2rem; margin: 0;">TrouveTout<span style="color: #F5C842;">•</span></h1>
-  </div>
-  <div style="background: #161926; border-radius: 12px; padding: 2rem; text-align: center;">
-    <p style="color: rgba(255,255,255,0.6); margin: 0 0 1rem;">Ton code de connexion</p>
+  <div style="background: #161926; border-radius: 12px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
+    <p style="color: rgba(255,255,255,0.6); margin: 0 0 1rem;">Bonjour ${nom} ! Voici ton code de vérification :</p>
     <h2 style="color: #F5C842; font-size: 3rem; letter-spacing: 0.3em; margin: 0;">${code}</h2>
     <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin: 1rem 0 0;">Ce code expire dans 10 minutes</p>
   </div>
-  <div style="text-align: center; color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 1.5rem;">
-    <p>Si tu n'as pas demandé ce code, ignore cet email.</p>
-  </div>
+  <p style="color: rgba(255,255,255,0.4); font-size: 12px; text-align: center;">Si tu n'as pas demandé ce code, ignore cet email.</p>
+  <p style="color: rgba(255,255,255,0.4); font-size: 12px; text-align: center;">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color: #00A86B;">${SUPPORT_EMAIL}</a></p>
 </div>`;
 
-export default function TrouveTout() {
+const emailCommande = (cmd) => `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0B0E18; color: #fff; padding: 2rem; border-radius: 16px;">
+  <div style="text-align: center; margin-bottom: 2rem;">
+    <h1 style="color: #00A86B; font-size: 2rem; margin: 0;">Fast<span style="color: #F5C842;">Buy 229</span></h1>
+  </div>
+  <div style="background: #161926; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center;">
+    <p style="color: rgba(255,255,255,0.5); margin: 0 0 0.5rem;">🎉 Commande confirmée !</p>
+    <h2 style="color: #F5C842; font-size: 1.8rem; letter-spacing: 0.1em; margin: 0;">${cmd.numero}</h2>
+    <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin: 0.5rem 0 0;">Garde ce numéro pour suivre ta livraison</p>
+  </div>
+  <div style="background: #161926; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+    <h3 style="color: #00A86B; margin: 0 0 1rem;">📦 Détails</h3>
+    ${cmd.articles?.map(a => `<div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08);">${a.emoji} ${a.title} × ${a.qty} — <span style="color: #00A86B;">${(a.price * a.qty).toLocaleString()} FCFA</span></div>`).join("")}
+    <div style="padding: 1rem 0 0; font-weight: bold;">Total : <span style="color: #00A86B;">${cmd.total?.toLocaleString()} FCFA</span></div>
+  </div>
+  ${cmd.paiement !== "livraison" ? `
+  <div style="background: rgba(245,200,66,0.1); border: 1px solid rgba(245,200,66,0.3); border-radius: 12px; padding: 1.5rem; text-align: center; margin-bottom: 1.5rem;">
+    <h3 style="color: #F5C842; margin: 0 0 1rem;">💰 Finalise ton paiement</h3>
+    <p>Envoie <strong style="color: #00A86B;">${cmd.total?.toLocaleString()} FCFA</strong> au <strong>${MOMO_NUMERO}</strong></p>
+    <p>Référence : <strong style="color: #F5C842;">${cmd.numero}</strong></p>
+  </div>` : ""}
+  <p style="color: rgba(255,255,255,0.4); font-size: 12px; text-align: center;">Questions ? <a href="mailto:${SUPPORT_EMAIL}" style="color: #00A86B;">${SUPPORT_EMAIL}</a></p>
+</div>`;
+
+export default function FastBuy229() {
   const [page, setPage] = useState("boutique");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(null);
@@ -112,8 +96,7 @@ export default function TrouveTout() {
   const [numeroSuivi, setNumeroSuivi] = useState("");
   const [commandeTrouvee, setCommandeTrouvee] = useState(null);
   const [adminOk, setAdminOk] = useState(false);
-  const [adminCode, setAdminCode] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [adminPwd, setAdminPwd] = useState("");
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [newProduct, setNewProduct] = useState({ emoji: "🌸", title: "", description: "", price: "", etat: "Neuf", category: "Parfums", location: "", plage_livraison: "1-2 semaines" });
   const [imageFile, setImageFile] = useState(null);
@@ -121,10 +104,9 @@ export default function TrouveTout() {
   const [client, setClient] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState("login");
-  const [authForm, setAuthForm] = useState({ nom: "", contact: "", motdepasse: "", dateNaissance: "", ville: "", codeEmail: "" });
+  const [authForm, setAuthForm] = useState({ nom: "", contact: "", motdepasse: "", dateNaissance: "", ville: "" });
   const [authError, setAuthError] = useState("");
-  const [codeEnvoye, setCodeEnvoye] = useState(false);
-  const [codeVerif, setCodeVerif] = useState("");
+  const [loading, setLoading] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [messageTexte, setMessageTexte] = useState("");
   const [messages, setMessages] = useState([]);
@@ -132,13 +114,36 @@ export default function TrouveTout() {
   const [showMesCommandes, setShowMesCommandes] = useState(false);
   const [showPaiementInfo, setShowPaiementInfo] = useState(false);
 
+  // Mot de passe oublié — client
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotCode, setForgotCode] = useState("");
+  const [forgotCodeSaisi, setForgotCodeSaisi] = useState("");
+  const [forgotNouveauPwd, setForgotNouveauPwd] = useState("");
+  const [forgotConfirmPwd, setForgotConfirmPwd] = useState("");
+  const [forgotError, setForgotError] = useState("");
+  const [forgotUserId, setForgotUserId] = useState(null);
+
+  // Mot de passe oublié — admin
+  const [showAdminForgot, setShowAdminForgot] = useState(false);
+  const [adminForgotStep, setAdminForgotStep] = useState(1);
+  const [adminForgotCode, setAdminForgotCode] = useState("");
+  const [adminForgotCodeSaisi, setAdminForgotCodeSaisi] = useState("");
+  const [adminForgotAncienPwd, setAdminForgotAncienPwd] = useState("");
+  const [adminForgotNouveauPwd, setAdminForgotNouveauPwd] = useState("");
+  const [adminForgotConfirmPwd, setAdminForgotConfirmPwd] = useState("");
+  const [adminForgotError, setAdminForgotError] = useState("");
+  const [adminMotDePasse, setAdminMotDePasse] = useState("Benin2025@!");
+
   useEffect(() => {
     chargerProduits();
-    const savedClient = localStorage.getItem("trouvetout_client");
+    const savedClient = localStorage.getItem("fastbuy_client");
     if (savedClient) setClient(JSON.parse(savedClient));
-    if (typeof window !== "undefined" && window.location.pathname === "/admin" || window.location.search.includes("page=admin") || window.location.search.includes("page=admin")) setPage("admin");
+    const savedAdminPwd = localStorage.getItem("fastbuy_admin_pwd");
+    if (savedAdminPwd) setAdminMotDePasse(savedAdminPwd);
+    if (typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.search.includes("page=admin"))) setPage("admin");
   }, []);
-
 
   const chargerProduits = async () => {
     const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false });
@@ -166,20 +171,9 @@ export default function TrouveTout() {
   };
 
   const isEmail = (str) => str && str.includes("@");
+  const genCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-  const envoyerCodeEmail = async () => {
-    if (!authForm.contact || !isEmail(authForm.contact)) {
-      setAuthError("Entre un email valide pour recevoir le code !"); return;
-    }
-    setLoading(true);
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setCodeVerif(code);
-    await sendEmail(authForm.contact, "Ton code de connexion TrouveTout", emailCodeConnexion(code));
-    setCodeEnvoye(true);
-    setLoading(false);
-    setAuthError("");
-  };
-
+  // ── AUTH CLIENT ──
   const inscrire = async () => {
     setAuthError("");
     if (!authForm.nom || !authForm.contact || !authForm.motdepasse || !authForm.dateNaissance || !authForm.ville) {
@@ -197,20 +191,13 @@ export default function TrouveTout() {
     }]).select().single();
     if (error) { setAuthError("Erreur ! Réessaie."); setLoading(false); return; }
     if (isEmail(authForm.contact)) {
-      await sendEmail(authForm.contact, "Bienvenue sur TrouveTout ! 🎉", `
-        <div style="font-family: Arial; background: #0B0E18; color: #fff; padding: 2rem; border-radius: 16px; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #00A86B;">Bienvenue ${authForm.nom} ! 🎉</h1>
-          <p>Ton compte TrouveTout est créé avec succès !</p>
-          <p>Tu peux maintenant commander tous nos produits et te faire livrer partout au Bénin.</p>
-          <p style="color: rgba(255,255,255,0.5);">Des questions ? <a href="mailto:${SUPPORT_EMAIL}" style="color: #00A86B;">${SUPPORT_EMAIL}</a></p>
-        </div>
-      `);
+      await sendEmail(authForm.contact, "Bienvenue sur FastBuy 229 ! 🎉", emailCode("BIENVENUE", authForm.nom).replace("Voici ton code de vérification :", `Bienvenue ${authForm.nom} ! Ton compte est créé avec succès.`));
     }
     const clientData = { id: data.id, nom: data.nom, telephone: data.telephone, ville: data.ville };
     setClient(clientData);
-    localStorage.setItem("trouvetout_client", JSON.stringify(clientData));
+    localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
     setShowAuth(false);
-    setAuthForm({ nom: "", contact: "", motdepasse: "", dateNaissance: "", ville: "", codeEmail: "" });
+    setAuthForm({ nom: "", contact: "", motdepasse: "", dateNaissance: "", ville: "" });
     setLoading(false);
   };
 
@@ -222,31 +209,92 @@ export default function TrouveTout() {
     if (error || !data) { setAuthError("Identifiants incorrects !"); setLoading(false); return; }
     const clientData = { id: data.id, nom: data.nom, telephone: data.telephone, ville: data.ville };
     setClient(clientData);
-    localStorage.setItem("trouvetout_client", JSON.stringify(clientData));
+    localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
     setShowAuth(false);
-    setAuthForm({ nom: "", contact: "", motdepasse: "", dateNaissance: "", ville: "", codeEmail: "" });
-    setCodeEnvoye(false);
-    setLoading(false);
-  };
-
-  const connecterAvecCode = async () => {
-    if (authForm.codeEmail !== codeVerif) { setAuthError("Code incorrect !"); return; }
-    setLoading(true);
-    const { data } = await supabase.from("users").select("*").eq("telephone", authForm.contact).single();
-    if (!data) { setAuthError("Compte introuvable !"); setLoading(false); return; }
-    const clientData = { id: data.id, nom: data.nom, telephone: data.telephone, ville: data.ville };
-    setClient(clientData);
-    localStorage.setItem("trouvetout_client", JSON.stringify(clientData));
-    setShowAuth(false);
-    setCodeEnvoye(false);
+    setAuthForm({ nom: "", contact: "", motdepasse: "", dateNaissance: "", ville: "" });
     setLoading(false);
   };
 
   const deconnecter = () => {
     setClient(null);
-    localStorage.removeItem("trouvetout_client");
+    localStorage.removeItem("fastbuy_client");
   };
 
+  // ── MOT DE PASSE OUBLIÉ CLIENT ──
+  const forgotEnvoyerCode = async () => {
+    setForgotError("");
+    if (!forgotEmail) { setForgotError("Entre ton email ou téléphone !"); return; }
+    setLoading(true);
+    const { data } = await supabase.from("users").select("*").eq("telephone", forgotEmail).single();
+    if (!data) { setForgotError("Aucun compte avec cet email/téléphone !"); setLoading(false); return; }
+    const code = genCode();
+    setForgotCode(code);
+    setForgotUserId(data.id);
+    if (isEmail(forgotEmail)) {
+      await sendEmail(forgotEmail, "Code de réinitialisation — FastBuy 229", emailCode(code, data.nom));
+    }
+    setForgotStep(2);
+    setLoading(false);
+  };
+
+  const forgotVerifierCode = () => {
+    setForgotError("");
+    if (forgotCodeSaisi !== forgotCode) { setForgotError("Code incorrect !"); return; }
+    setForgotStep(3);
+  };
+
+  const forgotChangerPwd = async () => {
+    setForgotError("");
+    if (!forgotNouveauPwd || !forgotConfirmPwd) { setForgotError("Remplis tous les champs !"); return; }
+    if (forgotNouveauPwd.length < 6) { setForgotError("Mot de passe trop court !"); return; }
+    if (forgotNouveauPwd !== forgotConfirmPwd) { setForgotError("Les mots de passe ne correspondent pas !"); return; }
+    setLoading(true);
+    await supabase.from("users").update({ mot_de_passe: forgotNouveauPwd }).eq("id", forgotUserId);
+    setShowForgot(false);
+    setForgotStep(1);
+    setForgotEmail("");
+    setForgotCodeSaisi("");
+    setForgotNouveauPwd("");
+    setForgotConfirmPwd("");
+    setLoading(false);
+    alert("Mot de passe modifié avec succès ! 🎉");
+  };
+
+  // ── MOT DE PASSE OUBLIÉ ADMIN ──
+  const adminForgotEnvoyerCode = async () => {
+    setAdminForgotError("");
+    setLoading(true);
+    const code = genCode();
+    setAdminForgotCode(code);
+    await sendEmail(ADMIN_EMAIL, "Code admin — FastBuy 229", emailCode(code, "Admin"));
+    setAdminForgotStep(2);
+    setLoading(false);
+  };
+
+  const adminForgotVerifierCode = () => {
+    setAdminForgotError("");
+    if (adminForgotCodeSaisi !== adminForgotCode) { setAdminForgotError("Code incorrect !"); return; }
+    setAdminForgotStep(3);
+  };
+
+  const adminForgotChangerPwd = () => {
+    setAdminForgotError("");
+    if (!adminForgotAncienPwd || !adminForgotNouveauPwd || !adminForgotConfirmPwd) { setAdminForgotError("Remplis tous les champs !"); return; }
+    if (adminForgotAncienPwd !== adminMotDePasse) { setAdminForgotError("Ancien mot de passe incorrect !"); return; }
+    if (adminForgotNouveauPwd.length < 6) { setAdminForgotError("Nouveau mot de passe trop court !"); return; }
+    if (adminForgotNouveauPwd !== adminForgotConfirmPwd) { setAdminForgotError("Les mots de passe ne correspondent pas !"); return; }
+    setAdminMotDePasse(adminForgotNouveauPwd);
+    localStorage.setItem("fastbuy_admin_pwd", adminForgotNouveauPwd);
+    setShowAdminForgot(false);
+    setAdminForgotStep(1);
+    setAdminForgotAncienPwd("");
+    setAdminForgotNouveauPwd("");
+    setAdminForgotConfirmPwd("");
+    setAdminForgotCodeSaisi("");
+    alert("Mot de passe admin modifié ! 🎉");
+  };
+
+  // ── PANIER ──
   const ajouterAuPanier = (product) => {
     if (!client) { setShowAuth(true); setAuthMode("login"); return; }
     setPanier((prev) => {
@@ -272,12 +320,8 @@ export default function TrouveTout() {
       paiement: paiementChoisi, user_id: client?.id
     }]).select().single();
     if (error) { alert("Erreur ! Réessaie."); setLoading(false); return; }
-    if (isEmail(form.telephone)) {
-      await sendEmail(form.telephone, `Commande ${numero} confirmée — TrouveTout`, emailConfirmationCommande(data, client));
-    }
-    if (isEmail(client?.telephone)) {
-      await sendEmail(client.telephone, `Commande ${numero} confirmée — TrouveTout`, emailConfirmationCommande(data, client));
-    }
+    if (isEmail(form.telephone)) await sendEmail(form.telephone, `Commande ${numero} — FastBuy 229`, emailCommande(data));
+    if (isEmail(client?.telephone)) await sendEmail(client.telephone, `Commande ${numero} — FastBuy 229`, emailCommande(data));
     setCommandeOk(data);
     setPanier([]);
     setShowCommande(false);
@@ -308,9 +352,9 @@ export default function TrouveTout() {
   const repondreMessage = async (id, reponse, clientEmail) => {
     await supabase.from("messages").update({ reponse }).eq("id", id);
     if (isEmail(clientEmail)) {
-      await sendEmail(clientEmail, "Réponse à ton message — TrouveTout", `
+      await sendEmail(clientEmail, "Réponse à ton message — FastBuy 229", `
         <div style="font-family: Arial; background: #0B0E18; color: #fff; padding: 2rem; border-radius: 16px; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #00A86B;">Réponse de TrouveTout</h2>
+          <h2 style="color: #00A86B;">Réponse de FastBuy 229</h2>
           <div style="background: #161926; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">${reponse}</div>
           <p style="color: rgba(255,255,255,0.5);">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color: #00A86B;">${SUPPORT_EMAIL}</a></p>
         </div>
@@ -356,6 +400,14 @@ export default function TrouveTout() {
 
   const inp = { width: "100%", padding: "11px 14px", background: "#1C2035", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#fff", fontSize: 13, fontFamily: "DM Sans, sans-serif", outline: "none" };
 
+  const Logo = () => (
+    <span style={{ fontFamily: "Syne", fontSize: 21, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
+      Fast<span style={{ color: "#00A86B" }}>Buy</span>
+      <span style={{ color: "#F5C842" }}> 229</span>
+      <span style={{ display: "inline-block", width: 7, height: 7, background: "#F5C842", borderRadius: "50%", marginLeft: 3, verticalAlign: "middle", marginBottom: 3 }} />
+    </span>
+  );
+
   return (
     <div style={{ minHeight: "100vh", background: "#0B0E18", color: "#fff", fontFamily: "DM Sans, sans-serif" }}>
       <style>{`
@@ -376,10 +428,7 @@ export default function TrouveTout() {
 
       {/* NAVBAR */}
       <nav style={{ display: "flex", alignItems: "center", padding: "0 2rem", height: 62, background: "rgba(11,14,24,0.96)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "sticky", top: 0, zIndex: 100, gap: "1rem", flexWrap: "wrap" }}>
-        <div onClick={() => setPage("boutique")} style={{ fontFamily: "Syne", fontSize: 21, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
-          Trouve<span style={{ color: "#00A86B" }}>Tout</span>
-          <span style={{ display: "inline-block", width: 7, height: 7, background: "#F5C842", borderRadius: "50%", marginLeft: 3, verticalAlign: "middle", marginBottom: 3 }} />
-        </div>
+        <div onClick={() => setPage("boutique")}><Logo /></div>
         {page === "boutique" && (
           <div style={{ flex: 1, maxWidth: 440, display: "flex", alignItems: "center", background: "#1C2035", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 11, padding: "0 14px", gap: 8 }}>
             <span>🔍</span>
@@ -419,7 +468,7 @@ export default function TrouveTout() {
             <div style={{ position: "relative", zIndex: 2, padding: "3rem 2.5rem" }}>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,168,107,0.12)", border: "1px solid rgba(0,168,107,0.28)", borderRadius: 999, padding: "6px 16px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>
                 <span style={{ width: 7, height: 7, background: "#00A86B", borderRadius: "50%", animation: "pulse 2s infinite", display: "inline-block" }} />
-                Livraison partout au Bénin
+                Livraison 3 jours à 2 semaines selon ta ville
               </div>
               <h1 style={{ fontFamily: "Syne", fontSize: "clamp(2rem,5vw,3rem)", fontWeight: 800, lineHeight: 1.1, marginBottom: "1rem", letterSpacing: "-0.02em" }}>
                 Mode, Tech & Style<br />
@@ -427,10 +476,10 @@ export default function TrouveTout() {
                 <span style={{ color: "#F5C842" }}>Bénin</span>
               </h1>
               <p style={{ color: "rgba(255,255,255,0.48)", fontSize: 15, lineHeight: 1.75, marginBottom: "2rem", maxWidth: 420 }}>
-                Commande en ligne — Paiement MTN MoMo, Moov, Celtiis ou à la livraison.
+                Commande en ligne — Paiement MTN MoMo, Moov, Celtiis ou à la livraison — Cotonou, Porto-Novo, Calavi, Parakou, Ouidah.
               </p>
               <div style={{ display: "flex", gap: "2.5rem" }}>
-                {[[produits.length + "+", "Produits"], ["Livraison", "rapide"], ["98%", "Satisfaits"]].map(([n, l]) => (
+                {[[produits.length + "+", "Produits"], ["3j-2sem", "Livraison"], ["98%", "Satisfaits"]].map(([n, l]) => (
                   <div key={l}><div style={{ fontFamily: "Syne", fontSize: "1.8rem", fontWeight: 800, color: "#00A86B" }}>{n}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 3 }}>{l}</div></div>
                 ))}
               </div>
@@ -466,23 +515,15 @@ export default function TrouveTout() {
               {filtered.map((item, idx) => (
                 <div key={item.id} className="card" style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, overflow: "hidden", cursor: "pointer", transition: "transform 0.18s, border-color 0.18s", animation: "fi 0.3s ease both", animationDelay: `${idx * 0.04}s` }}>
                   <div style={{ height: 180, background: "#1C2035", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-                    {getImageUrl(item.image) ? (
-                      <img src={getImageUrl(item.image)} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    ) : (
-                      <span style={{ fontSize: "3rem" }}>{item.emoji}</span>
-                    )}
+                    {getImageUrl(item.image) ? <img src={getImageUrl(item.image)} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "3rem" }}>{item.emoji}</span>}
                     <span style={{ position: "absolute", top: 10, left: 10, background: "#00A86B", color: "#fff", fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 6 }}>{item.etat}</span>
                     <span onClick={(e) => { e.stopPropagation(); setFavorites((prev) => ({ ...prev, [item.id]: !prev[item.id] })); }} style={{ position: "absolute", top: 10, right: 10, background: "rgba(0,0,0,0.45)", borderRadius: 8, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, cursor: "pointer" }}>{favorites[item.id] ? "❤️" : "🤍"}</span>
-                    {item.plage_livraison && (
-                      <span style={{ position: "absolute", bottom: 10, left: 10, background: "rgba(0,0,0,0.6)", color: "#F5C842", fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 6 }}>🚚 {item.plage_livraison}</span>
-                    )}
+                    {item.plage_livraison && <span style={{ position: "absolute", bottom: 10, left: 10, background: "rgba(0,0,0,0.6)", color: "#F5C842", fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 6 }}>🚚 {item.plage_livraison}</span>}
                   </div>
                   <div style={{ padding: "12px 14px" }}>
                     <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 4 }}>{item.title}</div>
                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>📍 {item.location}</div>
-                    <div style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 800, color: "#00A86B", marginBottom: 10 }}>
-                      {item.price.toLocaleString()} <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "DM Sans", fontWeight: 400 }}>FCFA</span>
-                    </div>
+                    <div style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 800, color: "#00A86B", marginBottom: 10 }}>{item.price.toLocaleString()} <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "DM Sans", fontWeight: 400 }}>FCFA</span></div>
                     <button onClick={() => ajouterAuPanier(item)} className="bg" style={{ width: "100%", padding: "9px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", transition: "background 0.18s" }}>
                       {client ? "🛒 Ajouter au panier" : "🔒 Connecte-toi d'abord"}
                     </button>
@@ -493,11 +534,8 @@ export default function TrouveTout() {
           </section>
 
           <footer style={{ background: "#0D1020", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "1.8rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
-            <div style={{ fontFamily: "Syne", fontSize: 18, fontWeight: 800 }}>
-              Trouve<span style={{ color: "#00A86B" }}>Tout</span>
-              <span style={{ display: "inline-block", width: 7, height: 7, background: "#F5C842", borderRadius: "50%", marginLeft: 3, verticalAlign: "middle", marginBottom: 3 }} />
-            </div>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>© 2025 TrouveTout · Bénin</span>
+            <Logo />
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>© 2025 FastBuy 229 · Cotonou · Porto-Novo · Parakou · Ouidah · Calavi</span>
           </footer>
         </>
       )}
@@ -507,15 +545,14 @@ export default function TrouveTout() {
         <div style={{ maxWidth: 600, margin: "4rem auto", padding: "0 1.5rem" }}>
           <h2 style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, marginBottom: "0.5rem" }}>❓ Centre d'aide</h2>
           <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: "2rem" }}>On est là pour t'aider !</p>
-
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: "2.5rem" }}>
             {[
               ["📦", "Comment suivre ma commande ?", "Rendez-vous dans l'onglet 'Suivi de commande' puis entrez votre numéro de commande (ex : CMD-AB12CD). Votre numéro vous est envoyé automatiquement par email après validation de votre achat."],
-              ["💳", "Quels sont les moyens de paiement disponibles ?", `Les paiements sont disponibles uniquement via MTN MoMo. Envoyez le montant exact au ${MOMO_NUMERO} en indiquant votre numéro de commande comme référence.`],
+              ["💳", "Quels sont les moyens de paiement disponibles ?", `Les paiements sont disponibles via MTN MoMo, Moov Money, Celtiis ou à la livraison. Pour MoMo, envoyez le montant exact au ${MOMO_NUMERO} en indiquant votre numéro de commande comme référence.`],
               ["🚚", "Quels sont les délais de livraison ?", "Les délais de livraison sont indiqués sur chaque produit. En général, la livraison prend entre 3 jours et 2 semaines, selon votre ville et la disponibilité du produit."],
-["⏰", "Livraison en retard ?", "Si votre commande dépasse le délai annoncé, vous recevrez 10% de réduction remboursés sur votre Mobile Money après vérification."],
-              ["🔄", "Comment retourner un produit ?", "Si vous rencontrez un problème, contactez notre service client par email dans les 48h après réception. Nous vous proposerons une solution adaptée."],
-              ["💬", "Comment négocier un prix ou poser une question ?", "Connectez-vous à votre compte puis cliquez sur l'icône 💬 en haut à droite pour discuter directement avec nous. Notre équipe reste disponible pour vous accompagner."],
+              ["⏰", "Livraison en retard ?", "Votre satisfaction est importante pour nous. Si votre commande dépasse le délai annoncé, vous recevrez 10% de réduction remboursés sur votre Mobile Money après vérification de votre commande."],
+              ["🔄", "Comment retourner un produit ?", "Si vous rencontrez un problème avec votre commande, contactez notre service client par email dans les 48h après réception. Nous étudierons votre demande rapidement afin de vous proposer une solution adaptée."],
+              ["💬", "Comment négocier un prix ou poser une question ?", "Connectez-vous à votre compte puis cliquez sur l'icône 💬 en haut à droite pour discuter directement avec nous. Notre équipe reste disponible pour vous accompagner avant votre achat."],
             ].map(([icon, q, a]) => (
               <div key={q} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "1.2rem 1.5rem" }}>
                 <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{icon} {q}</div>
@@ -523,7 +560,6 @@ export default function TrouveTout() {
               </div>
             ))}
           </div>
-
           <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 16, padding: "2rem", textAlign: "center" }}>
             <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>📧</div>
             <h3 style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.5rem" }}>Besoin d'aide supplémentaire ?</h3>
@@ -544,9 +580,7 @@ export default function TrouveTout() {
             <input type="text" value={numeroSuivi} onChange={(e) => setNumeroSuivi(e.target.value)} placeholder="Ex: CMD-AB12CD" style={{ ...inp, flex: 1 }} />
             <button onClick={chercherCommande} className="bg" style={{ padding: "11px 20px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", whiteSpace: "nowrap" }}>Chercher</button>
           </div>
-          {commandeTrouvee === "introuvable" && (
-            <div style={{ background: "#1C2035", borderRadius: 14, padding: "2rem", textAlign: "center", color: "rgba(255,255,255,0.4)" }}>❌ Aucune commande trouvée</div>
-          )}
+          {commandeTrouvee === "introuvable" && <div style={{ background: "#1C2035", borderRadius: 14, padding: "2rem", textAlign: "center", color: "rgba(255,255,255,0.4)" }}>❌ Aucune commande trouvée</div>}
           {commandeTrouvee && commandeTrouvee !== "introuvable" && (
             <div style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "1.5rem", animation: "pi 0.3s ease" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
@@ -582,16 +616,64 @@ export default function TrouveTout() {
       {page === "admin" && !adminOk && (
         <div style={{ maxWidth: 400, margin: "5rem auto", padding: "0 1.5rem", textAlign: "center" }}>
           <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔐</div>
-          <h2 style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, marginBottom: "1.5rem" }}>Espace Admin</h2>
-          <input type="password" value={adminCode} onChange={(e) => setAdminCode(e.target.value)} placeholder="••••••••" style={{ ...inp, marginBottom: 12, textAlign: "center", letterSpacing: "0.2em" }} />
-          <button onClick={() => { if (adminCode === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerMessages(); } else alert("Accès refusé !"); }} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>Accéder</button>
+          <h2 style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, marginBottom: "1.5rem" }}>Espace Admin — FastBuy 229</h2>
+          {!showAdminForgot ? (
+            <>
+              <input type="password" value={adminPwd} onChange={(e) => setAdminPwd(e.target.value)} placeholder="••••••••" style={{ ...inp, marginBottom: 12, textAlign: "center", letterSpacing: "0.2em" }} />
+              <button onClick={() => { if (adminPwd === adminMotDePasse) { setAdminOk(true); chargerCommandes(); chargerMessages(); } else alert("Accès refusé !"); }} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: 12 }}>Accéder</button>
+              <button onClick={() => setShowAdminForgot(true)} style={{ background: "none", border: "none", color: "#00A86B", fontSize: 13, cursor: "pointer", fontFamily: "DM Sans" }}>🔑 Modifier mon mot de passe</button>
+            </>
+          ) : (
+            <div style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "1.5rem", textAlign: "left" }}>
+              <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1.2rem", textAlign: "center" }}>🔑 Modifier le mot de passe admin</h3>
+              {adminForgotError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{adminForgotError}</div>}
+
+              {adminForgotStep === 1 && (
+                <>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>Un code va être envoyé à : <strong style={{ color: "#00A86B" }}>{ADMIN_EMAIL}</strong></p>
+                  <button onClick={adminForgotEnvoyerCode} disabled={loading} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: 10 }}>
+                    {loading ? "Envoi…" : "📧 Recevoir le code"}
+                  </button>
+                </>
+              )}
+
+              {adminForgotStep === 2 && (
+                <>
+                  <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1rem" }}>✅ Code envoyé à {ADMIN_EMAIL}</div>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Code reçu par email</label>
+                  <input type="text" placeholder="Ex: 123456" value={adminForgotCodeSaisi} onChange={(e) => setAdminForgotCodeSaisi(e.target.value)} style={{ ...inp, textAlign: "center", fontSize: "1.5rem", letterSpacing: "0.3em", marginBottom: 12 }} maxLength={6} />
+                  <button onClick={adminForgotVerifierCode} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>Valider le code</button>
+                </>
+              )}
+
+              {adminForgotStep === 3 && (
+                <>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Ancien mot de passe</label>
+                    <input type="password" placeholder="••••••••" value={adminForgotAncienPwd} onChange={(e) => setAdminForgotAncienPwd(e.target.value)} style={inp} />
+                  </div>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Nouveau mot de passe</label>
+                    <input type="password" placeholder="••••••••" value={adminForgotNouveauPwd} onChange={(e) => setAdminForgotNouveauPwd(e.target.value)} style={inp} />
+                  </div>
+                  <div style={{ marginBottom: "1.2rem" }}>
+                    <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Confirmer nouveau mot de passe</label>
+                    <input type="password" placeholder="••••••••" value={adminForgotConfirmPwd} onChange={(e) => setAdminForgotConfirmPwd(e.target.value)} style={inp} />
+                  </div>
+                  <button onClick={adminForgotChangerPwd} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>✅ Valider</button>
+                </>
+              )}
+
+              <button onClick={() => { setShowAdminForgot(false); setAdminForgotStep(1); setAdminForgotError(""); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour</button>
+            </div>
+          )}
         </div>
       )}
 
       {page === "admin" && adminOk && (
         <div style={{ padding: "2rem" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
-            <h2 style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800 }}>⚙️ Tableau de bord</h2>
+            <h2 style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800 }}>⚙️ Tableau de bord — FastBuy 229</h2>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {[[commandes.length, "Commandes", "#00A86B"], [commandes.reduce((a, c) => a + (c.total || 0), 0).toLocaleString(), "FCFA total", "#F5C842"], [produits.length, "Produits", "#3B82F6"], [messages.length, "Messages", "#A855F7"]].map(([n, l, c]) => (
                 <div key={l} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px 20px", textAlign: "center" }}>
@@ -679,7 +761,7 @@ export default function TrouveTout() {
           <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 440, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
               <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>{authMode === "login" ? "👤 Se connecter" : "✨ Créer un compte"}</h2>
-              <span onClick={() => { setShowAuth(false); setCodeEnvoye(false); setAuthError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
+              <span onClick={() => { setShowAuth(false); setAuthError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
             </div>
             {authError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{authError}</div>}
 
@@ -714,52 +796,82 @@ export default function TrouveTout() {
               </>
             )}
 
-            {authMode === "login" && !codeEnvoye && (
+            {authMode === "login" && (
               <>
                 <div style={{ marginBottom: "1rem" }}>
                   <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📱 Téléphone ou 📧 Email</label>
                   <input type="text" placeholder="+229 97 00 00 00 ou email@gmail.com" value={authForm.contact} onChange={(e) => setAuthForm({ ...authForm, contact: e.target.value })} style={inp} />
                 </div>
-                <div style={{ marginBottom: "1rem" }}>
+                <div style={{ marginBottom: "0.5rem" }}>
                   <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Mot de passe</label>
                   <input type="password" placeholder="••••••••" value={authForm.motdepasse} onChange={(e) => setAuthForm({ ...authForm, motdepasse: e.target.value })} style={inp} />
                 </div>
+                <div style={{ textAlign: "right", marginBottom: "1.2rem" }}>
+                  <span onClick={() => { setShowAuth(false); setShowForgot(true); setForgotStep(1); }} style={{ fontSize: 12, color: "#00A86B", cursor: "pointer" }}>Mot de passe oublié ?</span>
+                </div>
                 <button onClick={connecter} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
                   {loading ? "Connexion…" : "Se connecter"}
-                </button>
-                {isEmail(authForm.contact) && (
-                  <button onClick={envoyerCodeEmail} disabled={loading} style={{ width: "100%", padding: "11px 0", background: "transparent", color: "#00A86B", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 12, fontSize: 13, cursor: "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
-                    📧 Connexion par code email
-                  </button>
-                )}
-              </>
-            )}
-
-            {authMode === "login" && codeEnvoye && (
-              <>
-                <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>
-                  ✅ Code envoyé à {authForm.contact} ! Vérifie ta boite mail.
-                </div>
-                <div style={{ marginBottom: "1.5rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Code reçu par email</label>
-                  <input type="text" placeholder="Ex: 123456" value={authForm.codeEmail} onChange={(e) => setAuthForm({ ...authForm, codeEmail: e.target.value })} style={{ ...inp, textAlign: "center", fontSize: "1.5rem", letterSpacing: "0.3em" }} maxLength={6} />
-                </div>
-                <button onClick={connecterAvecCode} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
-                  Valider le code
-                </button>
-                <button onClick={() => setCodeEnvoye(false)} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans" }}>
-                  ← Retour
                 </button>
               </>
             )}
 
             <div style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
               {authMode === "login" ? (
-                <span>Pas de compte ? <span onClick={() => { setAuthMode("register"); setAuthError(""); setCodeEnvoye(false); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>S'inscrire gratuitement</span></span>
+                <span>Pas de compte ? <span onClick={() => { setAuthMode("register"); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>S'inscrire gratuitement</span></span>
               ) : (
                 <span>Déjà un compte ? <span onClick={() => { setAuthMode("login"); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>Se connecter</span></span>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOT DE PASSE OUBLIÉ CLIENT */}
+      {showForgot && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 420, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>🔑 Mot de passe oublié</h2>
+              <span onClick={() => { setShowForgot(false); setForgotStep(1); setForgotError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
+            </div>
+            {forgotError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{forgotError}</div>}
+
+            {forgotStep === 1 && (
+              <>
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>Entre ton email ou téléphone pour recevoir un code</p>
+                <input type="text" placeholder="Email ou téléphone" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} style={{ ...inp, marginBottom: 12 }} />
+                <button onClick={forgotEnvoyerCode} disabled={loading} className="bg" style={{ width: "100%", padding: "12px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>
+                  {loading ? "Envoi…" : "📧 Recevoir le code"}
+                </button>
+              </>
+            )}
+
+            {forgotStep === 2 && (
+              <>
+                <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1rem" }}>✅ Code envoyé !</div>
+                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Code reçu</label>
+                <input type="text" placeholder="Ex: 123456" value={forgotCodeSaisi} onChange={(e) => setForgotCodeSaisi(e.target.value)} style={{ ...inp, textAlign: "center", fontSize: "1.5rem", letterSpacing: "0.3em", marginBottom: 12 }} maxLength={6} />
+                <button onClick={forgotVerifierCode} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>Valider le code</button>
+              </>
+            )}
+
+            {forgotStep === 3 && (
+              <>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Nouveau mot de passe</label>
+                  <input type="password" placeholder="••••••••" value={forgotNouveauPwd} onChange={(e) => setForgotNouveauPwd(e.target.value)} style={inp} />
+                </div>
+                <div style={{ marginBottom: "1.2rem" }}>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Confirmer le nouveau mot de passe</label>
+                  <input type="password" placeholder="••••••••" value={forgotConfirmPwd} onChange={(e) => setForgotConfirmPwd(e.target.value)} style={inp} />
+                </div>
+                <button onClick={forgotChangerPwd} disabled={loading} className="bg" style={{ width: "100%", padding: "12px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>
+                  {loading ? "Modification…" : "✅ Valider"}
+                </button>
+              </>
+            )}
+
+            <button onClick={() => { setShowForgot(false); setShowAuth(true); setAuthMode("login"); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour à la connexion</button>
           </div>
         </div>
       )}
@@ -880,7 +992,7 @@ export default function TrouveTout() {
         </div>
       )}
 
-      {/* INFO PAIEMENT MOMO */}
+      {/* INFO PAIEMENT */}
       {showPaiementInfo && commandeOk && (
         <div style={{ position: "fixed", inset: 0, zIndex: 450, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 420, textAlign: "center", animation: "pi 0.3s ease", border: "1px solid rgba(245,200,66,0.3)" }}>
@@ -891,7 +1003,7 @@ export default function TrouveTout() {
               <div style={{ fontFamily: "Syne", fontSize: "2rem", fontWeight: 800, color: "#00A86B", marginBottom: 8 }}>{commandeOk.total?.toLocaleString()} FCFA</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>au numéro</div>
               <div style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, color: "#fff", marginBottom: 12 }}>{MOMO_NUMERO}</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>Référence / Motif :</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>Référence :</div>
               <div style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 800, color: "#F5C842" }}>{commandeOk.numero}</div>
             </div>
             <button onClick={() => setShowPaiementInfo(false)} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>
@@ -910,10 +1022,10 @@ export default function TrouveTout() {
             <div style={{ background: "#1C2035", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem" }}>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Ton numéro de commande</div>
               <div style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, color: "#F5C842", letterSpacing: "0.05em" }}>{commandeOk.numero}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>📧 Un email de confirmation t'a été envoyé</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>📧 Confirmation envoyée par email</div>
             </div>
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 1.7, marginBottom: "2rem" }}>
-              Tu seras contacté sur <strong style={{ color: "#fff" }}>{commandeOk.telephone}</strong> pour la livraison.
+              Livraison sous <strong style={{ color: "#fff" }}>3 jours à 2 semaines</strong>. Tu seras contacté sur <strong style={{ color: "#fff" }}>{commandeOk.telephone}</strong>.
             </p>
             <button onClick={() => setCommandeOk(null)} className="bg" style={{ padding: "12px 32px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>
               Continuer les achats
