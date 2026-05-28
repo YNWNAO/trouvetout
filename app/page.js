@@ -36,48 +36,56 @@ const sendEmail = async (to, subject, html) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ to, subject, html }),
     });
-  } catch (e) {
-    console.log("Email error:", e);
-  }
+  } catch (e) { console.log("Email error:", e); }
 };
 
 const emailCode = (code, nom) => `
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0B0E18; color: #fff; padding: 2rem; border-radius: 16px;">
-  <div style="text-align: center; margin-bottom: 2rem;">
-    <h1 style="color: #00A86B; font-size: 2rem; margin: 0;">Fast<span style="color: #F5C842;">Buy 229</span></h1>
-    <p style="color: rgba(255,255,255,0.5); margin: 0.5rem 0 0;">Marketplace #1 au Bénin</p>
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0B0E18;color:#fff;padding:2rem;border-radius:16px;">
+  <h1 style="color:#00A86B;text-align:center;">Fast<span style="color:#F5C842;">Buy 229</span></h1>
+  <div style="background:#161926;border-radius:12px;padding:2rem;text-align:center;margin:1.5rem 0;">
+    <p style="color:rgba(255,255,255,0.6);margin:0 0 1rem;">Bonjour ${nom} ! Voici ton code :</p>
+    <h2 style="color:#F5C842;font-size:3rem;letter-spacing:0.3em;margin:0;">${code}</h2>
+    <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:1rem 0 0;">Expire dans 10 minutes</p>
   </div>
-  <div style="background: #161926; border-radius: 12px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
-    <p style="color: rgba(255,255,255,0.6); margin: 0 0 1rem;">Bonjour ${nom} ! Voici ton code de vérification :</p>
-    <h2 style="color: #F5C842; font-size: 3rem; letter-spacing: 0.3em; margin: 0;">${code}</h2>
-    <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin: 1rem 0 0;">Ce code expire dans 10 minutes</p>
-  </div>
-  <p style="color: rgba(255,255,255,0.4); font-size: 12px; text-align: center;">Si tu n'as pas demandé ce code, ignore cet email.</p>
-  <p style="color: rgba(255,255,255,0.4); font-size: 12px; text-align: center;">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color: #00A86B;">${SUPPORT_EMAIL}</a></p>
+  <p style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color:#00A86B;">${SUPPORT_EMAIL}</a></p>
 </div>`;
 
 const emailCommande = (cmd) => `
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0B0E18; color: #fff; padding: 2rem; border-radius: 16px;">
-  <div style="text-align: center; margin-bottom: 2rem;">
-    <h1 style="color: #00A86B; font-size: 2rem; margin: 0;">Fast<span style="color: #F5C842;">Buy 229</span></h1>
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0B0E18;color:#fff;padding:2rem;border-radius:16px;">
+  <h1 style="color:#00A86B;text-align:center;">Fast<span style="color:#F5C842;">Buy 229</span></h1>
+  <div style="background:#161926;border-radius:12px;padding:1.5rem;margin:1rem 0;text-align:center;">
+    <p style="color:rgba(255,255,255,0.5);margin:0 0 0.5rem;">🎉 Commande confirmée !</p>
+    <h2 style="color:#F5C842;font-size:1.8rem;letter-spacing:0.1em;margin:0;">${cmd.numero}</h2>
   </div>
-  <div style="background: #161926; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center;">
-    <p style="color: rgba(255,255,255,0.5); margin: 0 0 0.5rem;">🎉 Commande confirmée !</p>
-    <h2 style="color: #F5C842; font-size: 1.8rem; letter-spacing: 0.1em; margin: 0;">${cmd.numero}</h2>
-    <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin: 0.5rem 0 0;">Garde ce numéro pour suivre ta livraison</p>
+  <div style="background:#161926;border-radius:12px;padding:1.5rem;margin:1rem 0;">
+    <h3 style="color:#00A86B;margin:0 0 1rem;">📦 Articles</h3>
+    ${cmd.articles?.map(a => `<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.08);">${a.emoji} ${a.title} × ${a.qty} — <span style="color:#00A86B;">${(a.price*a.qty).toLocaleString()} FCFA</span></div>`).join("")}
+    ${cmd.codePromo ? `<div style="padding:8px 0;color:#F5C842;">🎟️ Code promo ${cmd.codePromo} : -${cmd.reduction?.toLocaleString()} FCFA</div>` : ""}
+    <div style="padding:1rem 0 0;font-weight:bold;">Total : <span style="color:#00A86B;">${cmd.totalFinal?.toLocaleString()} FCFA</span></div>
   </div>
-  <div style="background: #161926; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
-    <h3 style="color: #00A86B; margin: 0 0 1rem;">📦 Détails</h3>
-    ${cmd.articles?.map(a => `<div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08);">${a.emoji} ${a.title} × ${a.qty} — <span style="color: #00A86B;">${(a.price * a.qty).toLocaleString()} FCFA</span></div>`).join("")}
-    <div style="padding: 1rem 0 0; font-weight: bold;">Total : <span style="color: #00A86B;">${cmd.total?.toLocaleString()} FCFA</span></div>
+  <div style="background:rgba(245,200,66,0.1);border:1px solid rgba(245,200,66,0.3);border-radius:12px;padding:1.5rem;text-align:center;margin:1rem 0;">
+    <h3 style="color:#F5C842;margin:0 0 1rem;">💰 Paiement</h3>
+    <p>Envoie <strong style="color:#00A86B;">${cmd.totalFinal?.toLocaleString()} FCFA</strong> au <strong>${MOMO_NUMERO}</strong></p>
+    <p>Référence : <strong style="color:#F5C842;">${cmd.numero}</strong></p>
   </div>
-  ${cmd.paiement !== "livraison" ? `
-  <div style="background: rgba(245,200,66,0.1); border: 1px solid rgba(245,200,66,0.3); border-radius: 12px; padding: 1.5rem; text-align: center; margin-bottom: 1.5rem;">
-    <h3 style="color: #F5C842; margin: 0 0 1rem;">💰 Finalise ton paiement</h3>
-    <p>Envoie <strong style="color: #00A86B;">${cmd.total?.toLocaleString()} FCFA</strong> au <strong>${MOMO_NUMERO}</strong></p>
-    <p>Référence : <strong style="color: #F5C842;">${cmd.numero}</strong></p>
-  </div>` : ""}
-  <p style="color: rgba(255,255,255,0.4); font-size: 12px; text-align: center;">Questions ? <a href="mailto:${SUPPORT_EMAIL}" style="color: #00A86B;">${SUPPORT_EMAIL}</a></p>
+  <p style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color:#00A86B;">${SUPPORT_EMAIL}</a></p>
+</div>`;
+
+const emailNotifAdmin = (cmd) => `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0B0E18;color:#fff;padding:2rem;border-radius:16px;">
+  <h1 style="color:#00A86B;">🔔 Nouvelle commande — FastBuy 229</h1>
+  <div style="background:#161926;border-radius:12px;padding:1.5rem;margin:1rem 0;">
+    <p><strong>Numéro :</strong> <span style="color:#F5C842;">${cmd.numero}</span></p>
+    <p><strong>Client :</strong> ${cmd.nom}</p>
+    <p><strong>Téléphone livraison :</strong> ${cmd.telephoneLivreur}</p>
+    <p><strong>Email :</strong> ${cmd.email}</p>
+    <p><strong>Ville :</strong> ${cmd.ville}</p>
+    <p><strong>Adresse :</strong> ${cmd.adresse}</p>
+    <p><strong>Total :</strong> <span style="color:#00A86B;">${cmd.totalFinal?.toLocaleString()} FCFA</span></p>
+    <p><strong>Paiement :</strong> ${cmd.paiement}</p>
+    ${cmd.codePromo ? `<p><strong>Code promo :</strong> ${cmd.codePromo}</p>` : ""}
+  </div>
+  <p style="color:#F5C842;">⚠️ Une capture d'écran de paiement a été envoyée. Vérifiez dans votre espace admin.</p>
 </div>`;
 
 export default function FastBuy229() {
@@ -89,8 +97,11 @@ export default function FastBuy229() {
   const [showPanier, setShowPanier] = useState(false);
   const [showCommande, setShowCommande] = useState(false);
   const [commandeOk, setCommandeOk] = useState(null);
-  const [paiementChoisi, setPaiementChoisi] = useState("livraison");
-  const [form, setForm] = useState({ nom: "", telephone: "", ville: "", adresse: "" });
+  const [paiementChoisi, setPaiementChoisi] = useState("mtn");
+  const [form, setForm] = useState({ nom: "", email: "", telephoneLivreur: "", ville: "", adresse: "" });
+  const [codePromoSaisi, setCodePromoSaisi] = useState("");
+  const [codePromoValide, setCodePromoValide] = useState(false);
+  const [reductionPromo, setReductionPromo] = useState(0);
   const [produits, setProduits] = useState([]);
   const [commandes, setCommandes] = useState([]);
   const [numeroSuivi, setNumeroSuivi] = useState("");
@@ -101,31 +112,23 @@ export default function FastBuy229() {
   const [newProduct, setNewProduct] = useState({ emoji: "🌸", title: "", description: "", price: "", etat: "Neuf", category: "Parfums", location: "", plage_livraison: "1-2 semaines" });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [captureFile, setCaptureFile] = useState(null);
+  const [capturePreview, setCapturePreview] = useState(null);
   const [client, setClient] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState("login");
-  const [authForm, setAuthForm] = useState({ nom: "", contact: "", motdepasse: "", dateNaissance: "", ville: "" });
+  const [authStep, setAuthStep] = useState(1);
+  const [authForm, setAuthForm] = useState({ nom: "", prenom: "", email: "", telephone: "", code: "" });
+  const [authCode, setAuthCode] = useState("");
   const [authError, setAuthError] = useState("");
+  const [authMode, setAuthMode] = useState("register");
   const [loading, setLoading] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
+  const [produitNegocie, setProduitNegocie] = useState(null);
   const [messageTexte, setMessageTexte] = useState("");
   const [messages, setMessages] = useState([]);
   const [mesCommandes, setMesCommandes] = useState([]);
   const [showMesCommandes, setShowMesCommandes] = useState(false);
-  const [showPaiementInfo, setShowPaiementInfo] = useState(false);
-
-  // Mot de passe oublié — client
-  const [showForgot, setShowForgot] = useState(false);
-  const [forgotStep, setForgotStep] = useState(1);
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotCode, setForgotCode] = useState("");
-  const [forgotCodeSaisi, setForgotCodeSaisi] = useState("");
-  const [forgotNouveauPwd, setForgotNouveauPwd] = useState("");
-  const [forgotConfirmPwd, setForgotConfirmPwd] = useState("");
-  const [forgotError, setForgotError] = useState("");
-  const [forgotUserId, setForgotUserId] = useState(null);
-
-  // Mot de passe oublié — admin
+  const [adminMotDePasse, setAdminMotDePasse] = useState("Benin2025@!");
   const [showAdminForgot, setShowAdminForgot] = useState(false);
   const [adminForgotStep, setAdminForgotStep] = useState(1);
   const [adminForgotCode, setAdminForgotCode] = useState("");
@@ -134,14 +137,13 @@ export default function FastBuy229() {
   const [adminForgotNouveauPwd, setAdminForgotNouveauPwd] = useState("");
   const [adminForgotConfirmPwd, setAdminForgotConfirmPwd] = useState("");
   const [adminForgotError, setAdminForgotError] = useState("");
-  const [adminMotDePasse, setAdminMotDePasse] = useState("Benin2025@!");
 
   useEffect(() => {
     chargerProduits();
     const savedClient = localStorage.getItem("fastbuy_client");
     if (savedClient) setClient(JSON.parse(savedClient));
-    const savedAdminPwd = localStorage.getItem("fastbuy_admin_pwd");
-    if (savedAdminPwd) setAdminMotDePasse(savedAdminPwd);
+    const savedPwd = localStorage.getItem("fastbuy_admin_pwd");
+    if (savedPwd) setAdminMotDePasse(savedPwd);
     if (typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.search.includes("page=admin"))) setPage("admin");
   }, []);
 
@@ -149,190 +151,166 @@ export default function FastBuy229() {
     const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false });
     if (data) setProduits(data);
   };
-
   const chargerCommandes = async () => {
     const { data } = await supabase.from("commandes").select("*").order("created_at", { ascending: false });
     if (data) setCommandes(data);
   };
-
   const chargerMessages = async () => {
     const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false });
     if (data) setMessages(data);
   };
-
-  const chargerMesCommandes = async (contact) => {
-    const { data } = await supabase.from("commandes").select("*").eq("telephone", contact).order("created_at", { ascending: false });
+  const chargerMesCommandes = async (email) => {
+    const { data } = await supabase.from("commandes").select("*").eq("email", email).order("created_at", { ascending: false });
     if (data) setMesCommandes(data);
   };
-
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return null;
-    return `${SUPABASE_URL}/storage/v1/object/public/produits/${imagePath}`;
-  };
-
-  const isEmail = (str) => str && str.includes("@");
+  const getImageUrl = (p) => p ? `${SUPABASE_URL}/storage/v1/object/public/produits/${p}` : null;
   const genCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-  // ── AUTH CLIENT ──
-  const inscrire = async () => {
+  // ── AUTH (inscription/connexion par code email) ──
+  const envoyerCodeInscription = async () => {
     setAuthError("");
-    if (!authForm.nom || !authForm.contact || !authForm.motdepasse || !authForm.dateNaissance || !authForm.ville) {
-      setAuthError("Remplis tous les champs !"); return;
-    }
-    if (authForm.motdepasse.length < 6) { setAuthError("Mot de passe trop court (6 min)"); return; }
+    if (!authForm.nom || !authForm.prenom || !authForm.email || !authForm.telephone) { setAuthError("Remplis tous les champs !"); return; }
+    if (!authForm.email.includes("@")) { setAuthError("Email invalide !"); return; }
     setLoading(true);
-    const { data: existing } = await supabase.from("users").select("id").eq("telephone", authForm.contact).single();
-    if (existing) { setAuthError("Ce numéro/email est déjà utilisé !"); setLoading(false); return; }
+    const { data: existing } = await supabase.from("users").select("id").eq("telephone", authForm.email).single();
+    if (existing) { setAuthError("Cet email est déjà utilisé !"); setLoading(false); return; }
+    const code = genCode();
+    setAuthCode(code);
+    await sendEmail(authForm.email, "Ton code d'activation — FastBuy 229", emailCode(code, authForm.prenom));
+    setAuthStep(2);
+    setLoading(false);
+  };
+
+  const validerCodeInscription = async () => {
+    setAuthError("");
+    if (authForm.code !== authCode) { setAuthError("Code incorrect !"); return; }
+    setLoading(true);
     const { data, error } = await supabase.from("users").insert([{
-      nom: authForm.nom, telephone: authForm.contact,
-      mot_de_passe: authForm.motdepasse,
-      date_naissance: authForm.dateNaissance,
-      ville: authForm.ville,
+      nom: `${authForm.prenom} ${authForm.nom}`,
+      telephone: authForm.email,
+      mot_de_passe: authCode,
+      ville: "",
     }]).select().single();
     if (error) { setAuthError("Erreur ! Réessaie."); setLoading(false); return; }
-    if (isEmail(authForm.contact)) {
-      await sendEmail(authForm.contact, "Bienvenue sur FastBuy 229 ! 🎉", emailCode("BIENVENUE", authForm.nom).replace("Voici ton code de vérification :", `Bienvenue ${authForm.nom} ! Ton compte est créé avec succès.`));
-    }
-    const clientData = { id: data.id, nom: data.nom, telephone: data.telephone, ville: data.ville };
+    const clientData = { id: data.id, nom: `${authForm.prenom} ${authForm.nom}`, telephone: authForm.telephone, email: authForm.email, prenom: authForm.prenom, premiereCommande: true };
     setClient(clientData);
     localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
     setShowAuth(false);
-    setAuthForm({ nom: "", contact: "", motdepasse: "", dateNaissance: "", ville: "" });
+    setAuthStep(1);
+    setAuthForm({ nom: "", prenom: "", email: "", telephone: "", code: "" });
     setLoading(false);
   };
 
-  const connecter = async () => {
+  const envoyerCodeConnexion = async () => {
     setAuthError("");
-    if (!authForm.contact || !authForm.motdepasse) { setAuthError("Remplis tous les champs !"); return; }
+    if (!authForm.email) { setAuthError("Entre ton email !"); return; }
     setLoading(true);
-    const { data, error } = await supabase.from("users").select("*").eq("telephone", authForm.contact).eq("mot_de_passe", authForm.motdepasse).single();
-    if (error || !data) { setAuthError("Identifiants incorrects !"); setLoading(false); return; }
-    const clientData = { id: data.id, nom: data.nom, telephone: data.telephone, ville: data.ville };
+    const { data } = await supabase.from("users").select("*").eq("telephone", authForm.email).single();
+    if (!data) { setAuthError("Aucun compte avec cet email !"); setLoading(false); return; }
+    const code = genCode();
+    setAuthCode(code);
+    await sendEmail(authForm.email, "Ton code de connexion — FastBuy 229", emailCode(code, data.nom));
+    setAuthStep(2);
+    setLoading(false);
+  };
+
+  const validerCodeConnexion = async () => {
+    setAuthError("");
+    if (authForm.code !== authCode) { setAuthError("Code incorrect !"); return; }
+    setLoading(true);
+    const { data } = await supabase.from("users").select("*").eq("telephone", authForm.email).single();
+    const { data: cmdData } = await supabase.from("commandes").select("id").eq("email", authForm.email).limit(1);
+    const clientData = { id: data.id, nom: data.nom, telephone: data.telephone, email: authForm.email, prenom: data.nom.split(" ")[0], premiereCommande: !cmdData || cmdData.length === 0 };
     setClient(clientData);
     localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
     setShowAuth(false);
-    setAuthForm({ nom: "", contact: "", motdepasse: "", dateNaissance: "", ville: "" });
+    setAuthStep(1);
+    setAuthForm({ nom: "", prenom: "", email: "", telephone: "", code: "" });
     setLoading(false);
   };
 
-  const deconnecter = () => {
-    setClient(null);
-    localStorage.removeItem("fastbuy_client");
-  };
+  const deconnecter = () => { setClient(null); localStorage.removeItem("fastbuy_client"); };
 
-  // ── MOT DE PASSE OUBLIÉ CLIENT ──
-  const forgotEnvoyerCode = async () => {
-    setForgotError("");
-    if (!forgotEmail) { setForgotError("Entre ton email ou téléphone !"); return; }
-    setLoading(true);
-    const { data } = await supabase.from("users").select("*").eq("telephone", forgotEmail).single();
-    if (!data) { setForgotError("Aucun compte avec cet email/téléphone !"); setLoading(false); return; }
-    const code = genCode();
-    setForgotCode(code);
-    setForgotUserId(data.id);
-    if (isEmail(forgotEmail)) {
-      await sendEmail(forgotEmail, "Code de réinitialisation — FastBuy 229", emailCode(code, data.nom));
+  // ── CODE PROMO ──
+  const verifierCodePromo = () => {
+    if (!client) return;
+    const codeAttendu = (client.prenom || client.nom.split(" ")[0]).toLowerCase() + "10";
+    if (codePromoSaisi.toLowerCase() === codeAttendu && client.premiereCommande) {
+      const reduction = Math.round(total * 0.1);
+      setReductionPromo(reduction);
+      setCodePromoValide(true);
+    } else if (!client.premiereCommande) {
+      alert("Ce code promo est réservé à la première commande !");
+    } else {
+      alert("Code promo invalide !");
     }
-    setForgotStep(2);
-    setLoading(false);
-  };
-
-  const forgotVerifierCode = () => {
-    setForgotError("");
-    if (forgotCodeSaisi !== forgotCode) { setForgotError("Code incorrect !"); return; }
-    setForgotStep(3);
-  };
-
-  const forgotChangerPwd = async () => {
-    setForgotError("");
-    if (!forgotNouveauPwd || !forgotConfirmPwd) { setForgotError("Remplis tous les champs !"); return; }
-    if (forgotNouveauPwd.length < 6) { setForgotError("Mot de passe trop court !"); return; }
-    if (forgotNouveauPwd !== forgotConfirmPwd) { setForgotError("Les mots de passe ne correspondent pas !"); return; }
-    setLoading(true);
-    await supabase.from("users").update({ mot_de_passe: forgotNouveauPwd }).eq("id", forgotUserId);
-    setShowForgot(false);
-    setForgotStep(1);
-    setForgotEmail("");
-    setForgotCodeSaisi("");
-    setForgotNouveauPwd("");
-    setForgotConfirmPwd("");
-    setLoading(false);
-    alert("Mot de passe modifié avec succès ! 🎉");
-  };
-
-  // ── MOT DE PASSE OUBLIÉ ADMIN ──
-  const adminForgotEnvoyerCode = async () => {
-    setAdminForgotError("");
-    setLoading(true);
-    const code = genCode();
-    setAdminForgotCode(code);
-    await sendEmail(ADMIN_EMAIL, "Code admin — FastBuy 229", emailCode(code, "Admin"));
-    setAdminForgotStep(2);
-    setLoading(false);
-  };
-
-  const adminForgotVerifierCode = () => {
-    setAdminForgotError("");
-    if (adminForgotCodeSaisi !== adminForgotCode) { setAdminForgotError("Code incorrect !"); return; }
-    setAdminForgotStep(3);
-  };
-
-  const adminForgotChangerPwd = () => {
-    setAdminForgotError("");
-    if (!adminForgotAncienPwd || !adminForgotNouveauPwd || !adminForgotConfirmPwd) { setAdminForgotError("Remplis tous les champs !"); return; }
-    if (adminForgotAncienPwd !== adminMotDePasse) { setAdminForgotError("Ancien mot de passe incorrect !"); return; }
-    if (adminForgotNouveauPwd.length < 6) { setAdminForgotError("Nouveau mot de passe trop court !"); return; }
-    if (adminForgotNouveauPwd !== adminForgotConfirmPwd) { setAdminForgotError("Les mots de passe ne correspondent pas !"); return; }
-    setAdminMotDePasse(adminForgotNouveauPwd);
-    localStorage.setItem("fastbuy_admin_pwd", adminForgotNouveauPwd);
-    setShowAdminForgot(false);
-    setAdminForgotStep(1);
-    setAdminForgotAncienPwd("");
-    setAdminForgotNouveauPwd("");
-    setAdminForgotConfirmPwd("");
-    setAdminForgotCodeSaisi("");
-    alert("Mot de passe admin modifié ! 🎉");
   };
 
   // ── PANIER ──
   const ajouterAuPanier = (product) => {
-    if (!client) { setShowAuth(true); setAuthMode("login"); return; }
+    if (!client) { setShowAuth(true); setAuthMode("register"); return; }
     setPanier((prev) => {
       const existe = prev.find((p) => p.id === product.id);
       if (existe) return prev.map((p) => p.id === product.id ? { ...p, qty: p.qty + 1 } : p);
       return [...prev, { ...product, qty: 1 }];
     });
   };
-
   const retirerDuPanier = (id) => setPanier((prev) => prev.filter((p) => p.id !== id));
   const changerQty = (id, delta) => setPanier((prev) => prev.map((p) => p.id === id ? { ...p, qty: Math.max(1, p.qty + delta) } : p));
   const total = panier.reduce((acc, p) => acc + p.price * p.qty, 0);
+  const totalFinal = total - reductionPromo;
   const nbPanier = panier.reduce((acc, p) => acc + p.qty, 0);
 
   const passerCommande = async () => {
-    if (!form.nom || !form.telephone || !form.ville || !form.adresse) { alert("Remplis tous les champs !"); return; }
+    if (!form.nom || !form.email || !form.telephoneLivreur || !form.ville || !form.adresse) { alert("Remplis tous les champs !"); return; }
+    if (!captureFile) { alert("Ajoute la capture d'écran de ton paiement !"); return; }
     setLoading(true);
     const numero = genNumero();
-    const { data, error } = await supabase.from("commandes").insert([{
-      numero, nom: form.nom, telephone: form.telephone,
-      ville: form.ville, adresse: form.adresse,
-      articles: panier, total, statut: "Commande reçue",
-      paiement: paiementChoisi, user_id: client?.id
-    }]).select().single();
+
+    let capturePath = null;
+    const fileName = `captures/${Date.now()}-${captureFile.name}`;
+    const { error: uploadError } = await supabase.storage.from("produits").upload(fileName, captureFile);
+    if (!uploadError) capturePath = fileName;
+
+    const cmdData = { numero, nom: form.nom, email: form.email, telephone: form.telephoneLivreur, telephoneLivreur: form.telephoneLivreur, ville: form.ville, adresse: form.adresse, articles: panier, total, totalFinal, reduction: reductionPromo, codePromo: codePromoValide ? codePromoSaisi : null, statut: "Commande reçue", paiement: paiementChoisi, user_id: client?.id, capture: capturePath };
+    const { data, error } = await supabase.from("commandes").insert([cmdData]).select().single();
     if (error) { alert("Erreur ! Réessaie."); setLoading(false); return; }
-    if (isEmail(form.telephone)) await sendEmail(form.telephone, `Commande ${numero} — FastBuy 229`, emailCommande(data));
-    if (isEmail(client?.telephone)) await sendEmail(client.telephone, `Commande ${numero} — FastBuy 229`, emailCommande(data));
+
+    await sendEmail(form.email, `Commande ${numero} — FastBuy 229`, emailCommande({ ...cmdData, articles: panier }));
+    await sendEmail(ADMIN_EMAIL, `🔔 Nouvelle commande ${numero}`, emailNotifAdmin(cmdData));
+
+    if (codePromoValide) {
+      const updatedClient = { ...client, premiereCommande: false };
+      setClient(updatedClient);
+      localStorage.setItem("fastbuy_client", JSON.stringify(updatedClient));
+    }
+
     setCommandeOk(data);
     setPanier([]);
     setShowCommande(false);
     setShowPanier(false);
-    setForm({ nom: "", telephone: "", ville: "", adresse: "" });
+    setForm({ nom: "", email: "", telephoneLivreur: "", ville: "", adresse: "" });
+    setCaptureFile(null);
+    setCapturePreview(null);
+    setCodePromoSaisi("");
+    setCodePromoValide(false);
+    setReductionPromo(0);
     setLoading(false);
-    if (paiementChoisi !== "livraison") setShowPaiementInfo(true);
   };
 
   const changerStatut = async (id, statut) => {
+    const cmd = commandes.find(c => c.id === id);
     await supabase.from("commandes").update({ statut }).eq("id", id);
+    if (cmd?.email) {
+      await sendEmail(cmd.email, `Mise à jour commande ${cmd.numero} — FastBuy 229`, `
+        <div style="font-family:Arial;background:#0B0E18;color:#fff;padding:2rem;border-radius:16px;max-width:600px;margin:0 auto;">
+          <h2 style="color:#00A86B;">Mise à jour de ta commande</h2>
+          <p>Commande <strong style="color:#F5C842;">${cmd.numero}</strong></p>
+          <p>Nouveau statut : <strong style="color:#00A86B;">${statut}</strong></p>
+          <p style="color:rgba(255,255,255,0.5);">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color:#00A86B;">${SUPPORT_EMAIL}</a></p>
+        </div>
+      `);
+    }
     chargerCommandes();
   };
 
@@ -343,30 +321,30 @@ export default function FastBuy229() {
 
   const envoyerMessage = async () => {
     if (!messageTexte) return;
-    await supabase.from("messages").insert([{ user_id: client?.id, nom: client?.nom, telephone: client?.telephone, message: messageTexte }]);
+    const sujet = produitNegocie ? `Négociation: ${produitNegocie.title}` : messageTexte;
+    await supabase.from("messages").insert([{ user_id: client?.id, nom: client?.nom, telephone: client?.email, message: produitNegocie ? `Négociation sur "${produitNegocie.title}" (${produitNegocie.price.toLocaleString()} FCFA) : ${messageTexte}` : messageTexte }]);
     setMessageTexte("");
     setShowMessage(false);
+    setProduitNegocie(null);
     alert("Message envoyé ! On te répond bientôt 😊");
   };
 
   const repondreMessage = async (id, reponse, clientEmail) => {
     await supabase.from("messages").update({ reponse }).eq("id", id);
-    if (isEmail(clientEmail)) {
+    if (clientEmail?.includes("@")) {
       await sendEmail(clientEmail, "Réponse à ton message — FastBuy 229", `
-        <div style="font-family: Arial; background: #0B0E18; color: #fff; padding: 2rem; border-radius: 16px; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #00A86B;">Réponse de FastBuy 229</h2>
-          <div style="background: #161926; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">${reponse}</div>
-          <p style="color: rgba(255,255,255,0.5);">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color: #00A86B;">${SUPPORT_EMAIL}</a></p>
+        <div style="font-family:Arial;background:#0B0E18;color:#fff;padding:2rem;border-radius:16px;max-width:600px;margin:0 auto;">
+          <h2 style="color:#00A86B;">Réponse de FastBuy 229</h2>
+          <div style="background:#161926;padding:1rem;border-radius:8px;margin-bottom:1rem;">${reponse}</div>
+          <p style="color:rgba(255,255,255,0.5);">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color:#00A86B;">${SUPPORT_EMAIL}</a></p>
         </div>
       `);
     }
     chargerMessages();
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) { setImageFile(file); setImagePreview(URL.createObjectURL(file)); }
-  };
+  const handleImageChange = (e) => { const f = e.target.files[0]; if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); } };
+  const handleCaptureChange = (e) => { const f = e.target.files[0]; if (f) { setCaptureFile(f); setCapturePreview(URL.createObjectURL(f)); } };
 
   const ajouterProduit = async () => {
     if (!newProduct.title || !newProduct.price || !newProduct.location) { alert("Remplis tous les champs !"); return; }
@@ -381,15 +359,34 @@ export default function FastBuy229() {
     await chargerProduits();
     setShowAddProduct(false);
     setNewProduct({ emoji: "🌸", title: "", description: "", price: "", etat: "Neuf", category: "Parfums", location: "", plage_livraison: "1-2 semaines" });
-    setImageFile(null);
-    setImagePreview(null);
+    setImageFile(null); setImagePreview(null);
     setLoading(false);
   };
 
-  const supprimerProduit = async (id) => {
-    if (!confirm("Supprimer ce produit ?")) return;
-    await supabase.from("produits").delete().eq("id", id);
-    chargerProduits();
+  const supprimerProduit = async (id) => { if (!confirm("Supprimer ?")) return; await supabase.from("produits").delete().eq("id", id); chargerProduits(); };
+
+  const adminForgotEnvoyerCode = async () => {
+    setAdminForgotError("");
+    setLoading(true);
+    const code = genCode();
+    setAdminForgotCode(code);
+    await sendEmail(ADMIN_EMAIL, "Code admin — FastBuy 229", emailCode(code, "Admin"));
+    setAdminForgotStep(2);
+    setLoading(false);
+  };
+
+  const adminForgotChangerPwd = () => {
+    setAdminForgotError("");
+    if (adminForgotCodeSaisi !== adminForgotCode) { setAdminForgotError("Code incorrect !"); return; }
+    if (adminForgotAncienPwd !== adminMotDePasse) { setAdminForgotError("Ancien mot de passe incorrect !"); return; }
+    if (adminForgotNouveauPwd.length < 6) { setAdminForgotError("Mot de passe trop court !"); return; }
+    if (adminForgotNouveauPwd !== adminForgotConfirmPwd) { setAdminForgotError("Les mots de passe ne correspondent pas !"); return; }
+    setAdminMotDePasse(adminForgotNouveauPwd);
+    localStorage.setItem("fastbuy_admin_pwd", adminForgotNouveauPwd);
+    setShowAdminForgot(false);
+    setAdminForgotStep(1);
+    setAdminForgotAncienPwd(""); setAdminForgotNouveauPwd(""); setAdminForgotConfirmPwd(""); setAdminForgotCodeSaisi("");
+    alert("Mot de passe admin modifié ! 🎉");
   };
 
   const filtered = produits.filter((p) => {
@@ -402,8 +399,7 @@ export default function FastBuy229() {
 
   const Logo = () => (
     <span style={{ fontFamily: "Syne", fontSize: 21, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
-      Fast<span style={{ color: "#00A86B" }}>Buy</span>
-      <span style={{ color: "#F5C842" }}> 229</span>
+      Fast<span style={{ color: "#00A86B" }}>Buy</span><span style={{ color: "#F5C842" }}> 229</span>
       <span style={{ display: "inline-block", width: 7, height: 7, background: "#F5C842", borderRadius: "50%", marginLeft: 3, verticalAlign: "middle", marginBottom: 3 }} />
     </span>
   );
@@ -447,14 +443,14 @@ export default function FastBuy229() {
           )}
           {client ? (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={() => { chargerMesCommandes(client.telephone); setShowMesCommandes(true); }} style={{ padding: "8px 14px", borderRadius: 9, fontSize: 13, background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", color: "#00A86B", cursor: "pointer", fontFamily: "DM Sans" }}>
-                👤 {client.nom.split(" ")[0]}
+              <button onClick={() => { chargerMesCommandes(client.email); setShowMesCommandes(true); }} style={{ padding: "8px 14px", borderRadius: 9, fontSize: 13, background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", color: "#00A86B", cursor: "pointer", fontFamily: "DM Sans" }}>
+                👤 {client.prenom || client.nom.split(" ")[0]}
               </button>
-              <button onClick={() => setShowMessage(true)} style={{ padding: "8px 12px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer" }}>💬</button>
+              <button onClick={() => { setProduitNegocie(null); setShowMessage(true); }} style={{ padding: "8px 12px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer" }}>💬</button>
               <button onClick={deconnecter} style={{ padding: "8px 12px", borderRadius: 9, fontSize: 12, background: "none", border: "1px solid rgba(255,80,80,0.3)", color: "rgba(255,100,100,0.7)", cursor: "pointer" }}>×</button>
             </div>
           ) : (
-            <button onClick={() => { setShowAuth(true); setAuthMode("login"); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>
+            <button onClick={() => { setShowAuth(true); setAuthMode("login"); setAuthStep(1); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>
               👤 Se connecter
             </button>
           )}
@@ -471,12 +467,10 @@ export default function FastBuy229() {
                 Livraison 3 jours à 2 semaines selon ta ville
               </div>
               <h1 style={{ fontFamily: "Syne", fontSize: "clamp(2rem,5vw,3rem)", fontWeight: 800, lineHeight: 1.1, marginBottom: "1rem", letterSpacing: "-0.02em" }}>
-                Mode, Tech & Style<br />
-                <span style={{ color: "#00A86B" }}>livrés partout</span> au<br />
-                <span style={{ color: "#F5C842" }}>Bénin</span>
+                Mode, Tech & Style<br /><span style={{ color: "#00A86B" }}>livrés partout</span> au<br /><span style={{ color: "#F5C842" }}>Bénin</span>
               </h1>
               <p style={{ color: "rgba(255,255,255,0.48)", fontSize: 15, lineHeight: 1.75, marginBottom: "2rem", maxWidth: 420 }}>
-                Commande en ligne — Paiement MTN MoMo, Moov, Celtiis ou à la livraison — Cotonou, Porto-Novo, Calavi, Parakou, Ouidah.
+                Commande en ligne — Paiement MTN MoMo, Moov, Celtiis — Cotonou, Porto-Novo, Calavi, Parakou, Ouidah.
               </p>
               <div style={{ display: "flex", gap: "2.5rem" }}>
                 {[[produits.length + "+", "Produits"], ["3j-2sem", "Livraison"], ["98%", "Satisfaits"]].map(([n, l]) => (
@@ -506,14 +500,10 @@ export default function FastBuy229() {
               {activeCategory || "Tous les produits"}
               {activeCategory && <span onClick={() => setActiveCategory(null)} style={{ fontSize: 12, color: "#00A86B", marginLeft: 10, cursor: "pointer", fontWeight: 400 }}>× effacer</span>}
             </h2>
-            {filtered.length === 0 && (
-              <div style={{ textAlign: "center", padding: "4rem", color: "rgba(255,255,255,0.25)" }}>
-                <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🛍️</div>Aucun produit disponible
-              </div>
-            )}
+            {filtered.length === 0 && <div style={{ textAlign: "center", padding: "4rem", color: "rgba(255,255,255,0.25)" }}><div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🛍️</div>Aucun produit disponible</div>}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
               {filtered.map((item, idx) => (
-                <div key={item.id} className="card" style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, overflow: "hidden", cursor: "pointer", transition: "transform 0.18s, border-color 0.18s", animation: "fi 0.3s ease both", animationDelay: `${idx * 0.04}s` }}>
+                <div key={item.id} className="card" style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, overflow: "hidden", transition: "transform 0.18s, border-color 0.18s", animation: "fi 0.3s ease both", animationDelay: `${idx * 0.04}s` }}>
                   <div style={{ height: 180, background: "#1C2035", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
                     {getImageUrl(item.image) ? <img src={getImageUrl(item.image)} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "3rem" }}>{item.emoji}</span>}
                     <span style={{ position: "absolute", top: 10, left: 10, background: "#00A86B", color: "#fff", fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 6 }}>{item.etat}</span>
@@ -524,9 +514,14 @@ export default function FastBuy229() {
                     <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 4 }}>{item.title}</div>
                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>📍 {item.location}</div>
                     <div style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 800, color: "#00A86B", marginBottom: 10 }}>{item.price.toLocaleString()} <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "DM Sans", fontWeight: 400 }}>FCFA</span></div>
-                    <button onClick={() => ajouterAuPanier(item)} className="bg" style={{ width: "100%", padding: "9px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", transition: "background 0.18s" }}>
-                      {client ? "🛒 Ajouter au panier" : "🔒 Connecte-toi d'abord"}
-                    </button>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => ajouterAuPanier(item)} className="bg" style={{ flex: 1, padding: "9px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", transition: "background 0.18s" }}>
+                        {client ? "🛒 Acheter" : "🔒 Connexion"}
+                      </button>
+                      {client && (
+                        <button onClick={() => { setProduitNegocie(item); setMessageTexte(""); setShowMessage(true); }} style={{ padding: "9px 10px", background: "rgba(245,200,66,0.1)", border: "1px solid rgba(245,200,66,0.3)", borderRadius: 9, fontSize: 14, cursor: "pointer", color: "#F5C842" }}>💬</button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -535,7 +530,7 @@ export default function FastBuy229() {
 
           <footer style={{ background: "#0D1020", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "1.8rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
             <Logo />
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>© 2025 FastBuy 229 · Cotonou · Porto-Novo · Parakou · Ouidah · Calavi</span>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>© 2025 FastBuy 229 · Bénin</span>
           </footer>
         </>
       )}
@@ -548,11 +543,12 @@ export default function FastBuy229() {
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: "2.5rem" }}>
             {[
               ["📦", "Comment suivre ma commande ?", "Rendez-vous dans l'onglet 'Suivi de commande' puis entrez votre numéro de commande (ex : CMD-AB12CD). Votre numéro vous est envoyé automatiquement par email après validation de votre achat."],
-              ["💳", "Quels sont les moyens de paiement disponibles ?", `Les paiements sont disponibles via MTN MoMo, Moov Money, Celtiis ou à la livraison. Pour MoMo, envoyez le montant exact au ${MOMO_NUMERO} en indiquant votre numéro de commande comme référence.`],
-              ["🚚", "Quels sont les délais de livraison ?", "Les délais de livraison sont indiqués sur chaque produit. En général, la livraison prend entre 3 jours et 2 semaines, selon votre ville et la disponibilité du produit."],
-              ["⏰", "Livraison en retard ?", "Votre satisfaction est importante pour nous. Si votre commande dépasse le délai annoncé, vous recevrez 10% de réduction remboursés sur votre Mobile Money après vérification de votre commande."],
-              ["🔄", "Comment retourner un produit ?", "Si vous rencontrez un problème avec votre commande, contactez notre service client par email dans les 48h après réception. Nous étudierons votre demande rapidement afin de vous proposer une solution adaptée."],
-              ["💬", "Comment négocier un prix ou poser une question ?", "Connectez-vous à votre compte puis cliquez sur l'icône 💬 en haut à droite pour discuter directement avec nous. Notre équipe reste disponible pour vous accompagner avant votre achat."],
+              ["💳", "Quels sont les moyens de paiement disponibles ?", `Les paiements sont disponibles via MTN MoMo, Moov Money ou Celtiis. Envoyez le montant exact au ${MOMO_NUMERO} en indiquant votre numéro de commande comme référence, puis uploadez la capture d'écran.`],
+              ["🚚", "Quels sont les délais de livraison ?", "Les délais sont indiqués sur chaque produit. En général entre 3 jours et 2 semaines selon votre ville et la disponibilité du produit."],
+              ["⏰", "Livraison en retard ?", "Si votre commande dépasse le délai annoncé, vous recevrez 10% de réduction remboursés sur votre Mobile Money après vérification."],
+              ["🔄", "Comment retourner un produit ?", "Contactez notre service client par email dans les 48h après réception. Nous vous proposerons une solution adaptée."],
+              ["💬", "Comment négocier un prix ?", "Cliquez sur l'icône 💬 directement sur le produit qui vous intéresse pour nous envoyer une offre."],
+              ["🎟️", "Comment utiliser mon code promo ?", "Lors de votre commande, entrez votre prénom suivi de 10 (ex: marc10) dans la case code promo. Valable uniquement sur votre première commande !"],
             ].map(([icon, q, a]) => (
               <div key={q} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "1.2rem 1.5rem" }}>
                 <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{icon} {q}</div>
@@ -562,11 +558,9 @@ export default function FastBuy229() {
           </div>
           <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 16, padding: "2rem", textAlign: "center" }}>
             <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>📧</div>
-            <h3 style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.5rem" }}>Besoin d'aide supplémentaire ?</h3>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginBottom: "1.2rem" }}>Écris-nous directement, on répond rapidement !</p>
-            <a href={`mailto:${SUPPORT_EMAIL}`} style={{ display: "inline-block", padding: "12px 28px", background: "#00A86B", color: "#fff", borderRadius: 12, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
-              ✉️ {SUPPORT_EMAIL}
-            </a>
+            <h3 style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.5rem" }}>Besoin d'aide ?</h3>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginBottom: "1.2rem" }}>Écris-nous directement !</p>
+            <a href={`mailto:${SUPPORT_EMAIL}`} style={{ display: "inline-block", padding: "12px 28px", background: "#00A86B", color: "#fff", borderRadius: 12, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>✉️ {SUPPORT_EMAIL}</a>
           </div>
         </div>
       )}
@@ -575,18 +569,17 @@ export default function FastBuy229() {
       {page === "suivi" && (
         <div style={{ maxWidth: 500, margin: "4rem auto", padding: "0 1.5rem" }}>
           <h2 style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, marginBottom: "0.5rem" }}>📦 Suivre ma commande</h2>
-          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: "2rem" }}>Entre ton numéro de commande</p>
-          <div style={{ display: "flex", gap: 10, marginBottom: "2rem" }}>
+          <div style={{ display: "flex", gap: 10, marginBottom: "2rem", marginTop: "1rem" }}>
             <input type="text" value={numeroSuivi} onChange={(e) => setNumeroSuivi(e.target.value)} placeholder="Ex: CMD-AB12CD" style={{ ...inp, flex: 1 }} />
             <button onClick={chercherCommande} className="bg" style={{ padding: "11px 20px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", whiteSpace: "nowrap" }}>Chercher</button>
           </div>
           {commandeTrouvee === "introuvable" && <div style={{ background: "#1C2035", borderRadius: 14, padding: "2rem", textAlign: "center", color: "rgba(255,255,255,0.4)" }}>❌ Aucune commande trouvée</div>}
           {commandeTrouvee && commandeTrouvee !== "introuvable" && (
-            <div style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "1.5rem", animation: "pi 0.3s ease" }}>
+            <div style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "1.5rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
                 <div>
-                  <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: "1rem" }}>{commandeTrouvee.numero}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>{new Date(commandeTrouvee.created_at).toLocaleString("fr-FR")}</div>
+                  <div style={{ fontFamily: "Syne", fontWeight: 700 }}>{commandeTrouvee.numero}</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{new Date(commandeTrouvee.created_at).toLocaleString("fr-FR")}</div>
                 </div>
                 <span style={{ background: "rgba(0,168,107,0.15)", color: "#00A86B", padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>{commandeTrouvee.statut}</span>
               </div>
@@ -603,9 +596,9 @@ export default function FastBuy229() {
                 })}
               </div>
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "1rem" }}>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Client : <span style={{ color: "#fff" }}>{commandeTrouvee.nom}</span></div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Ville : <span style={{ color: "#fff" }}>{commandeTrouvee.ville}</span></div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Total : <span style={{ color: "#00A86B", fontWeight: 700 }}>{commandeTrouvee.total?.toLocaleString()} FCFA</span></div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>Client : <span style={{ color: "#fff" }}>{commandeTrouvee.nom}</span></div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>Ville : <span style={{ color: "#fff" }}>{commandeTrouvee.ville}</span></div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Total : <span style={{ color: "#00A86B", fontWeight: 700 }}>{commandeTrouvee.totalFinal?.toLocaleString() || commandeTrouvee.total?.toLocaleString()} FCFA</span></div>
               </div>
             </div>
           )}
@@ -625,45 +618,28 @@ export default function FastBuy229() {
             </>
           ) : (
             <div style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "1.5rem", textAlign: "left" }}>
-              <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1.2rem", textAlign: "center" }}>🔑 Modifier le mot de passe admin</h3>
+              <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1.2rem", textAlign: "center" }}>🔑 Modifier le mot de passe</h3>
               {adminForgotError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{adminForgotError}</div>}
-
               {adminForgotStep === 1 && (
                 <>
                   <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>Un code va être envoyé à : <strong style={{ color: "#00A86B" }}>{ADMIN_EMAIL}</strong></p>
-                  <button onClick={adminForgotEnvoyerCode} disabled={loading} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: 10 }}>
-                    {loading ? "Envoi…" : "📧 Recevoir le code"}
-                  </button>
+                  <button onClick={adminForgotEnvoyerCode} disabled={loading} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>{loading ? "Envoi…" : "📧 Recevoir le code"}</button>
                 </>
               )}
-
               {adminForgotStep === 2 && (
                 <>
-                  <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1rem" }}>✅ Code envoyé à {ADMIN_EMAIL}</div>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Code reçu par email</label>
-                  <input type="text" placeholder="Ex: 123456" value={adminForgotCodeSaisi} onChange={(e) => setAdminForgotCodeSaisi(e.target.value)} style={{ ...inp, textAlign: "center", fontSize: "1.5rem", letterSpacing: "0.3em", marginBottom: 12 }} maxLength={6} />
-                  <button onClick={adminForgotVerifierCode} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>Valider le code</button>
-                </>
-              )}
-
-              {adminForgotStep === 3 && (
-                <>
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Ancien mot de passe</label>
-                    <input type="password" placeholder="••••••••" value={adminForgotAncienPwd} onChange={(e) => setAdminForgotAncienPwd(e.target.value)} style={inp} />
-                  </div>
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Nouveau mot de passe</label>
-                    <input type="password" placeholder="••••••••" value={adminForgotNouveauPwd} onChange={(e) => setAdminForgotNouveauPwd(e.target.value)} style={inp} />
-                  </div>
-                  <div style={{ marginBottom: "1.2rem" }}>
-                    <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Confirmer nouveau mot de passe</label>
-                    <input type="password" placeholder="••••••••" value={adminForgotConfirmPwd} onChange={(e) => setAdminForgotConfirmPwd(e.target.value)} style={inp} />
-                  </div>
+                  <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1rem" }}>✅ Code envoyé !</div>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Code reçu</label>
+                  <input type="text" placeholder="123456" value={adminForgotCodeSaisi} onChange={(e) => setAdminForgotCodeSaisi(e.target.value)} style={{ ...inp, textAlign: "center", fontSize: "1.5rem", letterSpacing: "0.3em", marginBottom: 10 }} maxLength={6} />
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Ancien mot de passe</label>
+                  <input type="password" placeholder="••••••••" value={adminForgotAncienPwd} onChange={(e) => setAdminForgotAncienPwd(e.target.value)} style={{ ...inp, marginBottom: 10 }} />
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Nouveau mot de passe</label>
+                  <input type="password" placeholder="••••••••" value={adminForgotNouveauPwd} onChange={(e) => setAdminForgotNouveauPwd(e.target.value)} style={{ ...inp, marginBottom: 10 }} />
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Confirmer</label>
+                  <input type="password" placeholder="••••••••" value={adminForgotConfirmPwd} onChange={(e) => setAdminForgotConfirmPwd(e.target.value)} style={{ ...inp, marginBottom: 12 }} />
                   <button onClick={adminForgotChangerPwd} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>✅ Valider</button>
                 </>
               )}
-
               <button onClick={() => { setShowAdminForgot(false); setAdminForgotStep(1); setAdminForgotError(""); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour</button>
             </div>
           )}
@@ -673,37 +649,36 @@ export default function FastBuy229() {
       {page === "admin" && adminOk && (
         <div style={{ padding: "2rem" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
-            <h2 style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800 }}>⚙️ Tableau de bord — FastBuy 229</h2> <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "rgba(255,80,80,0.1)", border: "1px solid rgba(255,80,80,0.3)", color: "rgba(255,100,100,0.8)", cursor: "pointer", fontFamily: "DM Sans" }}>🚪 Déconnexion</h2>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {[[commandes.length, "Commandes", "#00A86B"], [commandes.reduce((a, c) => a + (c.total || 0), 0).toLocaleString(), "FCFA total", "#F5C842"], [produits.length, "Produits", "#3B82F6"], [messages.length, "Messages", "#A855F7"]].map(([n, l, c]) => (
-                <div key={l} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px 20px", textAlign: "center" }}>
-                  <div style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, color: c }}>{n}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{l}</div>
+            <h2 style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800 }}>⚙️ FastBuy 229 — Admin</h2>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              {[[commandes.length, "Commandes", "#00A86B"], [commandes.reduce((a, c) => a + (c.totalFinal || c.total || 0), 0).toLocaleString(), "FCFA", "#F5C842"], [produits.length, "Produits", "#3B82F6"], [messages.length, "Messages", "#A855F7"]].map(([n, l, c]) => (
+                <div key={l} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "10px 16px", textAlign: "center" }}>
+                  <div style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, color: c }}>{n}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{l}</div>
                 </div>
               ))}
+              <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "rgba(255,80,80,0.1)", border: "1px solid rgba(255,80,80,0.3)", color: "rgba(255,100,100,0.8)", cursor: "pointer", fontFamily: "DM Sans" }}>🚪 Déconnexion</button>
             </div>
           </div>
 
-          <button onClick={() => setShowAddProduct(true)} className="bg" style={{ padding: "12px 24px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: "2rem" }}>
-            + Ajouter un produit
-          </button>
+          <button onClick={() => setShowAddProduct(true)} className="bg" style={{ padding: "12px 24px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: "2rem" }}>+ Ajouter un produit</button>
 
-          <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Mes produits ({produits.length})</h3>
+          <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Produits ({produits.length})</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 12, marginBottom: "2.5rem" }}>
             {produits.map((p) => (
-              <div key={p.id} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden", display: "flex", alignItems: "center", gap: 12, padding: "10px 14px" }}>
+              <div key={p.id} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px" }}>
                 {getImageUrl(p.image) ? <img src={getImageUrl(p.image)} alt={p.title} style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 8 }} /> : <span style={{ fontSize: "2rem" }}>{p.emoji}</span>}
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>{p.title}</div>
                   <div style={{ fontSize: 12, color: "#00A86B", fontWeight: 700 }}>{p.price.toLocaleString()} FCFA</div>
-                  {p.plage_livraison && <div style={{ fontSize: 11, color: "#F5C842", marginTop: 2 }}>🚚 {p.plage_livraison}</div>}
+                  {p.plage_livraison && <div style={{ fontSize: 11, color: "#F5C842" }}>🚚 {p.plage_livraison}</div>}
                 </div>
                 <span onClick={() => supprimerProduit(p.id)} style={{ cursor: "pointer", color: "rgba(255,80,80,0.7)", fontSize: 18 }}>🗑</span>
               </div>
             ))}
           </div>
 
-          <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>💬 Messages & Négociations ({messages.length})</h3>
+          <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>💬 Messages ({messages.length})</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: "2.5rem" }}>
             {messages.length === 0 ? <div style={{ textAlign: "center", padding: "2rem", color: "rgba(255,255,255,0.25)" }}>Aucun message</div> :
               messages.map((msg) => (
@@ -726,7 +701,7 @@ export default function FastBuy229() {
           </div>
 
           <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Commandes ({commandes.length})</h3>
-          {commandes.length === 0 ? <div style={{ textAlign: "center", padding: "3rem", color: "rgba(255,255,255,0.25)" }}><div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📭</div>Aucune commande</div> :
+          {commandes.length === 0 ? <div style={{ textAlign: "center", padding: "3rem", color: "rgba(255,255,255,0.25)" }}><div style={{ fontSize: "3rem" }}>📭</div>Aucune commande</div> :
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {commandes.map((cmd) => (
                 <div key={cmd.id} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "1.2rem 1.5rem" }}>
@@ -734,20 +709,27 @@ export default function FastBuy229() {
                     <div>
                       <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: "1rem", marginBottom: 3 }}>{cmd.numero}</div>
                       <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{new Date(cmd.created_at).toLocaleString("fr-FR")}</div>
-                      <div style={{ fontSize: 11, color: "#F5C842", marginTop: 3 }}>💰 {cmd.paiement}</div>
+                      <div style={{ fontSize: 11, color: "#F5C842", marginTop: 3 }}>💰 {cmd.paiement} {cmd.codePromo && `| 🎟️ ${cmd.codePromo}`}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontFamily: "Syne", fontWeight: 800, color: "#00A86B", fontSize: "1.1rem" }}>{cmd.total?.toLocaleString()} FCFA</span>
+                      <span style={{ fontFamily: "Syne", fontWeight: 800, color: "#00A86B", fontSize: "1.1rem" }}>{(cmd.totalFinal || cmd.total)?.toLocaleString()} FCFA</span>
                       <select value={cmd.statut} onChange={(e) => changerStatut(cmd.id, e.target.value)} style={{ background: "#1C2035", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", padding: "6px 10px", fontSize: 13, fontFamily: "DM Sans", cursor: "pointer", outline: "none" }}>
                         {STATUTS.map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
-                    <div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>CLIENT</div><div style={{ fontSize: 13, fontWeight: 500 }}>{cmd.nom}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{cmd.telephone}</div></div>
-                    <div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>LIVRAISON</div><div style={{ fontSize: 13, fontWeight: 500 }}>{cmd.ville}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{cmd.adresse}</div></div>
+                  <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", marginBottom: cmd.capture ? "1rem" : 0 }}>
+                    <div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>CLIENT</div><div style={{ fontSize: 13 }}>{cmd.nom}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{cmd.email}</div></div>
+                    <div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>TÉL. LIVREUR</div><div style={{ fontSize: 13, color: "#F5C842" }}>{cmd.telephoneLivreur}</div></div>
+                    <div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>LIVRAISON</div><div style={{ fontSize: 13 }}>{cmd.ville}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{cmd.adresse}</div></div>
                     <div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>ARTICLES</div>{cmd.articles?.map((a, i) => <div key={i} style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{a.emoji} {a.title} × {a.qty}</div>)}</div>
                   </div>
+                  {cmd.capture && (
+                    <div style={{ marginTop: "1rem" }}>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>📸 CAPTURE DE PAIEMENT</div>
+                      <img src={getImageUrl(cmd.capture)} alt="capture paiement" style={{ maxWidth: 300, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)" }} />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -760,118 +742,81 @@ export default function FastBuy229() {
         <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 440, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>{authMode === "login" ? "👤 Se connecter" : "✨ Créer un compte"}</h2>
-              <span onClick={() => { setShowAuth(false); setAuthError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
+              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>{authMode === "register" ? "✨ Créer un compte" : "👤 Se connecter"}</h2>
+              <span onClick={() => { setShowAuth(false); setAuthStep(1); setAuthError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
             </div>
             {authError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{authError}</div>}
 
-            {authMode === "register" && (
+            {authMode === "register" && authStep === 1 && (
               <>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Nom complet</label>
-                  <input type="text" placeholder="Ex: Jean Dupont" value={authForm.nom} onChange={(e) => setAuthForm({ ...authForm, nom: e.target.value })} style={inp} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: "1rem" }}>
+                  <div>
+                    <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Prénom</label>
+                    <input type="text" placeholder="Marc" value={authForm.prenom} onChange={(e) => setAuthForm({ ...authForm, prenom: e.target.value })} style={inp} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Nom</label>
+                    <input type="text" placeholder="Dupont" value={authForm.nom} onChange={(e) => setAuthForm({ ...authForm, nom: e.target.value })} style={inp} />
+                  </div>
                 </div>
                 <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📱 Téléphone ou 📧 Email</label>
-                  <input type="text" placeholder="+229 97 00 00 00 ou email@gmail.com" value={authForm.contact} onChange={(e) => setAuthForm({ ...authForm, contact: e.target.value })} style={inp} />
-                </div>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Mot de passe</label>
-                  <input type="password" placeholder="••••••••" value={authForm.motdepasse} onChange={(e) => setAuthForm({ ...authForm, motdepasse: e.target.value })} style={inp} />
-                </div>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📅 Date de naissance</label>
-                  <input type="date" value={authForm.dateNaissance} onChange={(e) => setAuthForm({ ...authForm, dateNaissance: e.target.value })} style={inp} />
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Email</label>
+                  <input type="email" placeholder="exemple@gmail.com" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} style={inp} />
                 </div>
                 <div style={{ marginBottom: "1.5rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📍 Ta ville</label>
-                  <select value={authForm.ville} onChange={(e) => setAuthForm({ ...authForm, ville: e.target.value })} style={{ ...inp, cursor: "pointer" }}>
-                    <option value="">Sélectionne ta ville</option>
-                    {VILLES_BENIN.map((v) => <option key={v} value={v}>{v}</option>)}
-                  </select>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📱 Téléphone</label>
+                  <input type="tel" placeholder="+229 97 00 00 00" value={authForm.telephone} onChange={(e) => setAuthForm({ ...authForm, telephone: e.target.value })} style={inp} />
                 </div>
-                <button onClick={inscrire} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
-                  {loading ? "Création…" : "Créer mon compte"}
+                <button onClick={envoyerCodeInscription} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
+                  {loading ? "Envoi du code…" : "📧 Recevoir mon code d'activation"}
                 </button>
+                <div style={{ background: "rgba(245,200,66,0.08)", border: "1px solid rgba(245,200,66,0.2)", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>
+                  🎟️ Code promo offert ! Ton code : <strong style={{ color: "#F5C842" }}>{authForm.prenom ? authForm.prenom.toLowerCase() + "10" : "prénom10"}</strong> — 10% sur ta 1ère commande !
+                </div>
               </>
             )}
 
-            {authMode === "login" && (
+            {authMode === "register" && authStep === 2 && (
               <>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📱 Téléphone ou 📧 Email</label>
-                  <input type="text" placeholder="+229 97 00 00 00 ou email@gmail.com" value={authForm.contact} onChange={(e) => setAuthForm({ ...authForm, contact: e.target.value })} style={inp} />
-                </div>
-                <div style={{ marginBottom: "0.5rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Mot de passe</label>
-                  <input type="password" placeholder="••••••••" value={authForm.motdepasse} onChange={(e) => setAuthForm({ ...authForm, motdepasse: e.target.value })} style={inp} />
-                </div>
-                <div style={{ textAlign: "right", marginBottom: "1.2rem" }}>
-                  <span onClick={() => { setShowAuth(false); setShowForgot(true); setForgotStep(1); }} style={{ fontSize: 12, color: "#00A86B", cursor: "pointer" }}>Mot de passe oublié ?</span>
-                </div>
-                <button onClick={connecter} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
-                  {loading ? "Connexion…" : "Se connecter"}
+                <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>✅ Code envoyé à {authForm.email} !</div>
+                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Entre le code reçu</label>
+                <input type="text" placeholder="123456" value={authForm.code} onChange={(e) => setAuthForm({ ...authForm, code: e.target.value })} style={{ ...inp, textAlign: "center", fontSize: "1.8rem", letterSpacing: "0.4em", marginBottom: 16 }} maxLength={6} />
+                <button onClick={validerCodeInscription} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans" }}>
+                  {loading ? "Création…" : "✅ Créer mon compte"}
                 </button>
               </>
             )}
 
-            <div style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
-              {authMode === "login" ? (
-                <span>Pas de compte ? <span onClick={() => { setAuthMode("register"); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>S'inscrire gratuitement</span></span>
+            {authMode === "login" && authStep === 1 && (
+              <>
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Ton email</label>
+                  <input type="email" placeholder="exemple@gmail.com" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} style={inp} />
+                </div>
+                <button onClick={envoyerCodeConnexion} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
+                  {loading ? "Envoi…" : "📧 Recevoir mon code de connexion"}
+                </button>
+              </>
+            )}
+
+            {authMode === "login" && authStep === 2 && (
+              <>
+                <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>✅ Code envoyé à {authForm.email} !</div>
+                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Entre le code reçu</label>
+                <input type="text" placeholder="123456" value={authForm.code} onChange={(e) => setAuthForm({ ...authForm, code: e.target.value })} style={{ ...inp, textAlign: "center", fontSize: "1.8rem", letterSpacing: "0.4em", marginBottom: 16 }} maxLength={6} />
+                <button onClick={validerCodeConnexion} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans" }}>
+                  {loading ? "Connexion…" : "✅ Me connecter"}
+                </button>
+              </>
+            )}
+
+            <div style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: "1rem" }}>
+              {authMode === "register" ? (
+                <span>Déjà un compte ? <span onClick={() => { setAuthMode("login"); setAuthStep(1); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>Se connecter</span></span>
               ) : (
-                <span>Déjà un compte ? <span onClick={() => { setAuthMode("login"); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>Se connecter</span></span>
+                <span>Pas de compte ? <span onClick={() => { setAuthMode("register"); setAuthStep(1); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>S'inscrire gratuitement</span></span>
               )}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* MOT DE PASSE OUBLIÉ CLIENT */}
-      {showForgot && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 420, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>🔑 Mot de passe oublié</h2>
-              <span onClick={() => { setShowForgot(false); setForgotStep(1); setForgotError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
-            </div>
-            {forgotError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{forgotError}</div>}
-
-            {forgotStep === 1 && (
-              <>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>Entre ton email ou téléphone pour recevoir un code</p>
-                <input type="text" placeholder="Email ou téléphone" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} style={{ ...inp, marginBottom: 12 }} />
-                <button onClick={forgotEnvoyerCode} disabled={loading} className="bg" style={{ width: "100%", padding: "12px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>
-                  {loading ? "Envoi…" : "📧 Recevoir le code"}
-                </button>
-              </>
-            )}
-
-            {forgotStep === 2 && (
-              <>
-                <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1rem" }}>✅ Code envoyé !</div>
-                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Code reçu</label>
-                <input type="text" placeholder="Ex: 123456" value={forgotCodeSaisi} onChange={(e) => setForgotCodeSaisi(e.target.value)} style={{ ...inp, textAlign: "center", fontSize: "1.5rem", letterSpacing: "0.3em", marginBottom: 12 }} maxLength={6} />
-                <button onClick={forgotVerifierCode} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>Valider le code</button>
-              </>
-            )}
-
-            {forgotStep === 3 && (
-              <>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Nouveau mot de passe</label>
-                  <input type="password" placeholder="••••••••" value={forgotNouveauPwd} onChange={(e) => setForgotNouveauPwd(e.target.value)} style={inp} />
-                </div>
-                <div style={{ marginBottom: "1.2rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Confirmer le nouveau mot de passe</label>
-                  <input type="password" placeholder="••••••••" value={forgotConfirmPwd} onChange={(e) => setForgotConfirmPwd(e.target.value)} style={inp} />
-                </div>
-                <button onClick={forgotChangerPwd} disabled={loading} className="bg" style={{ width: "100%", padding: "12px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>
-                  {loading ? "Modification…" : "✅ Valider"}
-                </button>
-              </>
-            )}
-
-            <button onClick={() => { setShowForgot(false); setShowAuth(true); setAuthMode("login"); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour à la connexion</button>
           </div>
         </div>
       )}
@@ -892,23 +837,31 @@ export default function FastBuy229() {
                     <span style={{ background: "rgba(0,168,107,0.15)", color: "#00A86B", padding: "3px 10px", borderRadius: 999, fontSize: 12 }}>{cmd.statut}</span>
                   </div>
                   <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>{new Date(cmd.created_at).toLocaleString("fr-FR")}</div>
-                  <div style={{ fontSize: 13, color: "#00A86B", fontWeight: 700 }}>{cmd.total?.toLocaleString()} FCFA</div>
+                  <div style={{ fontSize: 13, color: "#00A86B", fontWeight: 700 }}>{(cmd.totalFinal || cmd.total)?.toLocaleString()} FCFA</div>
                 </div>
               ))}
           </div>
         </div>
       )}
 
-      {/* MESSAGE */}
+      {/* MESSAGE / NÉGOCIATION */}
       {showMessage && (
         <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 440, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>💬 Message / Négociation</h2>
-              <span onClick={() => setShowMessage(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
+              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>{produitNegocie ? "💬 Négocier le prix" : "💬 Message"}</h2>
+              <span onClick={() => { setShowMessage(false); setProduitNegocie(null); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
             </div>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1.5rem" }}>Tu veux négocier un prix ou poser une question ?</p>
-            <textarea value={messageTexte} onChange={(e) => setMessageTexte(e.target.value)} placeholder="Ex: Je veux le parfum Hugo Boss à 15 000 FCFA, c'est possible ?" style={{ ...inp, height: 120, resize: "none" }} />
+            {produitNegocie && (
+              <div style={{ background: "#1C2035", borderRadius: 10, padding: "12px 14px", marginBottom: "1rem", display: "flex", alignItems: "center", gap: 10 }}>
+                {getImageUrl(produitNegocie.image) ? <img src={getImageUrl(produitNegocie.image)} alt={produitNegocie.title} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} /> : <span style={{ fontSize: "2rem" }}>{produitNegocie.emoji}</span>}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{produitNegocie.title}</div>
+                  <div style={{ fontSize: 12, color: "#00A86B", fontWeight: 700 }}>{produitNegocie.price.toLocaleString()} FCFA</div>
+                </div>
+              </div>
+            )}
+            <textarea value={messageTexte} onChange={(e) => setMessageTexte(e.target.value)} placeholder={produitNegocie ? `Ex: Je propose ${Math.round(produitNegocie?.price * 0.85).toLocaleString()} FCFA pour ce produit, c'est possible ?` : "Ta question ou demande…"} style={{ ...inp, height: 120, resize: "none" }} />
             <button onClick={envoyerMessage} className="bg" style={{ width: "100%", padding: "13px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans", marginTop: "1rem" }}>
               Envoyer 📤
             </button>
@@ -959,25 +912,44 @@ export default function FastBuy229() {
       {/* COMMANDE */}
       {showCommande && (
         <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 480, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 500, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>📦 Infos de livraison</h2>
+              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>📦 Passer commande</h2>
               <span onClick={() => setShowCommande(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
             </div>
+
             <div style={{ background: "#1C2035", borderRadius: 12, padding: "12px 16px", marginBottom: "1.5rem" }}>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>{nbPanier} article(s)</div>
-              <div style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 800, color: "#00A86B" }}>{total.toLocaleString()} FCFA</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>{nbPanier} article(s)</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 800, color: "#00A86B" }}>{total.toLocaleString()} FCFA</div>
+                {codePromoValide && <div style={{ fontSize: 13, color: "#F5C842" }}>-{reductionPromo.toLocaleString()} FCFA 🎟️</div>}
+              </div>
+              {codePromoValide && <div style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 800, color: "#00A86B", marginTop: 4 }}>Total : {totalFinal.toLocaleString()} FCFA</div>}
             </div>
-            {[["nom", "Nom complet", "Ex: Jean Dupont", "text"], ["telephone", "Téléphone ou Email", "+229 97... ou email@gmail.com", "text"], ["ville", "Ville", "Cotonou, Porto-Novo…", "text"], ["adresse", "Adresse précise", "Quartier, repère…", "text"]].map(([key, label, ph, type]) => (
+
+            {[["nom", "Nom complet", "Ex: Jean Dupont", "text"], ["email", "Email (pour le reçu)", "exemple@gmail.com", "email"], ["telephoneLivreur", "📱 Téléphone pour le livreur", "+229 97 00 00 00", "tel"], ["ville", "Ville de livraison", "Cotonou, Porto-Novo…", "text"], ["adresse", "Adresse précise", "Quartier, repère…", "text"]].map(([key, label, ph, type]) => (
               <div key={key} style={{ marginBottom: "1rem" }}>
                 <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>{label}</label>
                 <input type={type} placeholder={ph} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} style={inp} />
               </div>
             ))}
+
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🎟️ Code promo (optionnel)</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input type="text" placeholder={`Ex: ${client?.prenom?.toLowerCase() || "prenom"}10`} value={codePromoSaisi} onChange={(e) => setCodePromoSaisi(e.target.value)} style={{ ...inp, flex: 1 }} disabled={codePromoValide} />
+                {!codePromoValide ? (
+                  <button onClick={verifierCodePromo} style={{ padding: "10px 16px", background: "rgba(245,200,66,0.15)", border: "1px solid rgba(245,200,66,0.3)", color: "#F5C842", borderRadius: 9, fontSize: 13, cursor: "pointer", fontFamily: "DM Sans", whiteSpace: "nowrap" }}>Appliquer</button>
+                ) : (
+                  <span style={{ padding: "10px 16px", background: "rgba(0,168,107,0.15)", border: "1px solid rgba(0,168,107,0.3)", color: "#00A86B", borderRadius: 9, fontSize: 13, whiteSpace: "nowrap" }}>✅ -{reductionPromo.toLocaleString()} FCFA</span>
+                )}
+              </div>
+            </div>
+
             <div style={{ marginBottom: "1.5rem" }}>
               <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 10 }}>💰 Mode de paiement</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {PAIEMENTS.map((p) => (
+                {PAIEMENTS.filter(p => p.id !== "livraison").map((p) => (
                   <div key={p.id} className="pay" onClick={() => setPaiementChoisi(p.id)} style={{ background: paiementChoisi === p.id ? "rgba(0,168,107,0.15)" : "#1C2035", border: `1px solid ${paiementChoisi === p.id ? "#00A86B" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, padding: "12px", textAlign: "center", fontSize: 13, cursor: "pointer", transition: "all 0.18s", fontWeight: paiementChoisi === p.id ? 600 : 400 }}>
                     <div style={{ fontSize: "1.5rem", marginBottom: 4 }}>{p.icon}</div>
                     {p.label}
@@ -985,6 +957,23 @@ export default function FastBuy229() {
                 ))}
               </div>
             </div>
+
+            <div style={{ background: "rgba(245,200,66,0.08)", border: "1px solid rgba(245,200,66,0.2)", borderRadius: 12, padding: "1rem 1.2rem", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>💰 Envoie <strong style={{ color: "#00A86B", fontSize: "1.1rem" }}>{totalFinal.toLocaleString()} FCFA</strong> au :</div>
+              <div style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, color: "#F5C842", marginBottom: 4 }}>{MOMO_NUMERO}</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Puis ajoute la capture d'écran ci-dessous</div>
+            </div>
+
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📸 Capture d'écran du paiement <span style={{ color: "rgba(255,80,80,0.8)" }}>*obligatoire</span></label>
+              <div style={{ border: "2px dashed rgba(255,255,255,0.15)", borderRadius: 12, padding: "1.2rem", textAlign: "center", cursor: "pointer" }} onClick={() => document.getElementById("capture-input").click()}>
+                {capturePreview ? <img src={capturePreview} alt="capture" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 8 }} /> : (
+                  <div><div style={{ fontSize: "2rem", marginBottom: 6 }}>📷</div><div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Clique pour ajouter ta capture</div></div>
+                )}
+                <input id="capture-input" type="file" accept="image/*" onChange={handleCaptureChange} style={{ display: "none" }} />
+              </div>
+            </div>
+
             <button onClick={passerCommande} disabled={loading} className="bg" style={{ width: "100%", padding: "14px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans" }}>
               {loading ? "Envoi…" : "✅ Confirmer la commande"}
             </button>
@@ -992,40 +981,19 @@ export default function FastBuy229() {
         </div>
       )}
 
-      {/* INFO PAIEMENT */}
-      {showPaiementInfo && commandeOk && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 450, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 420, textAlign: "center", animation: "pi 0.3s ease", border: "1px solid rgba(245,200,66,0.3)" }}>
-            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>💰</div>
-            <h2 style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, marginBottom: "1rem", color: "#F5C842" }}>Finalise ton paiement</h2>
-            <div style={{ background: "#1C2035", borderRadius: 14, padding: "1.5rem", marginBottom: "1.5rem" }}>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>Envoie exactement</div>
-              <div style={{ fontFamily: "Syne", fontSize: "2rem", fontWeight: 800, color: "#00A86B", marginBottom: 8 }}>{commandeOk.total?.toLocaleString()} FCFA</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>au numéro</div>
-              <div style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, color: "#fff", marginBottom: 12 }}>{MOMO_NUMERO}</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>Référence :</div>
-              <div style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 800, color: "#F5C842" }}>{commandeOk.numero}</div>
-            </div>
-            <button onClick={() => setShowPaiementInfo(false)} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>
-              J'ai payé ✅
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* CONFIRMATION */}
-      {commandeOk && !showPaiementInfo && (
+      {commandeOk && (
         <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           <div style={{ background: "#161926", borderRadius: 20, padding: "3rem 2rem", width: "100%", maxWidth: 420, textAlign: "center", animation: "pi 0.3s ease", border: "1px solid rgba(0,168,107,0.3)" }}>
             <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🎉</div>
             <h2 style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, marginBottom: "1rem", color: "#00A86B" }}>Commande confirmée !</h2>
             <div style={{ background: "#1C2035", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem" }}>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Ton numéro de commande</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Numéro de commande</div>
               <div style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, color: "#F5C842", letterSpacing: "0.05em" }}>{commandeOk.numero}</div>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>📧 Confirmation envoyée par email</div>
             </div>
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 1.7, marginBottom: "2rem" }}>
-              Livraison sous <strong style={{ color: "#fff" }}>3 jours à 2 semaines</strong>. Tu seras contacté sur <strong style={{ color: "#fff" }}>{commandeOk.telephone}</strong>.
+              On vérifie ton paiement et on te confirme rapidement ! Livraison sous <strong style={{ color: "#fff" }}>3 jours à 2 semaines</strong>.
             </p>
             <button onClick={() => setCommandeOk(null)} className="bg" style={{ padding: "12px 32px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>
               Continuer les achats
@@ -1043,15 +1011,13 @@ export default function FastBuy229() {
               <span onClick={() => setShowAddProduct(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
             </div>
             <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📸 Photo du produit</label>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📸 Photo</label>
               <div style={{ border: "2px dashed rgba(255,255,255,0.15)", borderRadius: 12, padding: "1.5rem", textAlign: "center", cursor: "pointer" }} onClick={() => document.getElementById("photo-input").click()}>
-                {imagePreview ? <img src={imagePreview} alt="preview" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 8 }} /> : (
-                  <div><div style={{ fontSize: "2rem", marginBottom: 8 }}>📷</div><div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Clique pour ajouter une photo</div></div>
-                )}
+                {imagePreview ? <img src={imagePreview} alt="preview" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 8 }} /> : <div><div style={{ fontSize: "2rem", marginBottom: 8 }}>📷</div><div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Clique pour ajouter une photo</div></div>}
                 <input id="photo-input" type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }} />
               </div>
             </div>
-            {[["title", "Nom du produit", "Ex: Parfum Hugo Boss 100ml", "text"], ["price", "Prix (FCFA)", "Ex: 18500", "number"], ["location", "Ville", "Ex: Cotonou, Akpakpa", "text"], ["description", "Description", "Décris le produit…", "text"]].map(([key, label, ph, type]) => (
+            {[["title", "Nom du produit", "Ex: Parfum Hugo Boss 100ml", "text"], ["price", "Prix (FCFA)", "Ex: 18500", "number"], ["location", "Ville", "Ex: Cotonou", "text"], ["description", "Description", "Décris le produit…", "text"]].map(([key, label, ph, type]) => (
               <div key={key} style={{ marginBottom: "1rem" }}>
                 <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>{label}</label>
                 <input type={type} placeholder={ph} value={newProduct[key]} onChange={(e) => setNewProduct({ ...newProduct, [key]: e.target.value })} style={inp} />
