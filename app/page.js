@@ -673,7 +673,7 @@ export default function FastBuy229() {
       {page === "admin" && adminOk && (
         <div style={{ padding: "2rem" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
-            <h2 style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800 }}>⚙️ Tableau de bord — FastBuy 229</h2>
+            <h2 style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800 }}>⚙️ Tableau de bord — FastBuy 229</h2> <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "rgba(255,80,80,0.1)", border: "1px solid rgba(255,80,80,0.3)", color: "rgba(255,100,100,0.8)", cursor: "pointer", fontFamily: "DM Sans" }}>🚪 Déconnexion</h2>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {[[commandes.length, "Commandes", "#00A86B"], [commandes.reduce((a, c) => a + (c.total || 0), 0).toLocaleString(), "FCFA total", "#F5C842"], [produits.length, "Produits", "#3B82F6"], [messages.length, "Messages", "#A855F7"]].map(([n, l, c]) => (
                 <div key={l} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px 20px", textAlign: "center" }}>
