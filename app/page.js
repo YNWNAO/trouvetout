@@ -136,8 +136,9 @@ export default function TrouveTout() {
     chargerProduits();
     const savedClient = localStorage.getItem("trouvetout_client");
     if (savedClient) setClient(JSON.parse(savedClient));
-    if (typeof window !== "undefined" && window.location.pathname === "/admin") setPage("admin");
+    if (typeof window !== "undefined" && window.location.pathname === "/admin" || window.location.search.includes("page=admin") || window.location.search.includes("page=admin")) setPage("admin");
   }, []);
+  
 
   const chargerProduits = async () => {
     const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false });

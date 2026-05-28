@@ -1,11 +1,13 @@
 "use client";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
-export default function AdminRedirect() {
-  const router = useRouter();
+export default function Admin() {
   useEffect(() => {
-    router.push("/?admin=1");
+    window.location.href = "/?page=admin";
   }, []);
-  return null;
+  return (
+    <div style={{ background: "#0B0E18", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "sans-serif" }}>
+      <p>Chargement...</p>
+    </div>
+  );
 }
