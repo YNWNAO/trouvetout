@@ -6,7 +6,7 @@ export async function POST(request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": "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",
+        "api-key": process.env.BREVO_API_KEY,
       },
       body: JSON.stringify({
         sender: { name: "FastBuy 229", email: "nahofalgbadamassi@gmail.com" },
