@@ -138,7 +138,7 @@ export default function TrouveTout() {
     if (savedClient) setClient(JSON.parse(savedClient));
     if (typeof window !== "undefined" && window.location.pathname === "/admin" || window.location.search.includes("page=admin") || window.location.search.includes("page=admin")) setPage("admin");
   }, []);
-  
+
 
   const chargerProduits = async () => {
     const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false });
@@ -510,11 +510,12 @@ export default function TrouveTout() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: "2.5rem" }}>
             {[
-              ["📦", "Comment suivre ma commande ?", "Va dans 'Suivi' dans le menu et entre ton numéro de commande (ex: CMD-AB12CD). Tu l'as reçu par email après ta commande."],
-              ["💰", "Comment payer ?", `Tu peux payer par MTN MoMo, Moov Money, Celtiis ou à la livraison. Pour MoMo, envoie le montant exact au ${MOMO_NUMERO} avec ton numéro de commande comme référence.`],
-              ["🚚", "Délai de livraison ?", "Chaque produit affiche son délai de livraison. En général entre 3 jours et 2 semaines selon ta ville."],
-              ["🔄", "Comment retourner un produit ?", "Contacte-nous par email dans les 48h après réception. On trouve une solution ensemble !"],
-              ["💬", "Comment négocier un prix ?", "Connecte-toi et clique sur le bouton 💬 en haut à droite pour envoyer un message."],
+              ["📦", "Comment suivre ma commande ?", "Rendez-vous dans l'onglet 'Suivi de commande' puis entrez votre numéro de commande (ex : CMD-AB12CD). Votre numéro vous est envoyé automatiquement par email après validation de votre achat."],
+              ["💳", "Quels sont les moyens de paiement disponibles ?", `Les paiements sont disponibles uniquement via MTN MoMo. Envoyez le montant exact au ${MOMO_NUMERO} en indiquant votre numéro de commande comme référence.`],
+              ["🚚", "Quels sont les délais de livraison ?", "Les délais de livraison sont indiqués sur chaque produit. En général, la livraison prend entre 3 jours et 2 semaines, selon votre ville et la disponibilité du produit."],
+["⏰", "Livraison en retard ?", "Si votre commande dépasse le délai annoncé, vous recevrez 10% de réduction remboursés sur votre Mobile Money après vérification."],
+              ["🔄", "Comment retourner un produit ?", "Si vous rencontrez un problème, contactez notre service client par email dans les 48h après réception. Nous vous proposerons une solution adaptée."],
+              ["💬", "Comment négocier un prix ou poser une question ?", "Connectez-vous à votre compte puis cliquez sur l'icône 💬 en haut à droite pour discuter directement avec nous. Notre équipe reste disponible pour vous accompagner."],
             ].map(([icon, q, a]) => (
               <div key={q} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "1.2rem 1.5rem" }}>
                 <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{icon} {q}</div>
