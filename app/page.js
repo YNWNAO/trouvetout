@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import emailjs from "@emailjs/browser";
 import { supabase } from "./supabase";
 
 const CATEGORIES = [
@@ -28,13 +29,23 @@ const PAIEMENTS = [
   { id: "celtiis", label: "Celtiis", icon: "🟢" },
 ];
 
+const EMAILJS_SERVICE_ID = "service_7cfdoej";
+const EMAILJS_TEMPLATE_ID = "qi0vriw";
+const EMAILJS_PUBLIC_KEY = "oyw_7DuNRrV7R4MXT";
+
 const sendEmail = async (to, subject, html) => {
   try {
-    await fetch("/api/send-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to, subject, html }),
-    });
+    await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      EMAILJS_TEMPLATE_ID,
+      {
+        to_email: to,
+        subject: subject,
+        message: html,
+        name: "FastBuy 229",
+      },
+      EMAILJS_PUBLIC_KEY
+    );
   } catch (e) { console.log("Email error:", e); }
 };
 
