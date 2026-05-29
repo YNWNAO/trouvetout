@@ -14,9 +14,9 @@ const CATEGORIES = [
 ];
 
 const STATUTS = ["Commande reçue", "En préparation", "En livraison", "Livré"];
-const VILLES_BENIN = ["Cotonou", "Porto-Novo", "Abomey-Calavi", "Parakou", "Ouidah", "Bohicon", "Abomey", "Kandi", "Lokossa", "Natitingou", "Autre"];
 const PLAGES_LIVRAISON = ["1-3 jours", "3-7 jours", "1-2 semaines", "2-3 semaines", "Sur commande"];
 const genNumero = () => "CMD-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+const genCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 const SUPABASE_URL = "https://nuhpdqioggxznceqvpvx.supabase.co";
 const SUPPORT_EMAIL = "nahofalgbadamassi@gmail.com";
 const MOMO_NUMERO = "+229 57577895";
@@ -26,7 +26,6 @@ const PAIEMENTS = [
   { id: "mtn", label: "MTN MoMo", icon: "💛" },
   { id: "moov", label: "Moov Money", icon: "🔵" },
   { id: "celtiis", label: "Celtiis", icon: "🟢" },
-  { id: "livraison", label: "À la livraison", icon: "🤝" },
 ];
 
 const sendEmail = async (to, subject, html) => {
@@ -39,53 +38,56 @@ const sendEmail = async (to, subject, html) => {
   } catch (e) { console.log("Email error:", e); }
 };
 
-const emailCode = (code, nom) => `
-<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0B0E18;color:#fff;padding:2rem;border-radius:16px;">
-  <h1 style="color:#00A86B;text-align:center;">Fast<span style="color:#F5C842;">Buy 229</span></h1>
-  <div style="background:#161926;border-radius:12px;padding:2rem;text-align:center;margin:1.5rem 0;">
-    <p style="color:rgba(255,255,255,0.6);margin:0 0 1rem;">Bonjour ${nom} ! Voici ton code :</p>
-    <h2 style="color:#F5C842;font-size:3rem;letter-spacing:0.3em;margin:0;">${code}</h2>
-    <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:1rem 0 0;">Expire dans 10 minutes</p>
+const emailCodeConfirmation = (prenom, code) => `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;padding:2rem;border-radius:16px;border:1px solid #e0e0e0;">
+  <h2 style="color:#00A86B;text-align:center;">FastBuy 229</h2>
+  <p>Bonjour ${prenom},</p>
+  <p>Votre code de confirmation est :</p>
+  <div style="background:#f5f5f5;border-radius:10px;padding:1.5rem;text-align:center;margin:1.5rem 0;">
+    <h1 style="color:#00A86B;font-size:2.5rem;letter-spacing:0.5rem;margin:0;">${code}</h1>
   </div>
-  <p style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color:#00A86B;">${SUPPORT_EMAIL}</a></p>
+  <p style="color:#666;">Ce code expire dans 10 minutes.</p>
+  <p style="color:#666;">Si vous n'avez pas fait cette demande, ignorez cet email.</p>
+  <hr style="border:none;border-top:1px solid #e0e0e0;margin:1.5rem 0;">
+  <p style="color:#999;font-size:12px;text-align:center;">FastBuy 229 — Marketplace Bénin<br>Contact : ${SUPPORT_EMAIL}</p>
 </div>`;
 
 const emailCommande = (cmd) => `
-<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0B0E18;color:#fff;padding:2rem;border-radius:16px;">
-  <h1 style="color:#00A86B;text-align:center;">Fast<span style="color:#F5C842;">Buy 229</span></h1>
-  <div style="background:#161926;border-radius:12px;padding:1.5rem;margin:1rem 0;text-align:center;">
-    <p style="color:rgba(255,255,255,0.5);margin:0 0 0.5rem;">🎉 Commande confirmée !</p>
-    <h2 style="color:#F5C842;font-size:1.8rem;letter-spacing:0.1em;margin:0;">${cmd.numero}</h2>
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;padding:2rem;border-radius:16px;border:1px solid #e0e0e0;">
+  <h2 style="color:#00A86B;text-align:center;">FastBuy 229</h2>
+  <p>Bonjour ${cmd.nom},</p>
+  <p>Votre commande a bien été reçue ! Voici le récapitulatif :</p>
+  <div style="background:#f5f5f5;border-radius:10px;padding:1rem;margin:1rem 0;text-align:center;">
+    <p style="margin:0;color:#666;">Numéro de commande</p>
+    <h2 style="color:#F5C842;margin:0.5rem 0;">${cmd.numero}</h2>
   </div>
-  <div style="background:#161926;border-radius:12px;padding:1.5rem;margin:1rem 0;">
-    <h3 style="color:#00A86B;margin:0 0 1rem;">📦 Articles</h3>
-    ${cmd.articles?.map(a => `<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.08);">${a.emoji} ${a.title} × ${a.qty} — <span style="color:#00A86B;">${(a.price*a.qty).toLocaleString()} FCFA</span></div>`).join("")}
-    ${cmd.codePromo ? `<div style="padding:8px 0;color:#F5C842;">🎟️ Code promo ${cmd.codePromo} : -${cmd.reduction?.toLocaleString()} FCFA</div>` : ""}
-    <div style="padding:1rem 0 0;font-weight:bold;">Total : <span style="color:#00A86B;">${cmd.totalFinal?.toLocaleString()} FCFA</span></div>
+  <div style="margin:1rem 0;">
+    ${cmd.articles?.map(a => `<div style="padding:8px 0;border-bottom:1px solid #e0e0e0;">${a.emoji || ""} ${a.title} × ${a.qty} — <strong>${(a.price*a.qty).toLocaleString()} FCFA</strong></div>`).join("")}
+    ${cmd.codePromo ? `<div style="padding:8px 0;color:#00A86B;">🎟️ Code promo appliqué : -${cmd.reduction?.toLocaleString()} FCFA</div>` : ""}
+    <div style="padding:1rem 0 0;font-size:1.1rem;"><strong>Total : ${cmd.totalFinal?.toLocaleString()} FCFA</strong></div>
   </div>
-  <div style="background:rgba(245,200,66,0.1);border:1px solid rgba(245,200,66,0.3);border-radius:12px;padding:1.5rem;text-align:center;margin:1rem 0;">
-    <h3 style="color:#F5C842;margin:0 0 1rem;">💰 Paiement</h3>
-    <p>Envoie <strong style="color:#00A86B;">${cmd.totalFinal?.toLocaleString()} FCFA</strong> au <strong>${MOMO_NUMERO}</strong></p>
-    <p>Référence : <strong style="color:#F5C842;">${cmd.numero}</strong></p>
+  <div style="background:#fff8e1;border:1px solid #F5C842;border-radius:10px;padding:1rem;margin:1rem 0;">
+    <p><strong>💰 Paiement :</strong> Envoyez <strong>${cmd.totalFinal?.toLocaleString()} FCFA</strong> au <strong>${MOMO_NUMERO}</strong></p>
+    <p><strong>Référence :</strong> ${cmd.numero}</p>
   </div>
-  <p style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color:#00A86B;">${SUPPORT_EMAIL}</a></p>
+  <p style="color:#666;">Livraison sous 3 jours à 2 semaines. Vous serez contacté au ${cmd.telephoneLivreur}.</p>
+  <hr style="border:none;border-top:1px solid #e0e0e0;margin:1.5rem 0;">
+  <p style="color:#999;font-size:12px;text-align:center;">FastBuy 229 — Contact : ${SUPPORT_EMAIL}</p>
 </div>`;
 
 const emailNotifAdmin = (cmd) => `
-<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0B0E18;color:#fff;padding:2rem;border-radius:16px;">
-  <h1 style="color:#00A86B;">🔔 Nouvelle commande — FastBuy 229</h1>
-  <div style="background:#161926;border-radius:12px;padding:1.5rem;margin:1rem 0;">
-    <p><strong>Numéro :</strong> <span style="color:#F5C842;">${cmd.numero}</span></p>
-    <p><strong>Client :</strong> ${cmd.nom}</p>
-    <p><strong>Téléphone livraison :</strong> ${cmd.telephoneLivreur}</p>
-    <p><strong>Email :</strong> ${cmd.email}</p>
-    <p><strong>Ville :</strong> ${cmd.ville}</p>
-    <p><strong>Adresse :</strong> ${cmd.adresse}</p>
-    <p><strong>Total :</strong> <span style="color:#00A86B;">${cmd.totalFinal?.toLocaleString()} FCFA</span></p>
-    <p><strong>Paiement :</strong> ${cmd.paiement}</p>
-    ${cmd.codePromo ? `<p><strong>Code promo :</strong> ${cmd.codePromo}</p>` : ""}
-  </div>
-  <p style="color:#F5C842;">⚠️ Une capture d'écran de paiement a été envoyée. Vérifiez dans votre espace admin.</p>
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;padding:2rem;border-radius:16px;border:1px solid #e0e0e0;">
+  <h2 style="color:#00A86B;">🔔 Nouvelle commande FastBuy 229</h2>
+  <p><strong>Numéro :</strong> ${cmd.numero}</p>
+  <p><strong>Client :</strong> ${cmd.nom}</p>
+  <p><strong>Email :</strong> ${cmd.email}</p>
+  <p><strong>Téléphone livreur :</strong> ${cmd.telephoneLivreur}</p>
+  <p><strong>Ville :</strong> ${cmd.ville}</p>
+  <p><strong>Adresse :</strong> ${cmd.adresse}</p>
+  <p><strong>Total :</strong> ${cmd.totalFinal?.toLocaleString()} FCFA</p>
+  <p><strong>Paiement :</strong> ${cmd.paiement}</p>
+  ${cmd.codePromo ? `<p><strong>Code promo :</strong> ${cmd.codePromo}</p>` : ""}
+  <p style="color:#F5A000;"><strong>⚠️ Vérifiez la capture de paiement dans votre espace admin.</strong></p>
 </div>`;
 
 export default function FastBuy229() {
@@ -116,11 +118,11 @@ export default function FastBuy229() {
   const [capturePreview, setCapturePreview] = useState(null);
   const [client, setClient] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
-  const [authStep, setAuthStep] = useState(1);
-  const [authForm, setAuthForm] = useState({ nom: "", prenom: "", email: "", telephone: "", code: "" });
-  const [authCode, setAuthCode] = useState("");
-  const [authError, setAuthError] = useState("");
   const [authMode, setAuthMode] = useState("register");
+  const [authStep, setAuthStep] = useState(1);
+  const [authForm, setAuthForm] = useState({ prenom: "", nom: "", email: "", telephone: "", code: "" });
+  const [authCodeReel, setAuthCodeReel] = useState("");
+  const [authError, setAuthError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [produitNegocie, setProduitNegocie] = useState(null);
@@ -164,68 +166,72 @@ export default function FastBuy229() {
     if (data) setMesCommandes(data);
   };
   const getImageUrl = (p) => p ? `${SUPABASE_URL}/storage/v1/object/public/produits/${p}` : null;
-  const genCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-  // ── AUTH (inscription/connexion par code email) ──
-  const envoyerCodeInscription = async () => {
+  // ── INSCRIPTION — Étape 1 : envoyer code ──
+  const inscriptionEnvoyerCode = async () => {
     setAuthError("");
-    if (!authForm.nom || !authForm.prenom || !authForm.email || !authForm.telephone) { setAuthError("Remplis tous les champs !"); return; }
+    if (!authForm.prenom || !authForm.nom || !authForm.email || !authForm.telephone) {
+      setAuthError("Remplis tous les champs !"); return;
+    }
     if (!authForm.email.includes("@")) { setAuthError("Email invalide !"); return; }
     setLoading(true);
     const { data: existing } = await supabase.from("users").select("id").eq("telephone", authForm.email).single();
     if (existing) { setAuthError("Cet email est déjà utilisé !"); setLoading(false); return; }
     const code = genCode();
-    setAuthCode(code);
-    await sendEmail(authForm.email, "Ton code d'activation — FastBuy 229", emailCode(code, authForm.prenom));
+    setAuthCodeReel(code);
+    await sendEmail(authForm.email, "Votre code de confirmation — FastBuy 229", emailCodeConfirmation(authForm.prenom, code));
     setAuthStep(2);
     setLoading(false);
   };
 
-  const validerCodeInscription = async () => {
+  // ── INSCRIPTION — Étape 2 : valider code ──
+  const inscriptionValiderCode = async () => {
     setAuthError("");
-    if (authForm.code !== authCode) { setAuthError("Code incorrect !"); return; }
+    if (authForm.code !== authCodeReel) { setAuthError("Code incorrect ! Vérifiez votre email."); return; }
     setLoading(true);
     const { data, error } = await supabase.from("users").insert([{
       nom: `${authForm.prenom} ${authForm.nom}`,
       telephone: authForm.email,
-      mot_de_passe: authCode,
+      mot_de_passe: authCodeReel,
       ville: "",
     }]).select().single();
     if (error) { setAuthError("Erreur ! Réessaie."); setLoading(false); return; }
-    const clientData = { id: data.id, nom: `${authForm.prenom} ${authForm.nom}`, telephone: authForm.telephone, email: authForm.email, prenom: authForm.prenom, premiereCommande: true };
+    const clientData = { id: data.id, nom: `${authForm.prenom} ${authForm.nom}`, email: authForm.email, telephone: authForm.telephone, prenom: authForm.prenom, premiereCommande: true };
     setClient(clientData);
     localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
     setShowAuth(false);
     setAuthStep(1);
-    setAuthForm({ nom: "", prenom: "", email: "", telephone: "", code: "" });
+    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", code: "" });
     setLoading(false);
   };
 
-  const envoyerCodeConnexion = async () => {
+  // ── CONNEXION — Étape 1 : envoyer code ──
+  const connexionEnvoyerCode = async () => {
     setAuthError("");
     if (!authForm.email) { setAuthError("Entre ton email !"); return; }
     setLoading(true);
     const { data } = await supabase.from("users").select("*").eq("telephone", authForm.email).single();
     if (!data) { setAuthError("Aucun compte avec cet email !"); setLoading(false); return; }
     const code = genCode();
-    setAuthCode(code);
-    await sendEmail(authForm.email, "Ton code de connexion — FastBuy 229", emailCode(code, data.nom));
+    setAuthCodeReel(code);
+    await sendEmail(authForm.email, "Votre code de connexion — FastBuy 229", emailCodeConfirmation(data.nom.split(" ")[0], code));
     setAuthStep(2);
     setLoading(false);
   };
 
-  const validerCodeConnexion = async () => {
+  // ── CONNEXION — Étape 2 : valider code ──
+  const connexionValiderCode = async () => {
     setAuthError("");
-    if (authForm.code !== authCode) { setAuthError("Code incorrect !"); return; }
+    if (authForm.code !== authCodeReel) { setAuthError("Code incorrect ! Vérifiez votre email."); return; }
     setLoading(true);
     const { data } = await supabase.from("users").select("*").eq("telephone", authForm.email).single();
     const { data: cmdData } = await supabase.from("commandes").select("id").eq("email", authForm.email).limit(1);
-    const clientData = { id: data.id, nom: data.nom, telephone: data.telephone, email: authForm.email, prenom: data.nom.split(" ")[0], premiereCommande: !cmdData || cmdData.length === 0 };
+    const clientData = { id: data.id, nom: data.nom, email: authForm.email, telephone: data.telephone, prenom: data.nom.split(" ")[0], premiereCommande: !cmdData || cmdData.length === 0 };
     setClient(clientData);
     localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
     setShowAuth(false);
     setAuthStep(1);
-    setAuthForm({ nom: "", prenom: "", email: "", telephone: "", code: "" });
+    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", code: "" });
     setLoading(false);
   };
 
@@ -236,8 +242,7 @@ export default function FastBuy229() {
     if (!client) return;
     const codeAttendu = (client.prenom || client.nom.split(" ")[0]).toLowerCase() + "10";
     if (codePromoSaisi.toLowerCase() === codeAttendu && client.premiereCommande) {
-      const reduction = Math.round(total * 0.1);
-      setReductionPromo(reduction);
+      setReductionPromo(Math.round(total * 0.1));
       setCodePromoValide(true);
     } else if (!client.premiereCommande) {
       alert("Ce code promo est réservé à la première commande !");
@@ -248,7 +253,7 @@ export default function FastBuy229() {
 
   // ── PANIER ──
   const ajouterAuPanier = (product) => {
-    if (!client) { setShowAuth(true); setAuthMode("register"); return; }
+    if (!client) { setShowAuth(true); setAuthMode("register"); setAuthStep(1); return; }
     setPanier((prev) => {
       const existe = prev.find((p) => p.id === product.id);
       if (existe) return prev.map((p) => p.id === product.id ? { ...p, qty: p.qty + 1 } : p);
@@ -266,35 +271,25 @@ export default function FastBuy229() {
     if (!captureFile) { alert("Ajoute la capture d'écran de ton paiement !"); return; }
     setLoading(true);
     const numero = genNumero();
-
     let capturePath = null;
     const fileName = `captures/${Date.now()}-${captureFile.name}`;
     const { error: uploadError } = await supabase.storage.from("produits").upload(fileName, captureFile);
     if (!uploadError) capturePath = fileName;
-
     const cmdData = { numero, nom: form.nom, email: form.email, telephone: form.telephoneLivreur, telephoneLivreur: form.telephoneLivreur, ville: form.ville, adresse: form.adresse, articles: panier, total, totalFinal, reduction: reductionPromo, codePromo: codePromoValide ? codePromoSaisi : null, statut: "Commande reçue", paiement: paiementChoisi, user_id: client?.id, capture: capturePath };
     const { data, error } = await supabase.from("commandes").insert([cmdData]).select().single();
     if (error) { alert("Erreur ! Réessaie."); setLoading(false); return; }
-
-    await sendEmail(form.email, `Commande ${numero} — FastBuy 229`, emailCommande({ ...cmdData, articles: panier }));
+    await sendEmail(form.email, `Commande ${numero} confirmée — FastBuy 229`, emailCommande({ ...cmdData, articles: panier }));
     await sendEmail(ADMIN_EMAIL, `🔔 Nouvelle commande ${numero}`, emailNotifAdmin(cmdData));
-
     if (codePromoValide) {
       const updatedClient = { ...client, premiereCommande: false };
       setClient(updatedClient);
       localStorage.setItem("fastbuy_client", JSON.stringify(updatedClient));
     }
-
     setCommandeOk(data);
-    setPanier([]);
-    setShowCommande(false);
-    setShowPanier(false);
+    setPanier([]); setShowCommande(false); setShowPanier(false);
     setForm({ nom: "", email: "", telephoneLivreur: "", ville: "", adresse: "" });
-    setCaptureFile(null);
-    setCapturePreview(null);
-    setCodePromoSaisi("");
-    setCodePromoValide(false);
-    setReductionPromo(0);
+    setCaptureFile(null); setCapturePreview(null);
+    setCodePromoSaisi(""); setCodePromoValide(false); setReductionPromo(0);
     setLoading(false);
   };
 
@@ -303,11 +298,12 @@ export default function FastBuy229() {
     await supabase.from("commandes").update({ statut }).eq("id", id);
     if (cmd?.email) {
       await sendEmail(cmd.email, `Mise à jour commande ${cmd.numero} — FastBuy 229`, `
-        <div style="font-family:Arial;background:#0B0E18;color:#fff;padding:2rem;border-radius:16px;max-width:600px;margin:0 auto;">
-          <h2 style="color:#00A86B;">Mise à jour de ta commande</h2>
-          <p>Commande <strong style="color:#F5C842;">${cmd.numero}</strong></p>
+        <div style="font-family:Arial;max-width:600px;margin:0 auto;padding:2rem;border:1px solid #e0e0e0;border-radius:16px;">
+          <h2 style="color:#00A86B;">Mise à jour de votre commande</h2>
+          <p>Bonjour,</p>
+          <p>Votre commande <strong>${cmd.numero}</strong> a été mise à jour.</p>
           <p>Nouveau statut : <strong style="color:#00A86B;">${statut}</strong></p>
-          <p style="color:rgba(255,255,255,0.5);">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color:#00A86B;">${SUPPORT_EMAIL}</a></p>
+          <p style="color:#666;">Contact : <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
         </div>
       `);
     }
@@ -321,22 +317,20 @@ export default function FastBuy229() {
 
   const envoyerMessage = async () => {
     if (!messageTexte) return;
-    const sujet = produitNegocie ? `Négociation: ${produitNegocie.title}` : messageTexte;
     await supabase.from("messages").insert([{ user_id: client?.id, nom: client?.nom, telephone: client?.email, message: produitNegocie ? `Négociation sur "${produitNegocie.title}" (${produitNegocie.price.toLocaleString()} FCFA) : ${messageTexte}` : messageTexte }]);
-    setMessageTexte("");
-    setShowMessage(false);
-    setProduitNegocie(null);
+    setMessageTexte(""); setShowMessage(false); setProduitNegocie(null);
     alert("Message envoyé ! On te répond bientôt 😊");
   };
 
   const repondreMessage = async (id, reponse, clientEmail) => {
     await supabase.from("messages").update({ reponse }).eq("id", id);
     if (clientEmail?.includes("@")) {
-      await sendEmail(clientEmail, "Réponse à ton message — FastBuy 229", `
-        <div style="font-family:Arial;background:#0B0E18;color:#fff;padding:2rem;border-radius:16px;max-width:600px;margin:0 auto;">
+      await sendEmail(clientEmail, "Réponse à votre message — FastBuy 229", `
+        <div style="font-family:Arial;max-width:600px;margin:0 auto;padding:2rem;border:1px solid #e0e0e0;border-radius:16px;">
           <h2 style="color:#00A86B;">Réponse de FastBuy 229</h2>
-          <div style="background:#161926;padding:1rem;border-radius:8px;margin-bottom:1rem;">${reponse}</div>
-          <p style="color:rgba(255,255,255,0.5);">Contact : <a href="mailto:${SUPPORT_EMAIL}" style="color:#00A86B;">${SUPPORT_EMAIL}</a></p>
+          <p>Bonjour,</p>
+          <div style="background:#f5f5f5;padding:1rem;border-radius:8px;margin:1rem 0;">${reponse}</div>
+          <p style="color:#666;">Contact : <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
         </div>
       `);
     }
@@ -359,20 +353,17 @@ export default function FastBuy229() {
     await chargerProduits();
     setShowAddProduct(false);
     setNewProduct({ emoji: "🌸", title: "", description: "", price: "", etat: "Neuf", category: "Parfums", location: "", plage_livraison: "1-2 semaines" });
-    setImageFile(null); setImagePreview(null);
-    setLoading(false);
+    setImageFile(null); setImagePreview(null); setLoading(false);
   };
 
   const supprimerProduit = async (id) => { if (!confirm("Supprimer ?")) return; await supabase.from("produits").delete().eq("id", id); chargerProduits(); };
 
   const adminForgotEnvoyerCode = async () => {
-    setAdminForgotError("");
-    setLoading(true);
+    setAdminForgotError(""); setLoading(true);
     const code = genCode();
     setAdminForgotCode(code);
-    await sendEmail(ADMIN_EMAIL, "Code admin — FastBuy 229", emailCode(code, "Admin"));
-    setAdminForgotStep(2);
-    setLoading(false);
+    await sendEmail(ADMIN_EMAIL, "Votre code admin — FastBuy 229", emailCodeConfirmation("Admin", code));
+    setAdminForgotStep(2); setLoading(false);
   };
 
   const adminForgotChangerPwd = () => {
@@ -383,8 +374,7 @@ export default function FastBuy229() {
     if (adminForgotNouveauPwd !== adminForgotConfirmPwd) { setAdminForgotError("Les mots de passe ne correspondent pas !"); return; }
     setAdminMotDePasse(adminForgotNouveauPwd);
     localStorage.setItem("fastbuy_admin_pwd", adminForgotNouveauPwd);
-    setShowAdminForgot(false);
-    setAdminForgotStep(1);
+    setShowAdminForgot(false); setAdminForgotStep(1);
     setAdminForgotAncienPwd(""); setAdminForgotNouveauPwd(""); setAdminForgotConfirmPwd(""); setAdminForgotCodeSaisi("");
     alert("Mot de passe admin modifié ! 🎉");
   };
@@ -538,17 +528,16 @@ export default function FastBuy229() {
       {/* AIDE */}
       {page === "aide" && (
         <div style={{ maxWidth: 600, margin: "4rem auto", padding: "0 1.5rem" }}>
-          <h2 style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, marginBottom: "0.5rem" }}>❓ Centre d'aide</h2>
-          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: "2rem" }}>On est là pour t'aider !</p>
+          <h2 style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, marginBottom: "2rem" }}>❓ Centre d'aide</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: "2.5rem" }}>
             {[
-              ["📦", "Comment suivre ma commande ?", "Rendez-vous dans l'onglet 'Suivi de commande' puis entrez votre numéro de commande (ex : CMD-AB12CD). Votre numéro vous est envoyé automatiquement par email après validation de votre achat."],
-              ["💳", "Quels sont les moyens de paiement disponibles ?", `Les paiements sont disponibles via MTN MoMo, Moov Money ou Celtiis. Envoyez le montant exact au ${MOMO_NUMERO} en indiquant votre numéro de commande comme référence, puis uploadez la capture d'écran.`],
-              ["🚚", "Quels sont les délais de livraison ?", "Les délais sont indiqués sur chaque produit. En général entre 3 jours et 2 semaines selon votre ville et la disponibilité du produit."],
-              ["⏰", "Livraison en retard ?", "Si votre commande dépasse le délai annoncé, vous recevrez 10% de réduction remboursés sur votre Mobile Money après vérification."],
-              ["🔄", "Comment retourner un produit ?", "Contactez notre service client par email dans les 48h après réception. Nous vous proposerons une solution adaptée."],
-              ["💬", "Comment négocier un prix ?", "Cliquez sur l'icône 💬 directement sur le produit qui vous intéresse pour nous envoyer une offre."],
-              ["🎟️", "Comment utiliser mon code promo ?", "Lors de votre commande, entrez votre prénom suivi de 10 (ex: marc10) dans la case code promo. Valable uniquement sur votre première commande !"],
+              ["📦", "Comment suivre ma commande ?", "Rendez-vous dans l'onglet 'Suivi' puis entrez votre numéro de commande (ex : CMD-AB12CD). Votre numéro vous est envoyé par email après confirmation."],
+              ["💳", "Quels sont les moyens de paiement ?", `Paiement via MTN MoMo, Moov Money ou Celtiis. Envoyez le montant exact au ${MOMO_NUMERO} avec votre numéro de commande comme référence, puis uploadez la capture d'écran.`],
+              ["🚚", "Délais de livraison ?", "Entre 3 jours et 2 semaines selon votre ville et le produit."],
+              ["⏰", "Livraison en retard ?", "Si votre commande dépasse le délai, vous recevrez 10% remboursés sur votre Mobile Money."],
+              ["🔄", "Retour produit ?", "Contactez-nous par email dans les 48h après réception."],
+              ["💬", "Négocier un prix ?", "Cliquez sur 💬 directement sur le produit pour nous envoyer votre offre."],
+              ["🎟️", "Code promo ?", "Entrez votre prénom + 10 (ex: marc10) dans la case code promo. Valable sur votre 1ère commande uniquement !"],
             ].map(([icon, q, a]) => (
               <div key={q} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "1.2rem 1.5rem" }}>
                 <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{icon} {q}</div>
@@ -559,8 +548,7 @@ export default function FastBuy229() {
           <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 16, padding: "2rem", textAlign: "center" }}>
             <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>📧</div>
             <h3 style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.5rem" }}>Besoin d'aide ?</h3>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginBottom: "1.2rem" }}>Écris-nous directement !</p>
-            <a href={`mailto:${SUPPORT_EMAIL}`} style={{ display: "inline-block", padding: "12px 28px", background: "#00A86B", color: "#fff", borderRadius: 12, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>✉️ {SUPPORT_EMAIL}</a>
+            <a href={`mailto:${SUPPORT_EMAIL}`} style={{ display: "inline-block", padding: "12px 28px", background: "#00A86B", color: "#fff", borderRadius: 12, fontSize: 14, fontWeight: 600, textDecoration: "none", marginTop: "0.8rem" }}>✉️ {SUPPORT_EMAIL}</a>
           </div>
         </div>
       )}
@@ -568,8 +556,8 @@ export default function FastBuy229() {
       {/* SUIVI */}
       {page === "suivi" && (
         <div style={{ maxWidth: 500, margin: "4rem auto", padding: "0 1.5rem" }}>
-          <h2 style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, marginBottom: "0.5rem" }}>📦 Suivre ma commande</h2>
-          <div style={{ display: "flex", gap: 10, marginBottom: "2rem", marginTop: "1rem" }}>
+          <h2 style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, marginBottom: "1rem" }}>📦 Suivre ma commande</h2>
+          <div style={{ display: "flex", gap: 10, marginBottom: "2rem" }}>
             <input type="text" value={numeroSuivi} onChange={(e) => setNumeroSuivi(e.target.value)} placeholder="Ex: CMD-AB12CD" style={{ ...inp, flex: 1 }} />
             <button onClick={chercherCommande} className="bg" style={{ padding: "11px 20px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", whiteSpace: "nowrap" }}>Chercher</button>
           </div>
@@ -598,21 +586,21 @@ export default function FastBuy229() {
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "1rem" }}>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>Client : <span style={{ color: "#fff" }}>{commandeTrouvee.nom}</span></div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>Ville : <span style={{ color: "#fff" }}>{commandeTrouvee.ville}</span></div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Total : <span style={{ color: "#00A86B", fontWeight: 700 }}>{commandeTrouvee.totalFinal?.toLocaleString() || commandeTrouvee.total?.toLocaleString()} FCFA</span></div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Total : <span style={{ color: "#00A86B", fontWeight: 700 }}>{(commandeTrouvee.totalFinal || commandeTrouvee.total)?.toLocaleString()} FCFA</span></div>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* ADMIN */}
+      {/* ADMIN LOGIN */}
       {page === "admin" && !adminOk && (
         <div style={{ maxWidth: 400, margin: "5rem auto", padding: "0 1.5rem", textAlign: "center" }}>
           <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔐</div>
           <h2 style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, marginBottom: "1.5rem" }}>Espace Admin — FastBuy 229</h2>
           {!showAdminForgot ? (
             <>
-              <input type="password" value={adminPwd} onChange={(e) => setAdminPwd(e.target.value)} placeholder="••••••••" style={{ ...inp, marginBottom: 12, textAlign: "center", letterSpacing: "0.2em" }} />
+              <input type="password" value={adminPwd} onChange={(e) => setAdminPwd(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (adminPwd === adminMotDePasse ? (setAdminOk(true), chargerCommandes(), chargerMessages()) : alert("Accès refusé !"))} placeholder="••••••••" style={{ ...inp, marginBottom: 12, textAlign: "center", letterSpacing: "0.2em" }} />
               <button onClick={() => { if (adminPwd === adminMotDePasse) { setAdminOk(true); chargerCommandes(); chargerMessages(); } else alert("Accès refusé !"); }} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: 12 }}>Accéder</button>
               <button onClick={() => setShowAdminForgot(true)} style={{ background: "none", border: "none", color: "#00A86B", fontSize: 13, cursor: "pointer", fontFamily: "DM Sans" }}>🔑 Modifier mon mot de passe</button>
             </>
@@ -622,22 +610,20 @@ export default function FastBuy229() {
               {adminForgotError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{adminForgotError}</div>}
               {adminForgotStep === 1 && (
                 <>
-                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>Un code va être envoyé à : <strong style={{ color: "#00A86B" }}>{ADMIN_EMAIL}</strong></p>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>Un code sera envoyé à : <strong style={{ color: "#00A86B" }}>{ADMIN_EMAIL}</strong></p>
                   <button onClick={adminForgotEnvoyerCode} disabled={loading} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>{loading ? "Envoi…" : "📧 Recevoir le code"}</button>
                 </>
               )}
               {adminForgotStep === 2 && (
                 <>
-                  <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1rem" }}>✅ Code envoyé !</div>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Code reçu</label>
-                  <input type="text" placeholder="123456" value={adminForgotCodeSaisi} onChange={(e) => setAdminForgotCodeSaisi(e.target.value)} style={{ ...inp, textAlign: "center", fontSize: "1.5rem", letterSpacing: "0.3em", marginBottom: 10 }} maxLength={6} />
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Ancien mot de passe</label>
-                  <input type="password" placeholder="••••••••" value={adminForgotAncienPwd} onChange={(e) => setAdminForgotAncienPwd(e.target.value)} style={{ ...inp, marginBottom: 10 }} />
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Nouveau mot de passe</label>
-                  <input type="password" placeholder="••••••••" value={adminForgotNouveauPwd} onChange={(e) => setAdminForgotNouveauPwd(e.target.value)} style={{ ...inp, marginBottom: 10 }} />
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Confirmer</label>
-                  <input type="password" placeholder="••••••••" value={adminForgotConfirmPwd} onChange={(e) => setAdminForgotConfirmPwd(e.target.value)} style={{ ...inp, marginBottom: 12 }} />
-                  <button onClick={adminForgotChangerPwd} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>✅ Valider</button>
+                  <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1rem" }}>✅ Code envoyé à {ADMIN_EMAIL}</div>
+                  {[["Code reçu", adminForgotCodeSaisi, setAdminForgotCodeSaisi, "123456", false], ["Ancien mot de passe", adminForgotAncienPwd, setAdminForgotAncienPwd, "••••••••", true], ["Nouveau mot de passe", adminForgotNouveauPwd, setAdminForgotNouveauPwd, "••••••••", true], ["Confirmer nouveau mot de passe", adminForgotConfirmPwd, setAdminForgotConfirmPwd, "••••••••", true]].map(([label, val, setter, ph, isPwd]) => (
+                    <div key={label} style={{ marginBottom: "0.8rem" }}>
+                      <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>{label}</label>
+                      <input type={isPwd ? "password" : "text"} placeholder={ph} value={val} onChange={(e) => setter(e.target.value)} style={{ ...inp, ...(label === "Code reçu" ? { textAlign: "center", fontSize: "1.3rem", letterSpacing: "0.3em" } : {}) }} maxLength={label === "Code reçu" ? 6 : undefined} />
+                    </div>
+                  ))}
+                  <button onClick={adminForgotChangerPwd} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginTop: 4 }}>✅ Valider</button>
                 </>
               )}
               <button onClick={() => { setShowAdminForgot(false); setAdminForgotStep(1); setAdminForgotError(""); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour</button>
@@ -646,6 +632,7 @@ export default function FastBuy229() {
         </div>
       )}
 
+      {/* ADMIN DASHBOARD */}
       {page === "admin" && adminOk && (
         <div style={{ padding: "2rem" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
@@ -726,8 +713,8 @@ export default function FastBuy229() {
                   </div>
                   {cmd.capture && (
                     <div style={{ marginTop: "1rem" }}>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>📸 CAPTURE DE PAIEMENT</div>
-                      <img src={getImageUrl(cmd.capture)} alt="capture paiement" style={{ maxWidth: 300, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)" }} />
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>📸 CAPTURE PAIEMENT</div>
+                      <img src={getImageUrl(cmd.capture)} alt="capture" style={{ maxWidth: 300, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)" }} />
                     </div>
                   )}
                 </div>
@@ -742,11 +729,15 @@ export default function FastBuy229() {
         <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 440, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>{authMode === "register" ? "✨ Créer un compte" : "👤 Se connecter"}</h2>
+              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>
+                {authMode === "register" ? "✨ Créer un compte" : "👤 Se connecter"}
+              </h2>
               <span onClick={() => { setShowAuth(false); setAuthStep(1); setAuthError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
             </div>
+
             {authError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{authError}</div>}
 
+            {/* INSCRIPTION ÉTAPE 1 */}
             {authMode === "register" && authStep === 1 && (
               <>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: "1rem" }}>
@@ -763,50 +754,61 @@ export default function FastBuy229() {
                   <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Email</label>
                   <input type="email" placeholder="exemple@gmail.com" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} style={inp} />
                 </div>
-                <div style={{ marginBottom: "1.5rem" }}>
+                <div style={{ marginBottom: "1rem" }}>
                   <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📱 Téléphone</label>
                   <input type="tel" placeholder="+229 97 00 00 00" value={authForm.telephone} onChange={(e) => setAuthForm({ ...authForm, telephone: e.target.value })} style={inp} />
                 </div>
-                <button onClick={envoyerCodeInscription} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
-                  {loading ? "Envoi du code…" : "📧 Recevoir mon code d'activation"}
+                {authForm.prenom && (
+                  <div style={{ background: "rgba(245,200,66,0.08)", border: "1px solid rgba(245,200,66,0.2)", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>
+                    🎟️ Ton code promo : <strong style={{ color: "#F5C842" }}>{authForm.prenom.toLowerCase()}10</strong> — 10% sur ta 1ère commande !
+                  </div>
+                )}
+                <button onClick={inscriptionEnvoyerCode} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
+                  {loading ? "Envoi du code…" : "📧 Recevoir mon code de confirmation"}
                 </button>
-                <div style={{ background: "rgba(245,200,66,0.08)", border: "1px solid rgba(245,200,66,0.2)", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>
-                  🎟️ Code promo offert ! Ton code : <strong style={{ color: "#F5C842" }}>{authForm.prenom ? authForm.prenom.toLowerCase() + "10" : "prénom10"}</strong> — 10% sur ta 1ère commande !
-                </div>
               </>
             )}
 
+            {/* INSCRIPTION ÉTAPE 2 */}
             {authMode === "register" && authStep === 2 && (
               <>
-                <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>✅ Code envoyé à {authForm.email} !</div>
-                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Entre le code reçu</label>
-                <input type="text" placeholder="123456" value={authForm.code} onChange={(e) => setAuthForm({ ...authForm, code: e.target.value })} style={{ ...inp, textAlign: "center", fontSize: "1.8rem", letterSpacing: "0.4em", marginBottom: 16 }} maxLength={6} />
-                <button onClick={validerCodeInscription} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans" }}>
-                  {loading ? "Création…" : "✅ Créer mon compte"}
+                <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>
+                  ✅ Code envoyé à <strong>{authForm.email}</strong> — Vérifiez vos spams si besoin.
+                </div>
+                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Saisissez le code reçu par mail</label>
+                <input type="text" placeholder="_ _ _ _ _ _" value={authForm.code} onChange={(e) => setAuthForm({ ...authForm, code: e.target.value })} style={{ ...inp, textAlign: "center", fontSize: "2rem", letterSpacing: "0.5em", marginBottom: 16 }} maxLength={6} />
+                <button onClick={inscriptionValiderCode} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "0.8rem" }}>
+                  {loading ? "Vérification…" : "✅ Confirmer et créer mon compte"}
                 </button>
+                <button onClick={() => { setAuthStep(1); setAuthError(""); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans" }}>← Retour</button>
               </>
             )}
 
+            {/* CONNEXION ÉTAPE 1 */}
             {authMode === "login" && authStep === 1 && (
               <>
                 <div style={{ marginBottom: "1.5rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Ton email</label>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Votre email</label>
                   <input type="email" placeholder="exemple@gmail.com" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} style={inp} />
                 </div>
-                <button onClick={envoyerCodeConnexion} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
-                  {loading ? "Envoi…" : "📧 Recevoir mon code de connexion"}
+                <button onClick={connexionEnvoyerCode} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
+                  {loading ? "Envoi…" : "📧 Recevoir le code de confirmation sur votre mail"}
                 </button>
               </>
             )}
 
+            {/* CONNEXION ÉTAPE 2 */}
             {authMode === "login" && authStep === 2 && (
               <>
-                <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>✅ Code envoyé à {authForm.email} !</div>
-                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Entre le code reçu</label>
-                <input type="text" placeholder="123456" value={authForm.code} onChange={(e) => setAuthForm({ ...authForm, code: e.target.value })} style={{ ...inp, textAlign: "center", fontSize: "1.8rem", letterSpacing: "0.4em", marginBottom: 16 }} maxLength={6} />
-                <button onClick={validerCodeConnexion} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans" }}>
+                <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>
+                  ✅ Code envoyé à <strong>{authForm.email}</strong> — Vérifiez vos spams si besoin.
+                </div>
+                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Saisissez le code reçu par mail</label>
+                <input type="text" placeholder="_ _ _ _ _ _" value={authForm.code} onChange={(e) => setAuthForm({ ...authForm, code: e.target.value })} style={{ ...inp, textAlign: "center", fontSize: "2rem", letterSpacing: "0.5em", marginBottom: 16 }} maxLength={6} />
+                <button onClick={connexionValiderCode} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "0.8rem" }}>
                   {loading ? "Connexion…" : "✅ Me connecter"}
                 </button>
+                <button onClick={() => { setAuthStep(1); setAuthError(""); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans" }}>← Retour</button>
               </>
             )}
 
@@ -844,7 +846,7 @@ export default function FastBuy229() {
         </div>
       )}
 
-      {/* MESSAGE / NÉGOCIATION */}
+      {/* MESSAGE */}
       {showMessage && (
         <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 440, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)" }}>
@@ -861,10 +863,8 @@ export default function FastBuy229() {
                 </div>
               </div>
             )}
-            <textarea value={messageTexte} onChange={(e) => setMessageTexte(e.target.value)} placeholder={produitNegocie ? `Ex: Je propose ${Math.round(produitNegocie?.price * 0.85).toLocaleString()} FCFA pour ce produit, c'est possible ?` : "Ta question ou demande…"} style={{ ...inp, height: 120, resize: "none" }} />
-            <button onClick={envoyerMessage} className="bg" style={{ width: "100%", padding: "13px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans", marginTop: "1rem" }}>
-              Envoyer 📤
-            </button>
+            <textarea value={messageTexte} onChange={(e) => setMessageTexte(e.target.value)} placeholder={produitNegocie ? `Ex: Je propose ${Math.round(produitNegocie?.price * 0.85).toLocaleString()} FCFA, c'est possible ?` : "Ta question ou demande…"} style={{ ...inp, height: 120, resize: "none" }} />
+            <button onClick={envoyerMessage} className="bg" style={{ width: "100%", padding: "13px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans", marginTop: "1rem" }}>Envoyer 📤</button>
           </div>
         </div>
       )}
@@ -917,14 +917,13 @@ export default function FastBuy229() {
               <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>📦 Passer commande</h2>
               <span onClick={() => setShowCommande(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
             </div>
-
             <div style={{ background: "#1C2035", borderRadius: 12, padding: "12px 16px", marginBottom: "1.5rem" }}>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>{nbPanier} article(s)</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 800, color: "#00A86B" }}>{total.toLocaleString()} FCFA</div>
                 {codePromoValide && <div style={{ fontSize: 13, color: "#F5C842" }}>-{reductionPromo.toLocaleString()} FCFA 🎟️</div>}
               </div>
-              {codePromoValide && <div style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 800, color: "#00A86B", marginTop: 4 }}>Total : {totalFinal.toLocaleString()} FCFA</div>}
+              {codePromoValide && <div style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 800, color: "#00A86B", marginTop: 4 }}>Total final : {totalFinal.toLocaleString()} FCFA</div>}
             </div>
 
             {[["nom", "Nom complet", "Ex: Jean Dupont", "text"], ["email", "Email (pour le reçu)", "exemple@gmail.com", "email"], ["telephoneLivreur", "📱 Téléphone pour le livreur", "+229 97 00 00 00", "tel"], ["ville", "Ville de livraison", "Cotonou, Porto-Novo…", "text"], ["adresse", "Adresse précise", "Quartier, repère…", "text"]].map(([key, label, ph, type]) => (
@@ -948,10 +947,10 @@ export default function FastBuy229() {
 
             <div style={{ marginBottom: "1.5rem" }}>
               <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 10 }}>💰 Mode de paiement</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {PAIEMENTS.filter(p => p.id !== "livraison").map((p) => (
-                  <div key={p.id} className="pay" onClick={() => setPaiementChoisi(p.id)} style={{ background: paiementChoisi === p.id ? "rgba(0,168,107,0.15)" : "#1C2035", border: `1px solid ${paiementChoisi === p.id ? "#00A86B" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, padding: "12px", textAlign: "center", fontSize: 13, cursor: "pointer", transition: "all 0.18s", fontWeight: paiementChoisi === p.id ? 600 : 400 }}>
-                    <div style={{ fontSize: "1.5rem", marginBottom: 4 }}>{p.icon}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                {PAIEMENTS.map((p) => (
+                  <div key={p.id} className="pay" onClick={() => setPaiementChoisi(p.id)} style={{ background: paiementChoisi === p.id ? "rgba(0,168,107,0.15)" : "#1C2035", border: `1px solid ${paiementChoisi === p.id ? "#00A86B" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, padding: "12px", textAlign: "center", fontSize: 12, cursor: "pointer", transition: "all 0.18s", fontWeight: paiementChoisi === p.id ? 600 : 400 }}>
+                    <div style={{ fontSize: "1.3rem", marginBottom: 4 }}>{p.icon}</div>
                     {p.label}
                   </div>
                 ))}
@@ -959,13 +958,13 @@ export default function FastBuy229() {
             </div>
 
             <div style={{ background: "rgba(245,200,66,0.08)", border: "1px solid rgba(245,200,66,0.2)", borderRadius: 12, padding: "1rem 1.2rem", marginBottom: "1.5rem" }}>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>💰 Envoie <strong style={{ color: "#00A86B", fontSize: "1.1rem" }}>{totalFinal.toLocaleString()} FCFA</strong> au :</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 6 }}>💰 Envoyez exactement <strong style={{ color: "#00A86B", fontSize: "1.1rem" }}>{totalFinal.toLocaleString()} FCFA</strong> au :</div>
               <div style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, color: "#F5C842", marginBottom: 4 }}>{MOMO_NUMERO}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Puis ajoute la capture d'écran ci-dessous</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Puis ajoutez la capture d'écran ci-dessous</div>
             </div>
 
             <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📸 Capture d'écran du paiement <span style={{ color: "rgba(255,80,80,0.8)" }}>*obligatoire</span></label>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📸 Capture du paiement <span style={{ color: "rgba(255,80,80,0.8)" }}>*obligatoire</span></label>
               <div style={{ border: "2px dashed rgba(255,255,255,0.15)", borderRadius: 12, padding: "1.2rem", textAlign: "center", cursor: "pointer" }} onClick={() => document.getElementById("capture-input").click()}>
                 {capturePreview ? <img src={capturePreview} alt="capture" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 8 }} /> : (
                   <div><div style={{ fontSize: "2rem", marginBottom: 6 }}>📷</div><div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Clique pour ajouter ta capture</div></div>
@@ -993,11 +992,9 @@ export default function FastBuy229() {
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>📧 Confirmation envoyée par email</div>
             </div>
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 1.7, marginBottom: "2rem" }}>
-              On vérifie ton paiement et on te confirme rapidement ! Livraison sous <strong style={{ color: "#fff" }}>3 jours à 2 semaines</strong>.
+              Nous vérifions votre paiement et confirmons rapidement. Livraison sous <strong style={{ color: "#fff" }}>3 jours à 2 semaines</strong>.
             </p>
-            <button onClick={() => setCommandeOk(null)} className="bg" style={{ padding: "12px 32px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>
-              Continuer les achats
-            </button>
+            <button onClick={() => setCommandeOk(null)} className="bg" style={{ padding: "12px 32px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>Continuer les achats</button>
           </div>
         </div>
       )}
@@ -1017,7 +1014,7 @@ export default function FastBuy229() {
                 <input id="photo-input" type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }} />
               </div>
             </div>
-            {[["title", "Nom du produit", "Ex: Parfum Hugo Boss 100ml", "text"], ["price", "Prix (FCFA)", "Ex: 18500", "number"], ["location", "Ville", "Ex: Cotonou", "text"], ["description", "Description", "Décris le produit…", "text"]].map(([key, label, ph, type]) => (
+            {[["title", "Nom du produit", "Ex: Parfum Hugo Boss", "text"], ["price", "Prix (FCFA)", "Ex: 18500", "number"], ["location", "Ville", "Ex: Cotonou", "text"], ["description", "Description", "Décris le produit…", "text"]].map(([key, label, ph, type]) => (
               <div key={key} style={{ marginBottom: "1rem" }}>
                 <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>{label}</label>
                 <input type={type} placeholder={ph} value={newProduct[key]} onChange={(e) => setNewProduct({ ...newProduct, [key]: e.target.value })} style={inp} />
