@@ -1040,7 +1040,7 @@ export default function FastBuy229() {
             </button>
             <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
               <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>Tu ne te souviens plus de tes infos ? </span>
-              <a href={`mailto:${SUPPORT_EMAIL}?subject=Aide%20mot%20de%20passe%20oubli%C3%A9&body=Bonjour%2C%20j'ai%20oubli%C3%A9%20mes%20informations%20de%20connexion%20sur%20FastBuy%20229.%20Pouvez-vous%20m'aider%20%3F`} style={{ fontSize: 12, color: "#00A86B", textDecoration: "none" }}>📧 Contacter l'aide</a>
+              <a href={`tel:+33775958442`} style={{ fontSize: 12, color: "#00A86B", textDecoration: "none" }}>📧 Email ou 📞 +33 775958442</a>
             </div>
             <button onClick={() => { setShowForgot(false); setShowAuth(true); setAuthMode("login"); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour à la connexion</button>
           </div>
