@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import emailjs from "@emailjs/browser";
 import { supabase } from "./supabase";
 
 const CATEGORIES = [
@@ -17,89 +16,17 @@ const CATEGORIES = [
 const STATUTS = ["Commande reçue", "En préparation", "En livraison", "Livré"];
 const PLAGES_LIVRAISON = ["1-3 jours", "3-7 jours", "1-2 semaines", "2-3 semaines", "Sur commande"];
 const genNumero = () => "CMD-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-const genCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 const SUPABASE_URL = "https://nuhpdqioggxznceqvpvx.supabase.co";
 const SUPPORT_EMAIL = "nahofalgbadamassi@gmail.com";
 const MOMO_NUMERO = "+229 57577895";
 const ADMIN_EMAIL = "nahofalgbadamassi@gmail.com";
+const ADMIN_PWD_DEFAULT = "Benin2025@!";
 
 const PAIEMENTS = [
   { id: "mtn", label: "MTN MoMo", icon: "💛" },
   { id: "moov", label: "Moov Money", icon: "🔵" },
   { id: "celtiis", label: "Celtiis", icon: "🟢" },
 ];
-
-const EMAILJS_SERVICE_ID = "service_7cfdoej";
-const EMAILJS_TEMPLATE_ID = "qi0vriw";
-const EMAILJS_PUBLIC_KEY = "oyw_7DuNRrV7R4MXT";
-
-const sendEmail = async (to, subject, html) => {
-  try {
-    await emailjs.send(
-      EMAILJS_SERVICE_ID,
-      EMAILJS_TEMPLATE_ID,
-      {
-        to_email: to,
-        subject: subject,
-        message: html,
-        name: "FastBuy 229",
-      },
-      EMAILJS_PUBLIC_KEY
-    );
-  } catch (e) { console.log("Email error:", e); }
-};
-
-const emailCodeConfirmation = (prenom, code) => `
-<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;padding:2rem;border-radius:16px;border:1px solid #e0e0e0;">
-  <h2 style="color:#00A86B;text-align:center;">FastBuy 229</h2>
-  <p>Bonjour ${prenom},</p>
-  <p>Votre code de confirmation est :</p>
-  <div style="background:#f5f5f5;border-radius:10px;padding:1.5rem;text-align:center;margin:1.5rem 0;">
-    <h1 style="color:#00A86B;font-size:2.5rem;letter-spacing:0.5rem;margin:0;">${code}</h1>
-  </div>
-  <p style="color:#666;">Ce code expire dans 10 minutes.</p>
-  <p style="color:#666;">Si vous n'avez pas fait cette demande, ignorez cet email.</p>
-  <hr style="border:none;border-top:1px solid #e0e0e0;margin:1.5rem 0;">
-  <p style="color:#999;font-size:12px;text-align:center;">FastBuy 229 — Marketplace Bénin<br>Contact : ${SUPPORT_EMAIL}</p>
-</div>`;
-
-const emailCommande = (cmd) => `
-<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;padding:2rem;border-radius:16px;border:1px solid #e0e0e0;">
-  <h2 style="color:#00A86B;text-align:center;">FastBuy 229</h2>
-  <p>Bonjour ${cmd.nom},</p>
-  <p>Votre commande a bien été reçue ! Voici le récapitulatif :</p>
-  <div style="background:#f5f5f5;border-radius:10px;padding:1rem;margin:1rem 0;text-align:center;">
-    <p style="margin:0;color:#666;">Numéro de commande</p>
-    <h2 style="color:#F5C842;margin:0.5rem 0;">${cmd.numero}</h2>
-  </div>
-  <div style="margin:1rem 0;">
-    ${cmd.articles?.map(a => `<div style="padding:8px 0;border-bottom:1px solid #e0e0e0;">${a.emoji || ""} ${a.title} × ${a.qty} — <strong>${(a.price*a.qty).toLocaleString()} FCFA</strong></div>`).join("")}
-    ${cmd.codePromo ? `<div style="padding:8px 0;color:#00A86B;">🎟️ Code promo appliqué : -${cmd.reduction?.toLocaleString()} FCFA</div>` : ""}
-    <div style="padding:1rem 0 0;font-size:1.1rem;"><strong>Total : ${cmd.totalFinal?.toLocaleString()} FCFA</strong></div>
-  </div>
-  <div style="background:#fff8e1;border:1px solid #F5C842;border-radius:10px;padding:1rem;margin:1rem 0;">
-    <p><strong>💰 Paiement :</strong> Envoyez <strong>${cmd.totalFinal?.toLocaleString()} FCFA</strong> au <strong>${MOMO_NUMERO}</strong></p>
-    <p><strong>Référence :</strong> ${cmd.numero}</p>
-  </div>
-  <p style="color:#666;">Livraison sous 3 jours à 2 semaines. Vous serez contacté au ${cmd.telephoneLivreur}.</p>
-  <hr style="border:none;border-top:1px solid #e0e0e0;margin:1.5rem 0;">
-  <p style="color:#999;font-size:12px;text-align:center;">FastBuy 229 — Contact : ${SUPPORT_EMAIL}</p>
-</div>`;
-
-const emailNotifAdmin = (cmd) => `
-<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;padding:2rem;border-radius:16px;border:1px solid #e0e0e0;">
-  <h2 style="color:#00A86B;">🔔 Nouvelle commande FastBuy 229</h2>
-  <p><strong>Numéro :</strong> ${cmd.numero}</p>
-  <p><strong>Client :</strong> ${cmd.nom}</p>
-  <p><strong>Email :</strong> ${cmd.email}</p>
-  <p><strong>Téléphone livreur :</strong> ${cmd.telephoneLivreur}</p>
-  <p><strong>Ville :</strong> ${cmd.ville}</p>
-  <p><strong>Adresse :</strong> ${cmd.adresse}</p>
-  <p><strong>Total :</strong> ${cmd.totalFinal?.toLocaleString()} FCFA</p>
-  <p><strong>Paiement :</strong> ${cmd.paiement}</p>
-  ${cmd.codePromo ? `<p><strong>Code promo :</strong> ${cmd.codePromo}</p>` : ""}
-  <p style="color:#F5A000;"><strong>⚠️ Vérifiez la capture de paiement dans votre espace admin.</strong></p>
-</div>`;
 
 export default function FastBuy229() {
   const [page, setPage] = useState("boutique");
@@ -117,10 +44,12 @@ export default function FastBuy229() {
   const [reductionPromo, setReductionPromo] = useState(0);
   const [produits, setProduits] = useState([]);
   const [commandes, setCommandes] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [numeroSuivi, setNumeroSuivi] = useState("");
   const [commandeTrouvee, setCommandeTrouvee] = useState(null);
   const [adminOk, setAdminOk] = useState(false);
   const [adminPwd, setAdminPwd] = useState("");
+  const [adminMotDePasse, setAdminMotDePasse] = useState(ADMIN_PWD_DEFAULT);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [newProduct, setNewProduct] = useState({ emoji: "🌸", title: "", description: "", price: "", etat: "Neuf", category: "Parfums", location: "", plage_livraison: "1-2 semaines" });
   const [imageFile, setImageFile] = useState(null);
@@ -129,23 +58,17 @@ export default function FastBuy229() {
   const [capturePreview, setCapturePreview] = useState(null);
   const [client, setClient] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState("register");
-  const [authStep, setAuthStep] = useState(1);
-  const [authForm, setAuthForm] = useState({ prenom: "", nom: "", email: "", telephone: "", code: "" });
-  const [authCodeReel, setAuthCodeReel] = useState("");
+  const [authMode, setAuthMode] = useState("login");
+  const [authForm, setAuthForm] = useState({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "" });
   const [authError, setAuthError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [produitNegocie, setProduitNegocie] = useState(null);
   const [messageTexte, setMessageTexte] = useState("");
-  const [messages, setMessages] = useState([]);
   const [mesCommandes, setMesCommandes] = useState([]);
   const [showMesCommandes, setShowMesCommandes] = useState(false);
-  const [adminMotDePasse, setAdminMotDePasse] = useState("Benin2025@!");
   const [showAdminForgot, setShowAdminForgot] = useState(false);
   const [adminForgotStep, setAdminForgotStep] = useState(1);
-  const [adminForgotCode, setAdminForgotCode] = useState("");
-  const [adminForgotCodeSaisi, setAdminForgotCodeSaisi] = useState("");
   const [adminForgotAncienPwd, setAdminForgotAncienPwd] = useState("");
   const [adminForgotNouveauPwd, setAdminForgotNouveauPwd] = useState("");
   const [adminForgotConfirmPwd, setAdminForgotConfirmPwd] = useState("");
@@ -178,32 +101,22 @@ export default function FastBuy229() {
   };
   const getImageUrl = (p) => p ? `${SUPABASE_URL}/storage/v1/object/public/produits/${p}` : null;
 
-  // ── INSCRIPTION — Étape 1 : envoyer code ──
-  const inscriptionEnvoyerCode = async () => {
+  // ── INSCRIPTION ──
+  const inscrire = async () => {
     setAuthError("");
-    if (!authForm.prenom || !authForm.nom || !authForm.email || !authForm.telephone) {
+    if (!authForm.prenom || !authForm.nom || !authForm.email || !authForm.telephone || !authForm.motdepasse || !authForm.confirmpwd) {
       setAuthError("Remplis tous les champs !"); return;
     }
     if (!authForm.email.includes("@")) { setAuthError("Email invalide !"); return; }
+    if (authForm.motdepasse.length < 6) { setAuthError("Mot de passe trop court (6 min) !"); return; }
+    if (authForm.motdepasse !== authForm.confirmpwd) { setAuthError("Les mots de passe ne correspondent pas !"); return; }
     setLoading(true);
     const { data: existing } = await supabase.from("users").select("id").eq("telephone", authForm.email).single();
     if (existing) { setAuthError("Cet email est déjà utilisé !"); setLoading(false); return; }
-    const code = genCode();
-    setAuthCodeReel(code);
-    await sendEmail(authForm.email, "Votre code de confirmation — FastBuy 229", emailCodeConfirmation(authForm.prenom, code));
-    setAuthStep(2);
-    setLoading(false);
-  };
-
-  // ── INSCRIPTION — Étape 2 : valider code ──
-  const inscriptionValiderCode = async () => {
-    setAuthError("");
-    if (authForm.code !== authCodeReel) { setAuthError("Code incorrect ! Vérifiez votre email."); return; }
-    setLoading(true);
     const { data, error } = await supabase.from("users").insert([{
       nom: `${authForm.prenom} ${authForm.nom}`,
       telephone: authForm.email,
-      mot_de_passe: authCodeReel,
+      mot_de_passe: authForm.motdepasse,
       ville: "",
     }]).select().single();
     if (error) { setAuthError("Erreur ! Réessaie."); setLoading(false); return; }
@@ -211,38 +124,26 @@ export default function FastBuy229() {
     setClient(clientData);
     localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
     setShowAuth(false);
-    setAuthStep(1);
-    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", code: "" });
+    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "" });
     setLoading(false);
   };
 
-  // ── CONNEXION — Étape 1 : envoyer code ──
-  const connexionEnvoyerCode = async () => {
+  // ── CONNEXION ──
+  const connecter = async () => {
     setAuthError("");
-    if (!authForm.email) { setAuthError("Entre ton email !"); return; }
+    if ((!authForm.email && !authForm.telephone) || !authForm.motdepasse) {
+      setAuthError("Remplis tous les champs !"); return;
+    }
     setLoading(true);
-    const { data } = await supabase.from("users").select("*").eq("telephone", authForm.email).single();
-    if (!data) { setAuthError("Aucun compte avec cet email !"); setLoading(false); return; }
-    const code = genCode();
-    setAuthCodeReel(code);
-    await sendEmail(authForm.email, "Votre code de connexion — FastBuy 229", emailCodeConfirmation(data.nom.split(" ")[0], code));
-    setAuthStep(2);
-    setLoading(false);
-  };
-
-  // ── CONNEXION — Étape 2 : valider code ──
-  const connexionValiderCode = async () => {
-    setAuthError("");
-    if (authForm.code !== authCodeReel) { setAuthError("Code incorrect ! Vérifiez votre email."); return; }
-    setLoading(true);
-    const { data } = await supabase.from("users").select("*").eq("telephone", authForm.email).single();
-    const { data: cmdData } = await supabase.from("commandes").select("id").eq("email", authForm.email).limit(1);
-    const clientData = { id: data.id, nom: data.nom, email: authForm.email, telephone: data.telephone, prenom: data.nom.split(" ")[0], premiereCommande: !cmdData || cmdData.length === 0 };
+    const contact = authForm.email || authForm.telephone;
+    const { data, error } = await supabase.from("users").select("*").eq("telephone", contact).eq("mot_de_passe", authForm.motdepasse).single();
+    if (error || !data) { setAuthError("Email/téléphone ou mot de passe incorrect !"); setLoading(false); return; }
+    const { data: cmdData } = await supabase.from("commandes").select("id").eq("email", contact).limit(1);
+    const clientData = { id: data.id, nom: data.nom, email: contact, telephone: data.telephone, prenom: data.nom.split(" ")[0], premiereCommande: !cmdData || cmdData.length === 0 };
     setClient(clientData);
     localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
     setShowAuth(false);
-    setAuthStep(1);
-    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", code: "" });
+    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "" });
     setLoading(false);
   };
 
@@ -264,7 +165,7 @@ export default function FastBuy229() {
 
   // ── PANIER ──
   const ajouterAuPanier = (product) => {
-    if (!client) { setShowAuth(true); setAuthMode("register"); setAuthStep(1); return; }
+    if (!client) { setShowAuth(true); setAuthMode("register"); return; }
     setPanier((prev) => {
       const existe = prev.find((p) => p.id === product.id);
       if (existe) return prev.map((p) => p.id === product.id ? { ...p, qty: p.qty + 1 } : p);
@@ -289,8 +190,6 @@ export default function FastBuy229() {
     const cmdData = { numero, nom: form.nom, email: form.email, telephone: form.telephoneLivreur, telephoneLivreur: form.telephoneLivreur, ville: form.ville, adresse: form.adresse, articles: panier, total, totalFinal, reduction: reductionPromo, codePromo: codePromoValide ? codePromoSaisi : null, statut: "Commande reçue", paiement: paiementChoisi, user_id: client?.id, capture: capturePath };
     const { data, error } = await supabase.from("commandes").insert([cmdData]).select().single();
     if (error) { alert("Erreur ! Réessaie."); setLoading(false); return; }
-    await sendEmail(form.email, `Commande ${numero} confirmée — FastBuy 229`, emailCommande({ ...cmdData, articles: panier }));
-    await sendEmail(ADMIN_EMAIL, `🔔 Nouvelle commande ${numero}`, emailNotifAdmin(cmdData));
     if (codePromoValide) {
       const updatedClient = { ...client, premiereCommande: false };
       setClient(updatedClient);
@@ -305,19 +204,7 @@ export default function FastBuy229() {
   };
 
   const changerStatut = async (id, statut) => {
-    const cmd = commandes.find(c => c.id === id);
     await supabase.from("commandes").update({ statut }).eq("id", id);
-    if (cmd?.email) {
-      await sendEmail(cmd.email, `Mise à jour commande ${cmd.numero} — FastBuy 229`, `
-        <div style="font-family:Arial;max-width:600px;margin:0 auto;padding:2rem;border:1px solid #e0e0e0;border-radius:16px;">
-          <h2 style="color:#00A86B;">Mise à jour de votre commande</h2>
-          <p>Bonjour,</p>
-          <p>Votre commande <strong>${cmd.numero}</strong> a été mise à jour.</p>
-          <p>Nouveau statut : <strong style="color:#00A86B;">${statut}</strong></p>
-          <p style="color:#666;">Contact : <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
-        </div>
-      `);
-    }
     chargerCommandes();
   };
 
@@ -333,18 +220,8 @@ export default function FastBuy229() {
     alert("Message envoyé ! On te répond bientôt 😊");
   };
 
-  const repondreMessage = async (id, reponse, clientEmail) => {
+  const repondreMessage = async (id, reponse) => {
     await supabase.from("messages").update({ reponse }).eq("id", id);
-    if (clientEmail?.includes("@")) {
-      await sendEmail(clientEmail, "Réponse à votre message — FastBuy 229", `
-        <div style="font-family:Arial;max-width:600px;margin:0 auto;padding:2rem;border:1px solid #e0e0e0;border-radius:16px;">
-          <h2 style="color:#00A86B;">Réponse de FastBuy 229</h2>
-          <p>Bonjour,</p>
-          <div style="background:#f5f5f5;padding:1rem;border-radius:8px;margin:1rem 0;">${reponse}</div>
-          <p style="color:#666;">Contact : <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
-        </div>
-      `);
-    }
     chargerMessages();
   };
 
@@ -369,24 +246,16 @@ export default function FastBuy229() {
 
   const supprimerProduit = async (id) => { if (!confirm("Supprimer ?")) return; await supabase.from("produits").delete().eq("id", id); chargerProduits(); };
 
-  const adminForgotEnvoyerCode = async () => {
-    setAdminForgotError(""); setLoading(true);
-    const code = genCode();
-    setAdminForgotCode(code);
-    await sendEmail(ADMIN_EMAIL, "Votre code admin — FastBuy 229", emailCodeConfirmation("Admin", code));
-    setAdminForgotStep(2); setLoading(false);
-  };
-
-  const adminForgotChangerPwd = () => {
+  const adminChangerPwd = () => {
     setAdminForgotError("");
-    if (adminForgotCodeSaisi !== adminForgotCode) { setAdminForgotError("Code incorrect !"); return; }
+    if (!adminForgotAncienPwd || !adminForgotNouveauPwd || !adminForgotConfirmPwd) { setAdminForgotError("Remplis tous les champs !"); return; }
     if (adminForgotAncienPwd !== adminMotDePasse) { setAdminForgotError("Ancien mot de passe incorrect !"); return; }
     if (adminForgotNouveauPwd.length < 6) { setAdminForgotError("Mot de passe trop court !"); return; }
     if (adminForgotNouveauPwd !== adminForgotConfirmPwd) { setAdminForgotError("Les mots de passe ne correspondent pas !"); return; }
     setAdminMotDePasse(adminForgotNouveauPwd);
     localStorage.setItem("fastbuy_admin_pwd", adminForgotNouveauPwd);
-    setShowAdminForgot(false); setAdminForgotStep(1);
-    setAdminForgotAncienPwd(""); setAdminForgotNouveauPwd(""); setAdminForgotConfirmPwd(""); setAdminForgotCodeSaisi("");
+    setShowAdminForgot(false);
+    setAdminForgotAncienPwd(""); setAdminForgotNouveauPwd(""); setAdminForgotConfirmPwd("");
     alert("Mot de passe admin modifié ! 🎉");
   };
 
@@ -451,7 +320,7 @@ export default function FastBuy229() {
               <button onClick={deconnecter} style={{ padding: "8px 12px", borderRadius: 9, fontSize: 12, background: "none", border: "1px solid rgba(255,80,80,0.3)", color: "rgba(255,100,100,0.7)", cursor: "pointer" }}>×</button>
             </div>
           ) : (
-            <button onClick={() => { setShowAuth(true); setAuthMode("login"); setAuthStep(1); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>
+            <button onClick={() => { setShowAuth(true); setAuthMode("login"); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>
               👤 Se connecter
             </button>
           )}
@@ -542,13 +411,13 @@ export default function FastBuy229() {
           <h2 style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, marginBottom: "2rem" }}>❓ Centre d'aide</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: "2.5rem" }}>
             {[
-              ["📦", "Comment suivre ma commande ?", "Rendez-vous dans l'onglet 'Suivi' puis entrez votre numéro de commande (ex : CMD-AB12CD). Votre numéro vous est envoyé par email après confirmation."],
-              ["💳", "Quels sont les moyens de paiement ?", `Paiement via MTN MoMo, Moov Money ou Celtiis. Envoyez le montant exact au ${MOMO_NUMERO} avec votre numéro de commande comme référence, puis uploadez la capture d'écran.`],
+              ["📦", "Comment suivre ma commande ?", "Rendez-vous dans 'Suivi' et entrez votre numéro de commande (ex : CMD-AB12CD)."],
+              ["💳", "Quels sont les moyens de paiement ?", `MTN MoMo, Moov Money ou Celtiis. Envoyez le montant au ${MOMO_NUMERO} avec votre numéro de commande, puis uploadez la capture d'écran.`],
               ["🚚", "Délais de livraison ?", "Entre 3 jours et 2 semaines selon votre ville et le produit."],
               ["⏰", "Livraison en retard ?", "Si votre commande dépasse le délai, vous recevrez 10% remboursés sur votre Mobile Money."],
               ["🔄", "Retour produit ?", "Contactez-nous par email dans les 48h après réception."],
               ["💬", "Négocier un prix ?", "Cliquez sur 💬 directement sur le produit pour nous envoyer votre offre."],
-              ["🎟️", "Code promo ?", "Entrez votre prénom + 10 (ex: marc10) dans la case code promo. Valable sur votre 1ère commande uniquement !"],
+              ["🎟️", "Code promo ?", "Entrez votre prénom + 10 (ex: marc10). Valable sur votre 1ère commande uniquement !"],
             ].map(([icon, q, a]) => (
               <div key={q} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "1.2rem 1.5rem" }}>
                 <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{icon} {q}</div>
@@ -611,7 +480,7 @@ export default function FastBuy229() {
           <h2 style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, marginBottom: "1.5rem" }}>Espace Admin — FastBuy 229</h2>
           {!showAdminForgot ? (
             <>
-              <input type="password" value={adminPwd} onChange={(e) => setAdminPwd(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (adminPwd === adminMotDePasse ? (setAdminOk(true), chargerCommandes(), chargerMessages()) : alert("Accès refusé !"))} placeholder="••••••••" style={{ ...inp, marginBottom: 12, textAlign: "center", letterSpacing: "0.2em" }} />
+              <input type="password" value={adminPwd} onChange={(e) => setAdminPwd(e.target.value)} placeholder="••••••••" style={{ ...inp, marginBottom: 12, textAlign: "center", letterSpacing: "0.2em" }} />
               <button onClick={() => { if (adminPwd === adminMotDePasse) { setAdminOk(true); chargerCommandes(); chargerMessages(); } else alert("Accès refusé !"); }} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: 12 }}>Accéder</button>
               <button onClick={() => setShowAdminForgot(true)} style={{ background: "none", border: "none", color: "#00A86B", fontSize: 13, cursor: "pointer", fontFamily: "DM Sans" }}>🔑 Modifier mon mot de passe</button>
             </>
@@ -619,25 +488,14 @@ export default function FastBuy229() {
             <div style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "1.5rem", textAlign: "left" }}>
               <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1.2rem", textAlign: "center" }}>🔑 Modifier le mot de passe</h3>
               {adminForgotError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{adminForgotError}</div>}
-              {adminForgotStep === 1 && (
-                <>
-                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>Un code sera envoyé à : <strong style={{ color: "#00A86B" }}>{ADMIN_EMAIL}</strong></p>
-                  <button onClick={adminForgotEnvoyerCode} disabled={loading} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>{loading ? "Envoi…" : "📧 Recevoir le code"}</button>
-                </>
-              )}
-              {adminForgotStep === 2 && (
-                <>
-                  <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1rem" }}>✅ Code envoyé à {ADMIN_EMAIL}</div>
-                  {[["Code reçu", adminForgotCodeSaisi, setAdminForgotCodeSaisi, "123456", false], ["Ancien mot de passe", adminForgotAncienPwd, setAdminForgotAncienPwd, "••••••••", true], ["Nouveau mot de passe", adminForgotNouveauPwd, setAdminForgotNouveauPwd, "••••••••", true], ["Confirmer nouveau mot de passe", adminForgotConfirmPwd, setAdminForgotConfirmPwd, "••••••••", true]].map(([label, val, setter, ph, isPwd]) => (
-                    <div key={label} style={{ marginBottom: "0.8rem" }}>
-                      <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>{label}</label>
-                      <input type={isPwd ? "password" : "text"} placeholder={ph} value={val} onChange={(e) => setter(e.target.value)} style={{ ...inp, ...(label === "Code reçu" ? { textAlign: "center", fontSize: "1.3rem", letterSpacing: "0.3em" } : {}) }} maxLength={label === "Code reçu" ? 6 : undefined} />
-                    </div>
-                  ))}
-                  <button onClick={adminForgotChangerPwd} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginTop: 4 }}>✅ Valider</button>
-                </>
-              )}
-              <button onClick={() => { setShowAdminForgot(false); setAdminForgotStep(1); setAdminForgotError(""); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour</button>
+              {[["Ancien mot de passe", adminForgotAncienPwd, setAdminForgotAncienPwd], ["Nouveau mot de passe", adminForgotNouveauPwd, setAdminForgotNouveauPwd], ["Confirmer nouveau mot de passe", adminForgotConfirmPwd, setAdminForgotConfirmPwd]].map(([label, val, setter]) => (
+                <div key={label} style={{ marginBottom: "0.8rem" }}>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>{label}</label>
+                  <input type="password" placeholder="••••••••" value={val} onChange={(e) => setter(e.target.value)} style={inp} />
+                </div>
+              ))}
+              <button onClick={adminChangerPwd} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginTop: 8 }}>✅ Valider</button>
+              <button onClick={() => { setShowAdminForgot(false); setAdminForgotError(""); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour</button>
             </div>
           )}
         </div>
@@ -691,7 +549,7 @@ export default function FastBuy229() {
                   ) : (
                     <div style={{ display: "flex", gap: 8 }}>
                       <input type="text" placeholder="Ta réponse…" id={`rep-${msg.id}`} style={{ ...inp, flex: 1 }} />
-                      <button onClick={() => { const val = document.getElementById(`rep-${msg.id}`).value; if (val) repondreMessage(msg.id, val, msg.telephone); }} className="bg" style={{ padding: "10px 16px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, cursor: "pointer", fontFamily: "DM Sans" }}>Répondre</button>
+                      <button onClick={() => { const val = document.getElementById(`rep-${msg.id}`).value; if (val) repondreMessage(msg.id, val); }} className="bg" style={{ padding: "10px 16px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, cursor: "pointer", fontFamily: "DM Sans" }}>Répondre</button>
                     </div>
                   )}
                 </div>
@@ -743,13 +601,11 @@ export default function FastBuy229() {
               <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>
                 {authMode === "register" ? "✨ Créer un compte" : "👤 Se connecter"}
               </h2>
-              <span onClick={() => { setShowAuth(false); setAuthStep(1); setAuthError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
+              <span onClick={() => { setShowAuth(false); setAuthError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
             </div>
-
             {authError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{authError}</div>}
 
-            {/* INSCRIPTION ÉTAPE 1 */}
-            {authMode === "register" && authStep === 1 && (
+            {authMode === "register" && (
               <>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: "1rem" }}>
                   <div>
@@ -769,65 +625,46 @@ export default function FastBuy229() {
                   <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📱 Téléphone</label>
                   <input type="tel" placeholder="+229 97 00 00 00" value={authForm.telephone} onChange={(e) => setAuthForm({ ...authForm, telephone: e.target.value })} style={inp} />
                 </div>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Mot de passe</label>
+                  <input type="password" placeholder="••••••••" value={authForm.motdepasse} onChange={(e) => setAuthForm({ ...authForm, motdepasse: e.target.value })} style={inp} />
+                </div>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Confirmer le mot de passe</label>
+                  <input type="password" placeholder="••••••••" value={authForm.confirmpwd} onChange={(e) => setAuthForm({ ...authForm, confirmpwd: e.target.value })} style={inp} />
+                </div>
                 {authForm.prenom && (
                   <div style={{ background: "rgba(245,200,66,0.08)", border: "1px solid rgba(245,200,66,0.2)", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>
                     🎟️ Ton code promo : <strong style={{ color: "#F5C842" }}>{authForm.prenom.toLowerCase()}10</strong> — 10% sur ta 1ère commande !
                   </div>
                 )}
-                <button onClick={inscriptionEnvoyerCode} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
-                  {loading ? "Envoi du code…" : "📧 Recevoir mon code de confirmation"}
+                <button onClick={inscrire} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
+                  {loading ? "Création…" : "✅ Créer mon compte"}
                 </button>
               </>
             )}
 
-            {/* INSCRIPTION ÉTAPE 2 */}
-            {authMode === "register" && authStep === 2 && (
+            {authMode === "login" && (
               <>
-                <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>
-                  ✅ Code envoyé à <strong>{authForm.email}</strong> — Vérifiez vos spams si besoin.
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Email ou 📱 Téléphone</label>
+                  <input type="text" placeholder="exemple@gmail.com ou +229 97..." value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} style={inp} />
                 </div>
-                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Saisissez le code reçu par mail</label>
-                <input type="text" placeholder="_ _ _ _ _ _" value={authForm.code} onChange={(e) => setAuthForm({ ...authForm, code: e.target.value })} style={{ ...inp, textAlign: "center", fontSize: "2rem", letterSpacing: "0.5em", marginBottom: 16 }} maxLength={6} />
-                <button onClick={inscriptionValiderCode} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "0.8rem" }}>
-                  {loading ? "Vérification…" : "✅ Confirmer et créer mon compte"}
-                </button>
-                <button onClick={() => { setAuthStep(1); setAuthError(""); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans" }}>← Retour</button>
-              </>
-            )}
-
-            {/* CONNEXION ÉTAPE 1 */}
-            {authMode === "login" && authStep === 1 && (
-              <>
                 <div style={{ marginBottom: "1.5rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Votre email</label>
-                  <input type="email" placeholder="exemple@gmail.com" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} style={inp} />
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Mot de passe</label>
+                  <input type="password" placeholder="••••••••" value={authForm.motdepasse} onChange={(e) => setAuthForm({ ...authForm, motdepasse: e.target.value })} style={inp} />
                 </div>
-                <button onClick={connexionEnvoyerCode} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
-                  {loading ? "Envoi…" : "📧 Recevoir le code de confirmation sur votre mail"}
+                <button onClick={connecter} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
+                  {loading ? "Connexion…" : "✅ Se connecter"}
                 </button>
               </>
             )}
 
-            {/* CONNEXION ÉTAPE 2 */}
-            {authMode === "login" && authStep === 2 && (
-              <>
-                <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>
-                  ✅ Code envoyé à <strong>{authForm.email}</strong> — Vérifiez vos spams si besoin.
-                </div>
-                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Saisissez le code reçu par mail</label>
-                <input type="text" placeholder="_ _ _ _ _ _" value={authForm.code} onChange={(e) => setAuthForm({ ...authForm, code: e.target.value })} style={{ ...inp, textAlign: "center", fontSize: "2rem", letterSpacing: "0.5em", marginBottom: 16 }} maxLength={6} />
-                <button onClick={connexionValiderCode} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "0.8rem" }}>
-                  {loading ? "Connexion…" : "✅ Me connecter"}
-                </button>
-                <button onClick={() => { setAuthStep(1); setAuthError(""); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans" }}>← Retour</button>
-              </>
-            )}
-
-            <div style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: "1rem" }}>
+            <div style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
               {authMode === "register" ? (
-                <span>Déjà un compte ? <span onClick={() => { setAuthMode("login"); setAuthStep(1); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>Se connecter</span></span>
+                <span>Déjà un compte ? <span onClick={() => { setAuthMode("login"); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>Se connecter</span></span>
               ) : (
-                <span>Pas de compte ? <span onClick={() => { setAuthMode("register"); setAuthStep(1); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>S'inscrire gratuitement</span></span>
+                <span>Pas de compte ? <span onClick={() => { setAuthMode("register"); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>S'inscrire gratuitement</span></span>
               )}
             </div>
           </div>
@@ -1000,7 +837,6 @@ export default function FastBuy229() {
             <div style={{ background: "#1C2035", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem" }}>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Numéro de commande</div>
               <div style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, color: "#F5C842", letterSpacing: "0.05em" }}>{commandeOk.numero}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>📧 Confirmation envoyée par email</div>
             </div>
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 1.7, marginBottom: "2rem" }}>
               Nous vérifions votre paiement et confirmons rapidement. Livraison sous <strong style={{ color: "#fff" }}>3 jours à 2 semaines</strong>.
