@@ -59,7 +59,7 @@ export default function FastBuy229() {
   const [client, setClient] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState("login");
-  const [authForm, setAuthForm] = useState({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "" });
+  const [authForm, setAuthForm] = useState({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "", dateNaissance: "" });
   const [authError, setAuthError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
@@ -68,6 +68,10 @@ export default function FastBuy229() {
   const [mesCommandes, setMesCommandes] = useState([]);
   const [showMesCommandes, setShowMesCommandes] = useState(false);
   const [showAdminForgot, setShowAdminForgot] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotForm, setForgotForm] = useState({ email: "", telephone: "", dateNaissance: "", nouveauPwd: "", confirmPwd: "" });
+  const [forgotError, setForgotError] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
   const [adminForgotStep, setAdminForgotStep] = useState(1);
   const [adminForgotAncienPwd, setAdminForgotAncienPwd] = useState("");
   const [adminForgotNouveauPwd, setAdminForgotNouveauPwd] = useState("");
@@ -117,6 +121,7 @@ export default function FastBuy229() {
       nom: `${authForm.prenom} ${authForm.nom}`,
       telephone: authForm.email,
       mot_de_passe: authForm.motdepasse,
+      date_naissance: authForm.dateNaissance,
       ville: "",
     }]).select().single();
     if (error) { setAuthError("Erreur ! Réessaie."); setLoading(false); return; }
@@ -124,7 +129,7 @@ export default function FastBuy229() {
     setClient(clientData);
     localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
     setShowAuth(false);
-    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "" });
+    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "", dateNaissance: "" });
     setLoading(false);
   };
 
@@ -143,11 +148,38 @@ export default function FastBuy229() {
     setClient(clientData);
     localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
     setShowAuth(false);
-    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "" });
+    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "", dateNaissance: "" });
     setLoading(false);
   };
 
   const deconnecter = () => { setClient(null); localStorage.removeItem("fastbuy_client"); };
+
+  // ── MOT DE PASSE OUBLIÉ ──
+  const reinitialiserPwd = async () => {
+    setForgotError("");
+    if (!forgotForm.email || !forgotForm.telephone || !forgotForm.dateNaissance || !forgotForm.nouveauPwd || !forgotForm.confirmPwd) {
+      setForgotError("Remplis tous les champs !"); return;
+    }
+    if (forgotForm.nouveauPwd.length < 6) { setForgotError("Mot de passe trop court (6 min) !"); return; }
+    if (forgotForm.nouveauPwd !== forgotForm.confirmPwd) { setForgotError("Les mots de passe ne correspondent pas !"); return; }
+    setForgotLoading(true);
+    const { data } = await supabase.from("users").select("*").eq("telephone", forgotForm.email).single();
+    if (!data) { setForgotError("Aucun compte trouvé avec cet email !"); setForgotLoading(false); return; }
+    if (data.telephone !== forgotForm.telephone && data.date_naissance !== forgotForm.dateNaissance) {
+      setForgotError("Informations incorrectes !"); setForgotLoading(false); return;
+    }
+    // Vérifier au moins un: téléphone OU date de naissance
+    const telOk = data.telephone === forgotForm.telephone || forgotForm.telephone === forgotForm.email;
+    const dateOk = data.date_naissance === forgotForm.dateNaissance;
+    if (!dateOk) { setForgotError("Date de naissance incorrecte !"); setForgotLoading(false); return; }
+    await supabase.from("users").update({ mot_de_passe: forgotForm.nouveauPwd }).eq("id", data.id);
+    setShowForgot(false);
+    setForgotForm({ email: "", telephone: "", dateNaissance: "", nouveauPwd: "", confirmPwd: "" });
+    setForgotLoading(false);
+    alert("Mot de passe modifié avec succès ! 🎉 Connectez-vous maintenant.");
+    setShowAuth(true);
+    setAuthMode("login");
+  };
 
   // ── CODE PROMO ──
   const verifierCodePromo = () => {
@@ -320,9 +352,14 @@ export default function FastBuy229() {
               <button onClick={deconnecter} style={{ padding: "8px 12px", borderRadius: 9, fontSize: 12, background: "none", border: "1px solid rgba(255,80,80,0.3)", color: "rgba(255,100,100,0.7)", cursor: "pointer" }}>×</button>
             </div>
           ) : (
-            <button onClick={() => { setShowAuth(true); setAuthMode("login"); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>
-              👤 Se connecter
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => { setShowAuth(true); setAuthMode("login"); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>
+                👤 Se connecter
+              </button>
+              <button onClick={() => { setShowAuth(true); setAuthMode("register"); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "#00A86B", border: "none", color: "#fff", cursor: "pointer", fontFamily: "DM Sans", fontWeight: 500 }}>
+                ✨ S'inscrire
+              </button>
+            </div>
           )}
         </div>
       </nav>
@@ -626,6 +663,10 @@ export default function FastBuy229() {
                   <input type="tel" placeholder="+229 97 00 00 00" value={authForm.telephone} onChange={(e) => setAuthForm({ ...authForm, telephone: e.target.value })} style={inp} />
                 </div>
                 <div style={{ marginBottom: "1rem" }}>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📅 Date de naissance</label>
+                  <input type="date" value={authForm.dateNaissance} onChange={(e) => setAuthForm({ ...authForm, dateNaissance: e.target.value })} style={inp} />
+                </div>
+                <div style={{ marginBottom: "1rem" }}>
                   <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Mot de passe</label>
                   <input type="password" placeholder="••••••••" value={authForm.motdepasse} onChange={(e) => setAuthForm({ ...authForm, motdepasse: e.target.value })} style={inp} />
                 </div>
@@ -653,6 +694,9 @@ export default function FastBuy229() {
                 <div style={{ marginBottom: "1.5rem" }}>
                   <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Mot de passe</label>
                   <input type="password" placeholder="••••••••" value={authForm.motdepasse} onChange={(e) => setAuthForm({ ...authForm, motdepasse: e.target.value })} style={inp} />
+                </div>
+                <div style={{ textAlign: "right", marginBottom: "1rem" }}>
+                  <span onClick={() => { setShowAuth(false); setShowForgot(true); setForgotError(""); }} style={{ fontSize: 12, color: "#00A86B", cursor: "pointer" }}>Mot de passe oublié ?</span>
                 </div>
                 <button onClick={connecter} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
                   {loading ? "Connexion…" : "✅ Se connecter"}
@@ -897,6 +941,45 @@ export default function FastBuy229() {
           </div>
         </div>
       )}
+
+      {/* MOT DE PASSE OUBLIÉ */}
+      {showForgot && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 440, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>🔑 Mot de passe oublié</h2>
+              <span onClick={() => { setShowForgot(false); setForgotError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
+            </div>
+            {forgotError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{forgotError}</div>}
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1.5rem" }}>Pour réinitialiser ton mot de passe, remplis les informations de ton compte.</p>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Email du compte</label>
+              <input type="email" placeholder="exemple@gmail.com" value={forgotForm.email} onChange={(e) => setForgotForm({ ...forgotForm, email: e.target.value })} style={inp} />
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📱 Numéro de téléphone</label>
+              <input type="tel" placeholder="+229 97 00 00 00" value={forgotForm.telephone} onChange={(e) => setForgotForm({ ...forgotForm, telephone: e.target.value })} style={inp} />
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📅 Date de naissance</label>
+              <input type="date" value={forgotForm.dateNaissance} onChange={(e) => setForgotForm({ ...forgotForm, dateNaissance: e.target.value })} style={inp} />
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Nouveau mot de passe</label>
+              <input type="password" placeholder="••••••••" value={forgotForm.nouveauPwd} onChange={(e) => setForgotForm({ ...forgotForm, nouveauPwd: e.target.value })} style={inp} />
+            </div>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Confirmer le nouveau mot de passe</label>
+              <input type="password" placeholder="••••••••" value={forgotForm.confirmPwd} onChange={(e) => setForgotForm({ ...forgotForm, confirmPwd: e.target.value })} style={inp} />
+            </div>
+            <button onClick={reinitialiserPwd} disabled={forgotLoading} className="bg" style={{ width: "100%", padding: "13px 0", background: forgotLoading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: forgotLoading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
+              {forgotLoading ? "Vérification…" : "✅ Réinitialiser mon mot de passe"}
+            </button>
+            <button onClick={() => { setShowForgot(false); setShowAuth(true); setAuthMode("login"); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans" }}>← Retour à la connexion</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
