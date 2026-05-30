@@ -1038,9 +1038,12 @@ export default function FastBuy229() {
             <button onClick={reinitialiserPwd} disabled={forgotLoading} className="bg" style={{ width: "100%", padding: "13px 0", background: forgotLoading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: forgotLoading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
               {forgotLoading ? "Vérification…" : "✅ Réinitialiser mon mot de passe"}
             </button>
-            <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>Tu ne te souviens plus de tes infos ? </span>
-              <a href={`tel:+33775958442`} style={{ fontSize: 12, color: "#00A86B", textDecoration: "none" }}>📧 Email ou 📞 +33 775958442</a>
+            <div style={{ textAlign: "center", marginTop: "1rem" }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 10 }}>Tu ne te souviens plus de tes infos ?</div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                <a href="https://wa.me/33775958442?text=Bonjour%2C%20j%27ai%20oubli%C3%A9%20mes%20informations%20de%20connexion%20FastBuy%20229" target="_blank" rel="noreferrer" style={{ padding: "9px 16px", background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.3)", color: "#25D366", borderRadius: 9, fontSize: 12, textDecoration: "none", fontWeight: 500 }}>💬 WhatsApp</a>
+                <a href="mailto:nahofalgbadamassi@gmail.com?subject=Aide%20mot%20de%20passe%20FastBuy%20229&body=Bonjour%2C%20j%27ai%20oubli%C3%A9%20mes%20informations%20de%20connexion" style={{ padding: "9px 16px", background: "rgba(0,168,107,0.15)", border: "1px solid rgba(0,168,107,0.3)", color: "#00A86B", borderRadius: 9, fontSize: 12, textDecoration: "none", fontWeight: 500 }}>📧 Email</a>
+              </div>
             </div>
             <button onClick={() => { setShowForgot(false); setShowAuth(true); setAuthMode("login"); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour à la connexion</button>
           </div>
