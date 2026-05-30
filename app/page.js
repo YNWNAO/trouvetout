@@ -94,7 +94,7 @@ export default function FastBuy229() {
     if (savedClient) setClient(JSON.parse(savedClient));
     const savedPanier = localStorage.getItem("fastbuy_panier");
     if (savedPanier) setPanier(JSON.parse(savedPanier));
-    if (typeof window !== "undefined" && window.location.pathname === "/admin") setPage("admin");
+    if (typeof window !== "undefined" && window.location.pathname === "/admin" || window.location.search.includes("page=admin") || window.location.search.includes("page=admin")) setPage("admin");
     chargerProduits();
   }, []);
 
