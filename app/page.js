@@ -2,1294 +2,1035 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 
-const CATEGORIES = [
-  { icon: "🌸", name: "Parfums" },
-  { icon: "👗", name: "Vêtements" },
-  { icon: "👟", name: "Chaussures" },
-  { icon: "📱", name: "Téléphones" },
-  { icon: "🪢", name: "Ceintures" },
-  { icon: "👜", name: "Sacs" },
-  { icon: "💍", name: "Bijoux" },
-  { icon: "💻", name: "Ordinateurs" },
-];
-
-const STATUTS = ["Commande reçue", "En préparation", "En livraison", "Livré"];
-const PLAGES_LIVRAISON = ["1-3 jours", "3-7 jours", "1-2 semaines", "2-3 semaines", "Sur commande"];
-const genNumero = () => "CMD-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-const SUPABASE_URL = "https://nuhpdqioggxznceqvpvx.supabase.co";
+const CATEGORIES = ["Tous", "Vêtements", "Chaussures", "Parfums", "Téléphones", "Sacs", "Bijoux", "Ordinateurs", "Accessoires"];
+const ADMIN_PWD = "N-beat3140";
 const SUPPORT_EMAIL = "nahofalgbadamassi@gmail.com";
-const MOMO_NUMERO = "+229 57577895";
-const ADMIN_EMAIL = "nahofalgbadamassi@gmail.com";
-const ADMIN_PWD_DEFAULT = "Benin2025@!";
+const SUPPORT_WA = "33775958442";
+const MOMO = "+229 57577895";
 
-const PAIEMENTS = [
-  { id: "mtn", label: "MTN MoMo", icon: "💛" },
-  { id: "moov", label: "Moov Money", icon: "🔵" },
-  { id: "celtiis", label: "Celtiis", icon: "🟢" },
-];
+const globalStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #f8f9fa; color: #1a1a2e; }
+  .btn-primary { background: #2563eb; color: #fff; border: none; border-radius: 10px; padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+  .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+  .btn-secondary { background: #fff; color: #2563eb; border: 1.5px solid #2563eb; border-radius: 10px; padding: 11px 24px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+  .btn-secondary:hover { background: #eff6ff; }
+  .card { background: #fff; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); overflow: hidden; transition: all 0.25s; }
+  .card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.12); transform: translateY(-3px); }
+  input, select, textarea { width: 100%; padding: 12px 14px; border: 1.5px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-family: 'Inter', sans-serif; background: #fff; color: #1a1a2e; outline: none; transition: border 0.2s; }
+  input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+  .tag { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1.5px solid transparent; transition: all 0.2s; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+  .modal { background: #fff; border-radius: 20px; padding: 2rem; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease; }
+  @keyframes slideUp { from { opacity:0; transform: translateY(30px); } to { opacity:1; transform: translateY(0); } }
+  .navbar { position: sticky; top: 0; z-index: 100; background: #fff; border-bottom: 1px solid #f0f0f0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 3px; }
+  .badge { background: #ef4444; color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; position: absolute; top: -6px; right: -6px; }
+`;
 
 export default function FastBuy229() {
   const [page, setPage] = useState("boutique");
-  const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState(null);
-  const [favorites, setFavorites] = useState({});
-  const [panier, setPanier] = useState([]);
-  const [showPanier, setShowPanier] = useState(false);
-  const [showCommande, setShowCommande] = useState(false);
-  const [commandeOk, setCommandeOk] = useState(null);
-  const [paiementChoisi, setPaiementChoisi] = useState("mtn");
-  const [form, setForm] = useState({ nom: "", email: "", telephoneLivreur: "", ville: "", adresse: "" });
-  const [codePromoSaisi, setCodePromoSaisi] = useState("");
-  const [codePromoValide, setCodePromoValide] = useState(false);
-  const [reductionPromo, setReductionPromo] = useState(0);
   const [produits, setProduits] = useState([]);
+  const [catActive, setCatActive] = useState("Tous");
+  const [search, setSearch] = useState("");
+  const [panier, setPanier] = useState([]);
   const [commandes, setCommandes] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [numeroSuivi, setNumeroSuivi] = useState("");
-  const [commandeTrouvee, setCommandeTrouvee] = useState(null);
-  const [adminOk, setAdminOk] = useState(false);
-  const [adminPwd, setAdminPwd] = useState("");
-  const [adminMotDePasse, setAdminMotDePasse] = useState(ADMIN_PWD_DEFAULT);
-  const [showAddProduct, setShowAddProduct] = useState(false);
-  const [showProduit, setShowProduit] = useState(null);
-  const [varianteChoisie, setVarianteChoisie] = useState(null);
-  const [photoChoisie, setPhotoChoisie] = useState(0);
-  const [newProduct, setNewProduct] = useState({ emoji: "🌸", title: "", description: "", price: "", etat: "Neuf", category: "Parfums", location: "", plage_livraison: "1-2 semaines" });
-  const [imageFiles, setImageFiles] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
-  const [variantes, setVariantes] = useState([]);
-  const [nouvelleVariante, setNouvelleVariante] = useState({ couleur: "", taille: "", prix: "", stock: "disponible" });
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [captureFile, setCaptureFile] = useState(null);
-  const [capturePreview, setCapturePreview] = useState(null);
   const [client, setClient] = useState(null);
-  const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState("login");
-  const [authForm, setAuthForm] = useState({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "", dateNaissance: "" });
-  const [authError, setAuthError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPanier, setShowPanier] = useState(false);
+  const [showCommande, setShowCommande] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(null);
+  const [showProduit, setShowProduit] = useState(null);
+  const [photoChoisie, setPhotoChoisie] = useState(0);
+  const [varianteCouleur, setVarianteCouleur] = useState("");
+  const [varianteTaille, setVarianteTaille] = useState("");
+  const [showLogin, setShowLogin] = useState(false);
+  const [showInscription, setShowInscription] = useState(false);
+  const [showMdpOublie, setShowMdpOublie] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [produitNegocie, setProduitNegocie] = useState(null);
   const [messageTexte, setMessageTexte] = useState("");
-  const [mesCommandes, setMesCommandes] = useState([]);
-  const [showMesCommandes, setShowMesCommandes] = useState(false);
-  const [showAdminForgot, setShowAdminForgot] = useState(false);
-  const [clients, setClients] = useState([]);
-  const [showClients, setShowClients] = useState(false);
-  const [editClientEmail, setEditClientEmail] = useState("");
-  const [editClientNewPwd, setEditClientNewPwd] = useState("");
-  const [editClientMsg, setEditClientMsg] = useState("");
-  const [showForgot, setShowForgot] = useState(false);
-  const [forgotForm, setForgotForm] = useState({ email: "", telephone: "", dateNaissance: "", nouveauPwd: "", confirmPwd: "" });
-  const [forgotError, setForgotError] = useState("");
-  const [forgotLoading, setForgotLoading] = useState(false);
-  const [adminForgotStep, setAdminForgotStep] = useState(1);
-  const [adminForgotAncienPwd, setAdminForgotAncienPwd] = useState("");
-  const [adminForgotNouveauPwd, setAdminForgotNouveauPwd] = useState("");
-  const [adminForgotConfirmPwd, setAdminForgotConfirmPwd] = useState("");
-  const [adminForgotError, setAdminForgotError] = useState("");
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [adminOk, setAdminOk] = useState(false);
+  const [adminPwd, setAdminPwd] = useState("");
   const [adminTentatives, setAdminTentatives] = useState(0);
   const [adminBloque, setAdminBloque] = useState(false);
   const [adminBloqueTimer, setAdminBloqueTimer] = useState(0);
+  const [showAdminForgot, setShowAdminForgot] = useState(false);
+  const [adminForgotAncien, setAdminForgotAncien] = useState("");
+  const [adminForgotNouv, setAdminForgotNouv] = useState("");
+  const [adminForgotConfirm, setAdminForgotConfirm] = useState("");
+  const [adminForgotError, setAdminForgotError] = useState("");
+  const [adminMotDePasse, setAdminMotDePasse] = useState(ADMIN_PWD);
+  const [gererClients, setGererClients] = useState(false);
+  const [clientsListe, setClientsListe] = useState([]);
+  const [clientRecherche, setClientRecherche] = useState("");
+  const [clientTrouve, setClientTrouve] = useState(null);
+  const [nouveauMdpClient, setNouveauMdpClient] = useState("");
+  const [cmdSuivi, setCmdSuivi] = useState(null);
+  const [codePromo, setCodePromo] = useState("");
+  const [reduction, setReduction] = useState(0);
+  const [promoMsg, setPromoMsg] = useState("");
+  const [captureFile, setCaptureFile] = useState(null);
+  const [imageFiles, setImageFiles] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [variantes, setVariantes] = useState([]);
+  const [nouvVar, setNouvVar] = useState({ couleur: "", taille: "", prix: "", stock: "disponible" });
+  const [newProduct, setNewProduct] = useState({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", plage_livraison: "1-2 semaines" });
+  const [formCmd, setFormCmd] = useState({ nom: "", email: "", telephone: "", telephoneLivreur: "", ville: "", adresse: "" });
+  const [loginForm, setLoginForm] = useState({ identifiant: "", motDePasse: "" });
+  const [inscForm, setInscForm] = useState({ prenom: "", nom: "", email: "", telephone: "", date_naissance: "", mot_de_passe: "", confirmer: "" });
+  const [mdpForm, setMdpForm] = useState({ email: "", telephone: "", date_naissance: "", nouveau: "", confirmer: "" });
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
-    chargerProduits();
-    const savedClient = localStorage.getItem("fastbuy_client");
-    if (savedClient) setClient(JSON.parse(savedClient));
     const savedPwd = localStorage.getItem("fastbuy_admin_pwd");
     if (savedPwd) setAdminMotDePasse(savedPwd);
-    if (typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.search.includes("page=admin"))) setPage("admin");
+    const savedClient = localStorage.getItem("fastbuy_client");
+    if (savedClient) setClient(JSON.parse(savedClient));
+    const savedPanier = localStorage.getItem("fastbuy_panier");
+    if (savedPanier) setPanier(JSON.parse(savedPanier));
+    if (typeof window !== "undefined" && window.location.pathname === "/admin") setPage("admin");
+    chargerProduits();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("fastbuy_panier", JSON.stringify(panier));
+  }, [panier]);
 
   const chargerProduits = async () => {
     const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false });
     if (data) setProduits(data);
   };
+
   const chargerCommandes = async () => {
     const { data } = await supabase.from("commandes").select("*").order("created_at", { ascending: false });
     if (data) setCommandes(data);
   };
+
   const chargerMessages = async () => {
     const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false });
     if (data) setMessages(data);
   };
-  const chargerClients = async () => {
-    const { data } = await supabase.from("users").select("*").order("created_at", { ascending: false });
-    if (data) setClients(data);
-  };
-  const chargerMesCommandes = async (email) => {
-    const { data } = await supabase.from("commandes").select("*").eq("email", email).order("created_at", { ascending: false });
-    if (data) setMesCommandes(data);
-  };
-  const getImageUrl = (p) => p ? `${SUPABASE_URL}/storage/v1/object/public/produits/${p}` : null;
 
-  // ── INSCRIPTION ──
+  const chargerClients = async () => {
+    const { data } = await supabase.from("users").select("id,nom,telephone,email,created_at").order("created_at", { ascending: false });
+    if (data) setClientsListe(data);
+  };
+
+  const getImageUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    return `https://nuhpdqioggxznceqvpvx.supabase.co/storage/v1/object/public/produits/${path}`;
+  };
+
+  const produitsFiltres = produits.filter(p => {
+    const matchCat = catActive === "Tous" || p.category === catActive;
+    const matchSearch = !search || p.title?.toLowerCase().includes(search.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
+  const totalPanier = panier.reduce((s, i) => s + i.price * i.qty, 0);
+  const totalFinal = Math.round(totalPanier * (1 - reduction / 100));
+
+  const ajouterAuPanier = (prod, couleur, taille) => {
+    if (!client) { setShowLogin(true); return; }
+    const key = `${prod.id}-${couleur||""}-${taille||""}`;
+    setPanier(prev => {
+      const ex = prev.find(i => i.key === key);
+      if (ex) return prev.map(i => i.key === key ? { ...i, qty: i.qty + 1 } : i);
+      return [...prev, { ...prod, key, qty: 1, couleurChoisie: couleur, tailleChoisie: taille }];
+    });
+    setShowProduit(null);
+    setShowPanier(true);
+  };
+
   const inscrire = async () => {
     setAuthError("");
-    if (!authForm.prenom || !authForm.nom || !authForm.email || !authForm.telephone || !authForm.motdepasse || !authForm.confirmpwd) {
-      setAuthError("Remplis tous les champs !"); return;
-    }
-    if (!authForm.email.includes("@")) { setAuthError("Email invalide !"); return; }
-    if (authForm.motdepasse.length < 6) { setAuthError("Mot de passe trop court (6 min) !"); return; }
-    if (authForm.motdepasse !== authForm.confirmpwd) { setAuthError("Les mots de passe ne correspondent pas !"); return; }
-    setLoading(true);
-    const { data: existing } = await supabase.from("users").select("id").eq("telephone", authForm.email).single();
-    if (existing) { setAuthError("Cet email est déjà utilisé !"); setLoading(false); return; }
-    const { data, error } = await supabase.from("users").insert([{
-      nom: `${authForm.prenom} ${authForm.nom}`,
-      telephone: authForm.email,
-      mot_de_passe: authForm.motdepasse,
-      date_naissance: authForm.dateNaissance,
-      ville: "",
-    }]).select().single();
-    if (error) { setAuthError("Erreur ! Réessaie."); setLoading(false); return; }
-    const clientData = { id: data.id, nom: `${authForm.prenom} ${authForm.nom}`, email: authForm.email, telephone: authForm.telephone, prenom: authForm.prenom, premiereCommande: true };
-    setClient(clientData);
-    localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
-    setShowAuth(false);
-    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "", dateNaissance: "" });
-    setLoading(false);
+    const { prenom, nom, email, telephone, date_naissance, mot_de_passe, confirmer } = inscForm;
+    if (!prenom || !nom || !email || !telephone || !date_naissance || !mot_de_passe) { setAuthError("Remplis tous les champs !"); return; }
+    if (mot_de_passe !== confirmer) { setAuthError("Les mots de passe ne correspondent pas !"); return; }
+    if (mot_de_passe.length < 6) { setAuthError("Mot de passe trop court (6 min) !"); return; }
+    const { data: exist } = await supabase.from("users").select("id").eq("email", email).maybeSingle();
+    if (exist) { setAuthError("Cet email est déjà utilisé !"); return; }
+    const { data, error } = await supabase.from("users").insert([{ nom: `${prenom} ${nom}`, email, telephone, date_naissance, mot_de_passe }]).select().single();
+    if (error) { setAuthError("Erreur lors de l'inscription !"); return; }
+    const user = { id: data.id, nom: data.nom, email: data.email, telephone: data.telephone };
+    setClient(user);
+    localStorage.setItem("fastbuy_client", JSON.stringify(user));
+    setShowInscription(false);
   };
 
-  // ── CONNEXION ──
   const connecter = async () => {
     setAuthError("");
-    if ((!authForm.email && !authForm.telephone) || !authForm.motdepasse) {
-      setAuthError("Remplis tous les champs !"); return;
-    }
+    const { identifiant, motDePasse } = loginForm;
+    if (!identifiant || !motDePasse) { setAuthError("Remplis tous les champs !"); return; }
+    const { data } = await supabase.from("users").select("*").or(`email.eq.${identifiant},telephone.eq.${identifiant}`).maybeSingle();
+    if (!data || data.mot_de_passe !== motDePasse) { setAuthError("Identifiant ou mot de passe incorrect !"); return; }
+    const user = { id: data.id, nom: data.nom, email: data.email, telephone: data.telephone };
+    setClient(user);
+    localStorage.setItem("fastbuy_client", JSON.stringify(user));
+    setShowLogin(false);
+  };
+
+  const reinitMdp = async () => {
+    setAuthError("");
+    const { email, telephone, date_naissance, nouveau, confirmer } = mdpForm;
+    if (!email || !telephone || !date_naissance || !nouveau || !confirmer) { setAuthError("Remplis tous les champs !"); return; }
+    if (nouveau !== confirmer) { setAuthError("Les mots de passe ne correspondent pas !"); return; }
+    const annee = parseInt(date_naissance.split("/")[2]);
+    if (annee >= 2020) { setAuthError("Année de naissance invalide !"); return; }
+    const { data } = await supabase.from("users").select("*").eq("email", email).eq("telephone", telephone).maybeSingle();
+    if (!data) { setAuthError("Informations incorrectes !"); return; }
+    const dn = data.date_naissance;
+    const dnNorm = dn?.includes("-") ? dn.split("-").reverse().join("/") : dn;
+    if (dnNorm !== date_naissance) { setAuthError("Date de naissance incorrecte !"); return; }
+    await supabase.from("users").update({ mot_de_passe: nouveau }).eq("id", data.id);
+    alert("Mot de passe réinitialisé avec succès !");
+    setShowMdpOublie(false);
+  };
+
+  const envoyerCommande = async () => {
+    const { nom, email, telephone, ville, adresse } = formCmd;
+    if (!nom || !email || !telephone || !ville || !adresse) { alert("Remplis tous les champs !"); return; }
+    if (panier.length === 0) { alert("Le panier est vide !"); return; }
     setLoading(true);
-    const contact = authForm.email || authForm.telephone;
-    const { data, error } = await supabase.from("users").select("*").eq("telephone", contact).eq("mot_de_passe", authForm.motdepasse).single();
-    if (error || !data) { setAuthError("Email/téléphone ou mot de passe incorrect !"); setLoading(false); return; }
-    const { data: cmdData } = await supabase.from("commandes").select("id").eq("email", contact).limit(1);
-    const clientData = { id: data.id, nom: data.nom, email: contact, telephone: data.telephone, prenom: data.nom.split(" ")[0], premiereCommande: !cmdData || cmdData.length === 0 };
-    setClient(clientData);
-    localStorage.setItem("fastbuy_client", JSON.stringify(clientData));
-    setShowAuth(false);
-    setAuthForm({ prenom: "", nom: "", email: "", telephone: "", motdepasse: "", confirmpwd: "", dateNaissance: "" });
-    setLoading(false);
-  };
-
-  const deconnecter = () => { setClient(null); localStorage.removeItem("fastbuy_client"); };
-
-  // ── MOT DE PASSE OUBLIÉ ──
-  const reinitialiserPwd = async () => {
-    setForgotError("");
-    if (!forgotForm.email || !forgotForm.telephone || !forgotForm.dateNaissance || !forgotForm.nouveauPwd || !forgotForm.confirmPwd) {
-      setForgotError("Remplis tous les champs !"); return;
-    }
-    if (forgotForm.nouveauPwd.length < 6) { setForgotError("Mot de passe trop court (6 min) !"); return; }
-    if (forgotForm.nouveauPwd !== forgotForm.confirmPwd) { setForgotError("Les mots de passe ne correspondent pas !"); return; }
-    setForgotLoading(true);
-    const { data } = await supabase.from("users").select("*").eq("telephone", forgotForm.email).single();
-    if (!data) { setForgotError("Aucun compte trouvé avec cet email !"); setForgotLoading(false); return; }
-    if (data.telephone !== forgotForm.telephone && data.date_naissance !== forgotForm.dateNaissance) {
-      setForgotError("Informations incorrectes !"); setForgotLoading(false); return;
-    }
-    // Vérifier au moins un: téléphone OU date de naissance
-    // Vérifier date raisonnable (avant 2020)
-    const parts = forgotForm.dateNaissance.split("/");
-    if (parts.length === 3) {
-      const annee = parseInt(parts[2]);
-      if (annee > 2020 || annee < 1920) { setForgotError("Date de naissance invalide !"); setForgotLoading(false); return; }
-    }
-    const dateOk = data.date_naissance === forgotForm.dateNaissance;
-    if (!dateOk) { setForgotError("Date de naissance incorrecte !"); setForgotLoading(false); return; }
-    await supabase.from("users").update({ mot_de_passe: forgotForm.nouveauPwd }).eq("id", data.id);
-    setShowForgot(false);
-    setForgotForm({ email: "", telephone: "", dateNaissance: "", nouveauPwd: "", confirmPwd: "" });
-    setForgotLoading(false);
-    alert("Mot de passe modifié avec succès ! 🎉 Connectez-vous maintenant.");
-    setShowAuth(true);
-    setAuthMode("login");
-  };
-
-  // ── CODE PROMO ──
-  const verifierCodePromo = () => {
-    if (!client) return;
-    const codeAttendu = (client.prenom || client.nom.split(" ")[0]).toLowerCase() + "10";
-    if (codePromoSaisi.toLowerCase() === codeAttendu && client.premiereCommande) {
-      setReductionPromo(Math.round(total * 0.1));
-      setCodePromoValide(true);
-    } else if (!client.premiereCommande) {
-      alert("Ce code promo est réservé à la première commande !");
-    } else {
-      alert("Code promo invalide !");
-    }
-  };
-
-  // ── PANIER ──
-  const ajouterAuPanier = (product) => {
-    if (!client) { setShowAuth(true); setAuthMode("register"); return; }
-    setPanier((prev) => {
-      const existe = prev.find((p) => p.id === product.id);
-      if (existe) return prev.map((p) => p.id === product.id ? { ...p, qty: p.qty + 1 } : p);
-      return [...prev, { ...product, qty: 1 }];
-    });
-  };
-  const retirerDuPanier = (id) => setPanier((prev) => prev.filter((p) => p.id !== id));
-  const changerQty = (id, delta) => setPanier((prev) => prev.map((p) => p.id === id ? { ...p, qty: Math.max(1, p.qty + delta) } : p));
-  const total = panier.reduce((acc, p) => acc + p.price * p.qty, 0);
-  const totalFinal = total - reductionPromo;
-  const nbPanier = panier.reduce((acc, p) => acc + p.qty, 0);
-
-  const passerCommande = async () => {
-    if (!form.nom || !form.email || !form.telephoneLivreur || !form.ville || !form.adresse) { alert("Remplis tous les champs !"); return; }
-    if (!captureFile) { alert("Ajoute la capture d'écran de ton paiement !"); return; }
-    setLoading(true);
-    const numero = genNumero();
     let capturePath = null;
-    const fileName = `captures/${Date.now()}-${captureFile.name}`;
-    const { error: uploadError } = await supabase.storage.from("produits").upload(fileName, captureFile);
-    if (!uploadError) capturePath = fileName;
-    const cmdData = { numero, nom: form.nom, email: form.email, telephone: form.telephoneLivreur, telephoneLivreur: form.telephoneLivreur, ville: form.ville, adresse: form.adresse, articles: panier, total, totalFinal, reduction: reductionPromo, codePromo: codePromoValide ? codePromoSaisi : null, statut: "Commande reçue", paiement: paiementChoisi, user_id: client?.id, capture: capturePath };
-    const { data, error } = await supabase.from("commandes").insert([cmdData]).select().single();
-    if (error) { alert("Erreur ! Réessaie."); setLoading(false); return; }
-    if (codePromoValide) {
-      const updatedClient = { ...client, premiereCommande: false };
-      setClient(updatedClient);
-      localStorage.setItem("fastbuy_client", JSON.stringify(updatedClient));
+    if (captureFile) {
+      const fn = `captures/${Date.now()}-${captureFile.name}`;
+      const { error } = await supabase.storage.from("produits").upload(fn, captureFile);
+      if (!error) capturePath = fn;
     }
-    setCommandeOk(data);
-    setPanier([]); setShowCommande(false); setShowPanier(false);
-    setForm({ nom: "", email: "", telephoneLivreur: "", ville: "", adresse: "" });
-    setCaptureFile(null); setCapturePreview(null);
-    setCodePromoSaisi(""); setCodePromoValide(false); setReductionPromo(0);
+    const num = "CMD-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+    await supabase.from("commandes").insert([{
+      numero: num, nom, email, telephone,
+      telephoneLivreur: formCmd.telephoneLivreur,
+      ville, adresse,
+      articles: JSON.stringify(panier),
+      total: totalPanier, totalFinal,
+      reduction, codePromo,
+      statut: "En attente", paiement: "En attente",
+      capture: capturePath,
+      user_id: client?.id
+    }]);
+    setShowConfirm({ numero: num, nom, totalFinal });
+    setPanier([]);
+    setShowCommande(false);
     setLoading(false);
+    setCaptureFile(null);
   };
-
-  const changerStatut = async (id, statut) => {
-    await supabase.from("commandes").update({ statut }).eq("id", id);
-    chargerCommandes();
-  };
-
-  const chercherCommande = async () => {
-    const { data } = await supabase.from("commandes").select("*").ilike("numero", numeroSuivi).single();
-    setCommandeTrouvee(data || "introuvable");
-  };
-
-  const envoyerMessage = async () => {
-    if (!messageTexte) return;
-    await supabase.from("messages").insert([{ user_id: client?.id, nom: client?.nom, telephone: client?.email, message: produitNegocie ? `Négociation sur "${produitNegocie.title}" (${produitNegocie.price.toLocaleString()} FCFA) : ${messageTexte}` : messageTexte }]);
-    setMessageTexte(""); setShowMessage(false); setProduitNegocie(null);
-    alert("Message envoyé ! On te répond bientôt 😊");
-  };
-
-  const repondreMessage = async (id, reponse) => {
-    await supabase.from("messages").update({ reponse }).eq("id", id);
-    chargerMessages();
-  };
-
-  const handleImageChange = (e) => { const f = e.target.files[0]; if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); } };
-  const handleCaptureChange = (e) => { const f = e.target.files[0]; if (f) { setCaptureFile(f); setCapturePreview(URL.createObjectURL(f)); } };
 
   const ajouterProduit = async () => {
-    if (!newProduct.title || !newProduct.location) { alert("Remplis tous les champs !"); return; }
+    if (!newProduct.title || !newProduct.plage_livraison) { alert("Remplis le titre !"); return; }
     setLoading(true);
-    // Upload multiple images
     let imagePaths = [];
     for (const file of imageFiles) {
-      const fileName = `${Date.now()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("produits").upload(fileName, file);
-      if (!uploadError) imagePaths.push(fileName);
-    }
-    // Also handle single image for backward compat
-    if (imageFile && imagePaths.length === 0) {
-      const fileName = `${Date.now()}-${imageFile.name}`;
-      const { error: uploadError } = await supabase.storage.from("produits").upload(fileName, imageFile);
-      if (!uploadError) imagePaths.push(fileName);
+      const fn = `${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from("produits").upload(fn, file);
+      if (!error) imagePaths.push(fn);
     }
     const prixBase = variantes.length > 0 ? Math.min(...variantes.map(v => parseInt(v.prix) || 0)) : parseInt(newProduct.price) || 0;
-    await supabase.from("produits").insert([{ 
-      ...newProduct, 
+    await supabase.from("produits").insert([{
+      ...newProduct,
+      emoji: "📦",
       price: prixBase,
+      location: "Bénin",
       image: imagePaths[0] || null,
-      images: imagePaths,
-      variantes: variantes
+      images: imagePaths.length > 0 ? imagePaths : null,
+      variantes: variantes.length > 0 ? variantes : null
     }]);
     await chargerProduits();
     setShowAddProduct(false);
-    setNewProduct({ emoji: "🌸", title: "", description: "", price: "", etat: "Neuf", category: "Parfums", location: "", plage_livraison: "1-2 semaines" });
-    setImageFile(null); setImagePreview(null);
+    setNewProduct({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", plage_livraison: "1-2 semaines" });
     setImageFiles([]); setImagePreviews([]);
-    setVariantes([]); setNouvelleVariante({ couleur: "", taille: "", prix: "", stock: "disponible" });
+    setVariantes([]); setNouvVar({ couleur: "", taille: "", prix: "", stock: "disponible" });
     setLoading(false);
   };
 
-  const supprimerProduit = async (id) => { if (!confirm("Supprimer ?")) return; await supabase.from("produits").delete().eq("id", id); chargerProduits(); };
-
-  const modifierMdpClient = async () => {
-    setEditClientMsg("");
-    if (!editClientEmail || !editClientNewPwd) { setEditClientMsg("Remplis les deux champs !"); return; }
-    if (editClientNewPwd.length < 6) { setEditClientMsg("Mot de passe trop court !"); return; }
-    const { data } = await supabase.from("users").select("id").eq("telephone", editClientEmail).single();
-    if (!data) { setEditClientMsg("Aucun client avec cet email !"); return; }
-    await supabase.from("users").update({ mot_de_passe: editClientNewPwd }).eq("id", data.id);
-    setEditClientMsg("✅ Mot de passe modifié !");
-    setEditClientEmail("");
-    setEditClientNewPwd("");
+  const supprimerProduit = async (id) => {
+    if (!confirm("Supprimer ce produit ?")) return;
+    await supabase.from("produits").delete().eq("id", id);
+    await chargerProduits();
   };
 
-  const adminChangerPwd = () => {
-    setAdminForgotError("");
-    if (!adminForgotAncienPwd || !adminForgotNouveauPwd || !adminForgotConfirmPwd) { setAdminForgotError("Remplis tous les champs !"); return; }
-    if (adminForgotAncienPwd !== adminMotDePasse) { setAdminForgotError("Ancien mot de passe incorrect !"); return; }
-    if (adminForgotNouveauPwd.length < 6) { setAdminForgotError("Mot de passe trop court !"); return; }
-    if (adminForgotNouveauPwd !== adminForgotConfirmPwd) { setAdminForgotError("Les mots de passe ne correspondent pas !"); return; }
-    setAdminMotDePasse(adminForgotNouveauPwd);
-    localStorage.setItem("fastbuy_admin_pwd", adminForgotNouveauPwd);
-    setShowAdminForgot(false);
-    setAdminForgotAncienPwd(""); setAdminForgotNouveauPwd(""); setAdminForgotConfirmPwd("");
-    alert("Mot de passe admin modifié ! 🎉");
+  const appliquerPromo = () => {
+    if (!client) { setPromoMsg("Connecte-toi d'abord !"); return; }
+    const prenom = client.nom?.split(" ")[0]?.toLowerCase();
+    if (codePromo.toLowerCase() === `${prenom}10`) {
+      setReduction(10); setPromoMsg("✅ Code promo appliqué ! -10%");
+    } else {
+      setReduction(0); setPromoMsg("❌ Code invalide !");
+    }
   };
 
-  const filtered = produits.filter((p) => {
-    const matchSearch = !search || p.title.toLowerCase().includes(search.toLowerCase());
-    const matchCat = !activeCategory || p.category === activeCategory;
-    return matchSearch && matchCat;
-  });
+  const formatDate = (val, setter, field) => {
+    let v = val.replace(/\D/g, "");
+    if (v.length >= 3 && v.length <= 4) v = v.slice(0, 2) + "/" + v.slice(2);
+    else if (v.length >= 5) v = v.slice(0, 2) + "/" + v.slice(2, 4) + "/" + v.slice(4, 8);
+    setter(p => ({ ...p, [field]: v }));
+  };
 
-  const inp = { width: "100%", padding: "11px 14px", background: "#1C2035", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#fff", fontSize: 13, fontFamily: "DM Sans, sans-serif", outline: "none" };
+  const inp = { width: "100%", padding: "12px 14px", border: "1.5px solid #e5e7eb", borderRadius: 10, fontSize: 14, fontFamily: "'Inter', sans-serif", background: "#fff", color: "#1a1a2e", outline: "none", marginBottom: 12 };
 
-  const Logo = () => (
-    <span style={{ fontFamily: "Syne", fontSize: 21, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
-      Fast<span style={{ color: "#00A86B" }}>Buy</span><span style={{ color: "#F5C842" }}> 229</span>
-      <span style={{ display: "inline-block", width: 7, height: 7, background: "#F5C842", borderRadius: "50%", marginLeft: 3, verticalAlign: "middle", marginBottom: 3 }} />
-    </span>
-  );
+  // ===================== RENDER =====================
 
-  return (
-    <div style={{ minHeight: "100vh", background: "#0B0E18", color: "#fff", fontFamily: "DM Sans, sans-serif" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0B0E18; }
-        input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.3); }
-        select option { background: #1C2035; color: #fff; }
-        .cat:hover { border-color: #00A86B !important; background: rgba(0,168,107,0.09) !important; cursor: pointer; }
-        .card:hover { transform: translateY(-4px); border-color: rgba(0,168,107,0.4) !important; }
-        .bg:hover { background: #007A4D !important; }
-        .pay:hover { border-color: #00A86B !important; }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-        @keyframes fi { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes si { from{transform:translateX(100%)} to{transform:translateX(0)} }
-        @keyframes pi { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
-      `}</style>
-
-      {/* NAVBAR */}
-      <nav style={{ display: "flex", alignItems: "center", padding: "0 2rem", height: 62, background: "rgba(11,14,24,0.96)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "sticky", top: 0, zIndex: 100, gap: "1rem", flexWrap: "wrap" }}>
-        <div onClick={() => setPage("boutique")}><Logo /></div>
-        {page === "boutique" && (
-          <div style={{ flex: 1, maxWidth: 440, display: "flex", alignItems: "center", background: "#1C2035", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 11, padding: "0 14px", gap: 8 }}>
-            <span>🔍</span>
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cherche un produit…" style={{ background: "none", border: "none", outline: "none", color: "#fff", fontSize: 13, padding: "11px 0", flex: 1, fontFamily: "DM Sans" }} />
-            {search && <span onClick={() => setSearch("")} style={{ cursor: "pointer", color: "rgba(255,255,255,0.35)", fontSize: 18 }}>×</span>}
-          </div>
-        )}
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={() => setPage("suivi")} style={{ padding: "8px 14px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>📦 Suivi</button>
-          <button onClick={() => setPage("aide")} style={{ padding: "8px 14px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>❓ Aide</button>
-          {page === "boutique" && (
-            <button onClick={() => setShowPanier(true)} style={{ position: "relative", padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", color: "#00A86B", cursor: "pointer", fontFamily: "DM Sans", fontWeight: 500 }}>
-              🛒 Panier
-              {nbPanier > 0 && <span style={{ position: "absolute", top: -8, right: -8, background: "#F5C842", color: "#0B0E18", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>{nbPanier}</span>}
-            </button>
-          )}
-          {client ? (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={() => { chargerMesCommandes(client.email); setShowMesCommandes(true); }} style={{ padding: "8px 14px", borderRadius: 9, fontSize: 13, background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", color: "#00A86B", cursor: "pointer", fontFamily: "DM Sans" }}>
-                👤 {client.prenom || client.nom.split(" ")[0]}
-              </button>
-              <button onClick={() => { setProduitNegocie(null); setShowMessage(true); }} style={{ padding: "8px 12px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer" }}>💬</button>
-              <button onClick={deconnecter} style={{ padding: "8px 12px", borderRadius: 9, fontSize: 12, background: "none", border: "1px solid rgba(255,80,80,0.3)", color: "rgba(255,100,100,0.7)", cursor: "pointer" }}>×</button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => { setShowAuth(true); setAuthMode("login"); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "none", border: "1px solid rgba(255,255,255,0.13)", color: "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>
-                👤 Se connecter
-              </button>
-              <button onClick={() => { setShowAuth(true); setAuthMode("register"); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "#00A86B", border: "none", color: "#fff", cursor: "pointer", fontFamily: "DM Sans", fontWeight: 500 }}>
-                ✨ S'inscrire
-              </button>
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* BOUTIQUE */}
-      {page === "boutique" && (
-        <>
-          <div style={{ position: "relative", minHeight: 420, display: "flex", alignItems: "center", overflow: "hidden", background: "linear-gradient(135deg, #0B0E18 0%, #161926 100%)" }}>
-            <div style={{ position: "relative", zIndex: 2, padding: "3rem 2.5rem" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,168,107,0.12)", border: "1px solid rgba(0,168,107,0.28)", borderRadius: 999, padding: "6px 16px", fontSize: 13, color: "#00A86B", marginBottom: "1.5rem" }}>
-                <span style={{ width: 7, height: 7, background: "#00A86B", borderRadius: "50%", animation: "pulse 2s infinite", display: "inline-block" }} />
-                Livraison 3 jours à 2 semaines selon ta ville
+  if (page === "admin") {
+    return (
+      <div style={{ minHeight: "100vh", background: "#f8f9fa", fontFamily: "'Inter', sans-serif" }}>
+        <style>{globalStyles}</style>
+        {!adminOk ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "1rem" }}>
+            <div style={{ background: "#fff", borderRadius: 20, padding: "2.5rem", width: "100%", maxWidth: 400, boxShadow: "0 4px 30px rgba(0,0,0,0.1)" }}>
+              <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+                <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>🔐</div>
+                <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.6rem", fontWeight: 800, color: "#1a1a2e" }}>FastBuy 229</h1>
+                <p style={{ color: "#6b7280", fontSize: 14, marginTop: 6 }}>Espace Administration</p>
               </div>
-              <h1 style={{ fontFamily: "Syne", fontSize: "clamp(2rem,5vw,3rem)", fontWeight: 800, lineHeight: 1.1, marginBottom: "1rem", letterSpacing: "-0.02em" }}>
-                Mode, Tech & Style<br /><span style={{ color: "#00A86B" }}>livrés partout</span> au<br /><span style={{ color: "#F5C842" }}>Bénin</span>
-              </h1>
-              <p style={{ color: "rgba(255,255,255,0.48)", fontSize: 15, lineHeight: 1.75, marginBottom: "2rem", maxWidth: 420 }}>
-                Commande en ligne — Paiement MTN MoMo, Moov, Celtiis — Cotonou, Porto-Novo, Calavi, Parakou, Ouidah.
-              </p>
-              <div style={{ display: "flex", gap: "2.5rem" }}>
-                {[[produits.length + "+", "Produits"], ["3j-2sem", "Livraison"], ["98%", "Satisfaits"]].map(([n, l]) => (
-                  <div key={l}><div style={{ fontFamily: "Syne", fontSize: "1.8rem", fontWeight: 800, color: "#00A86B" }}>{n}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 3 }}>{l}</div></div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <section style={{ padding: "2rem 2rem 1rem" }}>
-            <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 700 }}>Catégories</h2>
-              <span onClick={() => setActiveCategory(null)} style={{ fontSize: 13, color: "#00A86B", marginLeft: "auto", cursor: "pointer" }}>Tout voir</span>
-            </div>
-            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8 }}>
-              {CATEGORIES.map((cat) => (
-                <div key={cat.name} className="cat" onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)} style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, background: activeCategory === cat.name ? "rgba(0,168,107,0.12)" : "#161926", border: `1px solid ${activeCategory === cat.name ? "#00A86B" : "rgba(255,255,255,0.08)"}`, borderRadius: 14, padding: "10px 18px", whiteSpace: "nowrap", transition: "all 0.18s" }}>
-                  <span style={{ fontSize: "1.4rem" }}>{cat.icon}</span>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>{cat.name}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section style={{ padding: "1rem 2rem 3rem" }}>
-            <h2 style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>
-              {activeCategory || "Tous les produits"}
-              {activeCategory && <span onClick={() => setActiveCategory(null)} style={{ fontSize: 12, color: "#00A86B", marginLeft: 10, cursor: "pointer", fontWeight: 400 }}>× effacer</span>}
-            </h2>
-            {filtered.length === 0 && <div style={{ textAlign: "center", padding: "4rem", color: "rgba(255,255,255,0.25)" }}><div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🛍️</div>Aucun produit disponible</div>}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
-              {filtered.map((item, idx) => (
-                <div key={item.id} className="card" style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, overflow: "hidden", transition: "transform 0.18s, border-color 0.18s", animation: "fi 0.3s ease both", animationDelay: `${idx * 0.04}s` }}>
-                  <div style={{ height: 180, background: "#1C2035", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-                    {getImageUrl(item.image) ? <img src={getImageUrl(item.image)} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "3rem" }}>{item.emoji}</span>}
-                    <span style={{ position: "absolute", top: 10, left: 10, background: "#00A86B", color: "#fff", fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 6 }}>{item.etat}</span>
-                    <span onClick={(e) => { e.stopPropagation(); setFavorites((prev) => ({ ...prev, [item.id]: !prev[item.id] })); }} style={{ position: "absolute", top: 10, right: 10, background: "rgba(0,0,0,0.45)", borderRadius: 8, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, cursor: "pointer" }}>{favorites[item.id] ? "❤️" : "🤍"}</span>
-                    {item.plage_livraison && <span style={{ position: "absolute", bottom: 10, left: 10, background: "rgba(0,0,0,0.6)", color: "#F5C842", fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 6 }}>🚚 {item.plage_livraison}</span>}
-                  </div>
-                  <div style={{ padding: "12px 14px" }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 4 }}>{item.title}</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 6 }}>📍 {item.location}</div>
-                    {item.variantes && item.variantes.length > 0 && (
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-                        {[...new Set(item.variantes.map(v => v.couleur).filter(Boolean))].slice(0,4).map((c, i) => (
-                          <span key={i} style={{ fontSize: 10, background: "rgba(255,255,255,0.1)", borderRadius: 4, padding: "2px 6px", color: "rgba(255,255,255,0.6)" }}>{c}</span>
-                        ))}
-                        {[...new Set(item.variantes.map(v => v.taille).filter(Boolean))].slice(0,4).map((t, i) => (
-                          <span key={i} style={{ fontSize: 10, background: "rgba(0,168,107,0.15)", borderRadius: 4, padding: "2px 6px", color: "#00A86B" }}>{t}</span>
-                        ))}
-                      </div>
-                    )}
-                    <div style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 800, color: "#00A86B", marginBottom: 10 }}>
-                      {item.variantes && item.variantes.length > 0 ? (
-                        <>À partir de {Math.min(...item.variantes.map(v => parseInt(v.prix)||0)).toLocaleString()}</>
-                      ) : item.price.toLocaleString()}
-                      {" "}<span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "DM Sans", fontWeight: 400 }}>FCFA</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => { setShowProduit(item); setVarianteChoisie(null); setPhotoChoisie(0); }} className="bg" style={{ flex: 1, padding: "9px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", transition: "background 0.18s" }}>
-                        👁️ Voir détails
-                      </button>
-                      {client && (
-                        <button onClick={() => { setProduitNegocie(item); setMessageTexte(""); setShowMessage(true); }} style={{ padding: "9px 10px", background: "rgba(245,200,66,0.1)", border: "1px solid rgba(245,200,66,0.3)", borderRadius: 9, fontSize: 14, cursor: "pointer", color: "#F5C842" }}>💬</button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <footer style={{ background: "#0D1020", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "1.8rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
-            <Logo />
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>© 2025 FastBuy 229 · Bénin</span>
-          </footer>
-        </>
-      )}
-
-      {/* AIDE */}
-      {page === "aide" && (
-        <div style={{ maxWidth: 600, margin: "4rem auto", padding: "0 1.5rem" }}>
-          <h2 style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, marginBottom: "2rem" }}>❓ Centre d'aide</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: "2.5rem" }}>
-            {[
-              ["📦", "Comment suivre ma commande ?", "Rendez-vous dans 'Suivi' et entrez votre numéro de commande (ex : CMD-AB12CD)."],
-              ["💳", "Quels sont les moyens de paiement ?", `MTN MoMo, Moov Money ou Celtiis. Envoyez le montant au ${MOMO_NUMERO} avec votre numéro de commande, puis uploadez la capture d'écran.`],
-              ["🚚", "Délais de livraison ?", "Entre 3 jours et 2 semaines selon votre ville et le produit."],
-              ["⏰", "Livraison en retard ?", "Si votre commande dépasse le délai, vous recevrez 10% remboursés sur votre Mobile Money."],
-              ["🔄", "Retour produit ?", "Contactez-nous par email dans les 48h après réception."],
-              ["💬", "Négocier un prix ?", "Cliquez sur 💬 directement sur le produit pour nous envoyer votre offre."],
-              ["🎟️", "Code promo ?", "Entrez votre prénom + 10 (ex: marc10). Valable sur votre 1ère commande uniquement !"],
-            ].map(([icon, q, a]) => (
-              <div key={q} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "1.2rem 1.5rem" }}>
-                <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>{icon} {q}</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>{a}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ background: "rgba(0,168,107,0.1)", border: "1px solid rgba(0,168,107,0.3)", borderRadius: 16, padding: "2rem", textAlign: "center" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>📧</div>
-            <h3 style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.5rem" }}>Besoin d'aide ?</h3>
-            <a href={`mailto:${SUPPORT_EMAIL}`} style={{ display: "inline-block", padding: "12px 28px", background: "#00A86B", color: "#fff", borderRadius: 12, fontSize: 14, fontWeight: 600, textDecoration: "none", marginTop: "0.8rem" }}>✉️ {SUPPORT_EMAIL}</a>
-          </div>
-        </div>
-      )}
-
-      {/* SUIVI */}
-      {page === "suivi" && (
-        <div style={{ maxWidth: 500, margin: "4rem auto", padding: "0 1.5rem" }}>
-          <h2 style={{ fontFamily: "Syne", fontSize: "1.5rem", fontWeight: 800, marginBottom: "1rem" }}>📦 Suivre ma commande</h2>
-          <div style={{ display: "flex", gap: 10, marginBottom: "2rem" }}>
-            <input type="text" value={numeroSuivi} onChange={(e) => setNumeroSuivi(e.target.value)} placeholder="Ex: CMD-AB12CD" style={{ ...inp, flex: 1 }} />
-            <button onClick={chercherCommande} className="bg" style={{ padding: "11px 20px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", whiteSpace: "nowrap" }}>Chercher</button>
-          </div>
-          {commandeTrouvee === "introuvable" && <div style={{ background: "#1C2035", borderRadius: 14, padding: "2rem", textAlign: "center", color: "rgba(255,255,255,0.4)" }}>❌ Aucune commande trouvée</div>}
-          {commandeTrouvee && commandeTrouvee !== "introuvable" && (
-            <div style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "1.5rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
-                <div>
-                  <div style={{ fontFamily: "Syne", fontWeight: 700 }}>{commandeTrouvee.numero}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{new Date(commandeTrouvee.created_at).toLocaleString("fr-FR")}</div>
-                </div>
-                <span style={{ background: "rgba(0,168,107,0.15)", color: "#00A86B", padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>{commandeTrouvee.statut}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem", gap: 4 }}>
-                {STATUTS.map((s, i) => {
-                  const cur = STATUTS.indexOf(commandeTrouvee.statut);
-                  const done = i <= cur;
-                  return (
-                    <div key={s} style={{ display: "flex", alignItems: "center", flex: 1 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: done ? "#00A86B" : "#1C2035", border: `2px solid ${done ? "#00A86B" : "rgba(255,255,255,0.1)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{done ? "✓" : i + 1}</div>
-                      {i < STATUTS.length - 1 && <div style={{ flex: 1, height: 2, background: i < cur ? "#00A86B" : "rgba(255,255,255,0.1)" }} />}
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "1rem" }}>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>Client : <span style={{ color: "#fff" }}>{commandeTrouvee.nom}</span></div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>Ville : <span style={{ color: "#fff" }}>{commandeTrouvee.ville}</span></div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Total : <span style={{ color: "#00A86B", fontWeight: 700 }}>{(commandeTrouvee.totalFinal || commandeTrouvee.total)?.toLocaleString()} FCFA</span></div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ADMIN LOGIN */}
-      {page === "admin" && !adminOk && (
-        <div style={{ maxWidth: 400, margin: "5rem auto", padding: "0 1.5rem", textAlign: "center" }}>
-          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔐</div>
-          <h2 style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, marginBottom: "1.5rem" }}>Espace Admin — FastBuy 229</h2>
-          {!showAdminForgot ? (
-            <>
               {adminBloque ? (
-                <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 10, padding: "1rem", textAlign: "center", color: "rgba(255,120,120,0.9)", fontSize: 13 }}>
-                  🔒 Trop de tentatives ! Réessaie dans <strong>{adminBloqueTimer}</strong> secondes.
+                <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "1rem", textAlign: "center", color: "#ef4444", fontSize: 14 }}>
+                  🔒 Trop de tentatives ! Réessaie dans <strong>{adminBloqueTimer}s</strong>
                 </div>
               ) : (
                 <>
-                  {adminTentatives > 0 && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "rgba(255,120,120,0.9)", marginBottom: 10 }}>⚠️ Tentative {adminTentatives}/3 — Mot de passe incorrect !</div>}
-                  <input type="password" value={adminPwd} onChange={(e) => setAdminPwd(e.target.value)} placeholder="••••••••" style={{ ...inp, marginBottom: 12, textAlign: "center", letterSpacing: "0.2em" }} />
-                  <button onClick={() => {
-                    if (adminPwd === adminMotDePasse) {
-                      setAdminOk(true); setAdminTentatives(0); chargerCommandes(); chargerMessages();
-                    } else {
-                      const newTentatives = adminTentatives + 1;
-                      setAdminTentatives(newTentatives);
-                      setAdminPwd("");
-                      if (newTentatives >= 3) {
-                        setAdminBloque(true);
-                        let t = 300;
-                        setAdminBloqueTimer(t);
-                        const interval = setInterval(() => {
-                          t--;
-                          setAdminBloqueTimer(t);
-                          if (t <= 0) { clearInterval(interval); setAdminBloque(false); setAdminTentatives(0); }
-                        }, 1000);
-                      }
-                    }
-                  }} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: 12 }}>Accéder</button>
+                  {adminTentatives > 0 && <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#ef4444", marginBottom: 12 }}>⚠️ Tentative {adminTentatives}/3</div>}
+                  {!showAdminForgot ? (
+                    <>
+                      <input type="password" value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" style={inp} onKeyDown={e => e.key === "Enter" && (() => {
+                        if (adminPwd === adminMotDePasse) { setAdminOk(true); setAdminTentatives(0); chargerCommandes(); chargerMessages(); }
+                        else {
+                          const n = adminTentatives + 1; setAdminTentatives(n); setAdminPwd("");
+                          if (n >= 3) { setAdminBloque(true); let t = 300; setAdminBloqueTimer(t); const iv = setInterval(() => { t--; setAdminBloqueTimer(t); if (t <= 0) { clearInterval(iv); setAdminBloque(false); setAdminTentatives(0); } }, 1000); }
+                        }
+                      })()} />
+                      <button className="btn-primary" style={{ width: "100%" }} onClick={() => {
+                        if (adminPwd === adminMotDePasse) { setAdminOk(true); setAdminTentatives(0); chargerCommandes(); chargerMessages(); }
+                        else {
+                          const n = adminTentatives + 1; setAdminTentatives(n); setAdminPwd("");
+                          if (n >= 3) { setAdminBloque(true); let t = 300; setAdminBloqueTimer(t); const iv = setInterval(() => { t--; setAdminBloqueTimer(t); if (t <= 0) { clearInterval(iv); setAdminBloque(false); setAdminTentatives(0); } }, 1000); }
+                        }
+                      }}>Accéder</button>
+                      <button onClick={() => setShowAdminForgot(true)} style={{ background: "none", border: "none", color: "#2563eb", fontSize: 13, cursor: "pointer", width: "100%", marginTop: 12 }}>Modifier mon mot de passe</button>
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 16 }}>Changer le mot de passe admin</p>
+                      <input type="password" value={adminForgotAncien} onChange={e => setAdminForgotAncien(e.target.value)} placeholder="Ancien mot de passe" style={inp} />
+                      <input type="password" value={adminForgotNouv} onChange={e => setAdminForgotNouv(e.target.value)} placeholder="Nouveau mot de passe" style={inp} />
+                      <input type="password" value={adminForgotConfirm} onChange={e => setAdminForgotConfirm(e.target.value)} placeholder="Confirmer" style={inp} />
+                      {adminForgotError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 10 }}>{adminForgotError}</div>}
+                      <button className="btn-primary" style={{ width: "100%", marginBottom: 8 }} onClick={() => {
+                        if (!adminForgotAncien || !adminForgotNouv || !adminForgotConfirm) { setAdminForgotError("Remplis tous les champs !"); return; }
+                        if (adminForgotAncien !== adminMotDePasse) { setAdminForgotError("Ancien mot de passe incorrect !"); return; }
+                        if (adminForgotNouv.length < 6) { setAdminForgotError("Trop court !"); return; }
+                        if (adminForgotNouv !== adminForgotConfirm) { setAdminForgotError("Ne correspondent pas !"); return; }
+                        setAdminMotDePasse(adminForgotNouv); localStorage.setItem("fastbuy_admin_pwd", adminForgotNouv);
+                        alert("Mot de passe changé !"); setShowAdminForgot(false);
+                      }}>Valider</button>
+                      <button onClick={() => setShowAdminForgot(false)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer", width: "100%" }}>← Retour</button>
+                    </>
+                  )}
                 </>
               )}
-              <button onClick={() => setShowAdminForgot(true)} style={{ background: "none", border: "none", color: "#00A86B", fontSize: 13, cursor: "pointer", fontFamily: "DM Sans" }}>🔑 Modifier mon mot de passe</button>
-            </>
-          ) : (
-            <div style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "1.5rem", textAlign: "left" }}>
-              <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1.2rem", textAlign: "center" }}>🔑 Modifier le mot de passe</h3>
-              {adminForgotError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{adminForgotError}</div>}
-              {[["Ancien mot de passe", adminForgotAncienPwd, setAdminForgotAncienPwd], ["Nouveau mot de passe", adminForgotNouveauPwd, setAdminForgotNouveauPwd], ["Confirmer nouveau mot de passe", adminForgotConfirmPwd, setAdminForgotConfirmPwd]].map(([label, val, setter]) => (
-                <div key={label} style={{ marginBottom: "0.8rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>{label}</label>
-                  <input type="password" placeholder="••••••••" value={val} onChange={(e) => setter(e.target.value)} style={inp} />
-                </div>
-              ))}
-              <button onClick={adminChangerPwd} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginTop: 8 }}>✅ Valider</button>
-              <button onClick={() => { setShowAdminForgot(false); setAdminForgotError(""); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ADMIN DASHBOARD */}
-      {page === "admin" && adminOk && (
-        <div style={{ padding: "2rem" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
-            <h2 style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800 }}>⚙️ FastBuy 229 — Admin</h2>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              {[[commandes.length, "Commandes", "#00A86B"], [commandes.reduce((a, c) => a + (c.totalFinal || c.total || 0), 0).toLocaleString(), "FCFA", "#F5C842"], [produits.length, "Produits", "#3B82F6"], [messages.length, "Messages", "#A855F7"]].map(([n, l, c]) => (
-                <div key={l} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "10px 16px", textAlign: "center" }}>
-                  <div style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, color: c }}>{n}</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{l}</div>
-                </div>
-              ))}
-              <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: "rgba(255,80,80,0.1)", border: "1px solid rgba(255,80,80,0.3)", color: "rgba(255,100,100,0.8)", cursor: "pointer", fontFamily: "DM Sans" }}>🚪 Déconnexion</button>
             </div>
           </div>
-
-          <div style={{ display: "flex", gap: 10, marginBottom: "2rem" }}>
-            <button onClick={() => setShowAddProduct(true)} className="bg" style={{ padding: "12px 24px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>+ Ajouter un produit</button>
-            <button onClick={() => { setShowClients(!showClients); chargerClients(); }} style={{ padding: "12px 24px", background: showClients ? "rgba(168,85,247,0.2)" : "#161926", border: "1px solid rgba(168,85,247,0.4)", color: "#A855F7", borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>👥 Gérer les clients</button>
-          </div>
-          {showClients && (
-            <div style={{ background: "#161926", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 16, padding: "1.5rem", marginBottom: "2rem" }}>
-              <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1.2rem", color: "#A855F7" }}>👥 Modifier mot de passe client</h3>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>Entre l'email du client et le nouveau mot de passe.</p>
-              {editClientMsg && <div style={{ background: editClientMsg.includes("✅") ? "rgba(0,168,107,0.15)" : "rgba(255,80,80,0.15)", border: `1px solid ${editClientMsg.includes("✅") ? "rgba(0,168,107,0.3)" : "rgba(255,80,80,0.3)"}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: editClientMsg.includes("✅") ? "#00A86B" : "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{editClientMsg}</div>}
-              <div style={{ marginBottom: "1rem" }}>
-                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Email du client</label>
-                <input type="email" placeholder="exemple@gmail.com" value={editClientEmail} onChange={(e) => setEditClientEmail(e.target.value)} style={inp} />
+        ) : (
+          <div style={{ padding: "2rem", maxWidth: 1100, margin: "0 auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap", gap: 12 }}>
+              <div>
+                <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.8rem", fontWeight: 800, color: "#1a1a2e" }}>FastBuy 229 — Admin</h1>
+                <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>{produits.length} produits · {commandes.length} commandes</p>
               </div>
-              <div style={{ marginBottom: "1rem" }}>
-                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Nouveau mot de passe</label>
-                <input type="text" placeholder="Nouveau mot de passe" value={editClientNewPwd} onChange={(e) => setEditClientNewPwd(e.target.value)} style={inp} />
-              </div>
-              <button onClick={modifierMdpClient} className="bg" style={{ padding: "12px 24px", background: "#A855F7", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>✅ Modifier le mot de passe</button>
-              <div style={{ marginTop: "1.5rem", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "1rem" }}>
-                <h4 style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "0.8rem" }}>Liste des clients ({clients.length})</h4>
-                {clients.map((c) => (
-                  <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{c.nom}</div>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{c.telephone}</div>
-                    </div>
-                    <button onClick={() => setEditClientEmail(c.telephone)} style={{ padding: "6px 12px", background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", color: "#A855F7", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "DM Sans" }}>Sélectionner</button>
-                  </div>
-                ))}
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button className="btn-primary" onClick={() => setShowAddProduct(true)}>+ Ajouter produit</button>
+                <button className="btn-secondary" onClick={() => { setGererClients(true); chargerClients(); }}>Gérer clients</button>
+                <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "10px 18px", background: "#fef2f2", border: "1px solid #fecaca", color: "#ef4444", borderRadius: 10, fontSize: 13, cursor: "pointer" }}>Déconnexion</button>
               </div>
             </div>
-          )}
 
-          <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Produits ({produits.length})</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 12, marginBottom: "2.5rem" }}>
-            {produits.map((p) => (
-              <div key={p.id} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px" }}>
-                {getImageUrl(p.image) ? <img src={getImageUrl(p.image)} alt={p.title} style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 8 }} /> : <span style={{ fontSize: "2rem" }}>{p.emoji}</span>}
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>{p.title}</div>
-                  <div style={{ fontSize: 12, color: "#00A86B", fontWeight: 700 }}>{p.price.toLocaleString()} FCFA</div>
-                  {p.plage_livraison && <div style={{ fontSize: 11, color: "#F5C842" }}>🚚 {p.plage_livraison}</div>}
-                </div>
-                <span onClick={() => supprimerProduit(p.id)} style={{ cursor: "pointer", color: "rgba(255,80,80,0.7)", fontSize: 18 }}>🗑</span>
-              </div>
-            ))}
-          </div>
-
-          <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>💬 Messages ({messages.length})</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: "2.5rem" }}>
-            {messages.length === 0 ? <div style={{ textAlign: "center", padding: "2rem", color: "rgba(255,255,255,0.25)" }}>Aucun message</div> :
-              messages.map((msg) => (
-                <div key={msg.id} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "1.2rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{msg.nom} — {msg.telephone}</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{new Date(msg.created_at).toLocaleString("fr-FR")}</div>
-                  </div>
-                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 10, background: "#1C2035", padding: "10px 14px", borderRadius: 8 }}>{msg.message}</div>
-                  {msg.reponse ? (
-                    <div style={{ fontSize: 13, color: "#00A86B", background: "rgba(0,168,107,0.1)", padding: "10px 14px", borderRadius: 8 }}>✅ {msg.reponse}</div>
-                  ) : (
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <input type="text" placeholder="Ta réponse…" id={`rep-${msg.id}`} style={{ ...inp, flex: 1 }} />
-                      <button onClick={() => { const val = document.getElementById(`rep-${msg.id}`).value; if (val) repondreMessage(msg.id, val); }} className="bg" style={{ padding: "10px 16px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, cursor: "pointer", fontFamily: "DM Sans" }}>Répondre</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-          </div>
-
-          <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Commandes ({commandes.length})</h3>
-          {commandes.length === 0 ? <div style={{ textAlign: "center", padding: "3rem", color: "rgba(255,255,255,0.25)" }}><div style={{ fontSize: "3rem" }}>📭</div>Aucune commande</div> :
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {commandes.map((cmd) => (
-                <div key={cmd.id} style={{ background: "#161926", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "1.2rem 1.5rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
-                    <div>
-                      <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: "1rem", marginBottom: 3 }}>{cmd.numero}</div>
-                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{new Date(cmd.created_at).toLocaleString("fr-FR")}</div>
-                      <div style={{ fontSize: 11, color: "#F5C842", marginTop: 3 }}>💰 {cmd.paiement} {cmd.codePromo && `| 🎟️ ${cmd.codePromo}`}</div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontFamily: "Syne", fontWeight: 800, color: "#00A86B", fontSize: "1.1rem" }}>{(cmd.totalFinal || cmd.total)?.toLocaleString()} FCFA</span>
-                      <select value={cmd.statut} onChange={(e) => changerStatut(cmd.id, e.target.value)} style={{ background: "#1C2035", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", padding: "6px 10px", fontSize: 13, fontFamily: "DM Sans", cursor: "pointer", outline: "none" }}>
-                        {STATUTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", marginBottom: cmd.capture ? "1rem" : 0 }}>
-                    <div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>CLIENT</div><div style={{ fontSize: 13 }}>{cmd.nom}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{cmd.email}</div></div>
-                    <div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>TÉL. LIVREUR</div><div style={{ fontSize: 13, color: "#F5C842" }}>{cmd.telephoneLivreur}</div></div>
-                    <div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>LIVRAISON</div><div style={{ fontSize: 13 }}>{cmd.ville}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{cmd.adresse}</div></div>
-                    <div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>ARTICLES</div>{cmd.articles?.map((a, i) => <div key={i} style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{a.emoji} {a.title} × {a.qty}</div>)}</div>
-                  </div>
-                  {cmd.capture && (
-                    <div style={{ marginTop: "1rem" }}>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>📸 CAPTURE PAIEMENT</div>
-                      <img src={getImageUrl(cmd.capture)} alt="capture" style={{ maxWidth: 300, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)" }} />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          }
-        </div>
-      )}
-
-      {/* AUTH */}
-      {showAuth && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 440, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>
-                {authMode === "register" ? "✨ Créer un compte" : "👤 Se connecter"}
-              </h2>
-              <span onClick={() => { setShowAuth(false); setAuthError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
-            </div>
-            {authError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{authError}</div>}
-
-            {authMode === "register" && (
-              <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: "1rem" }}>
-                  <div>
-                    <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Prénom</label>
-                    <input type="text" placeholder="Marc" value={authForm.prenom} onChange={(e) => setAuthForm({ ...authForm, prenom: e.target.value })} style={inp} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Nom</label>
-                    <input type="text" placeholder="Dupont" value={authForm.nom} onChange={(e) => setAuthForm({ ...authForm, nom: e.target.value })} style={inp} />
-                  </div>
-                </div>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Email</label>
-                  <input type="email" placeholder="exemple@gmail.com" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} style={inp} />
-                </div>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📱 Téléphone</label>
-                  <input type="tel" placeholder="+229 97 00 00 00" value={authForm.telephone} onChange={(e) => setAuthForm({ ...authForm, telephone: e.target.value })} style={inp} />
-                </div>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📅 Date de naissance</label>
-                  <input type="text" placeholder="JJ/MM/AAAA" maxLength={10} value={authForm.dateNaissance} onChange={(e) => {
-                    let v = e.target.value.replace(/\D/g, "");
-                    if (v.length >= 3) v = v.slice(0,2) + "/" + v.slice(2);
-                    if (v.length >= 6) v = v.slice(0,5) + "/" + v.slice(5);
-                    setAuthForm({ ...authForm, dateNaissance: v });
-                  }} style={inp} />
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 4 }}>Ex: 15/03/1995</div>
-                </div>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Mot de passe</label>
-                  <input type="password" placeholder="••••••••" value={authForm.motdepasse} onChange={(e) => setAuthForm({ ...authForm, motdepasse: e.target.value })} style={inp} />
-                </div>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Confirmer le mot de passe</label>
-                  <input type="password" placeholder="••••••••" value={authForm.confirmpwd} onChange={(e) => setAuthForm({ ...authForm, confirmpwd: e.target.value })} style={inp} />
-                </div>
-                {authForm.prenom && (
-                  <div style={{ background: "rgba(245,200,66,0.08)", border: "1px solid rgba(245,200,66,0.2)", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>
-                    🎟️ Ton code promo : <strong style={{ color: "#F5C842" }}>{authForm.prenom.toLowerCase()}10</strong> — 10% sur ta 1ère commande !
-                  </div>
-                )}
-                <button onClick={inscrire} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
-                  {loading ? "Création…" : "✅ Créer mon compte"}
-                </button>
-              </>
-            )}
-
-            {authMode === "login" && (
-              <>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Email ou 📱 Téléphone</label>
-                  <input type="text" placeholder="exemple@gmail.com ou +229 97..." value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} style={inp} />
-                </div>
-                <div style={{ marginBottom: "1.5rem" }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Mot de passe</label>
-                  <input type="password" placeholder="••••••••" value={authForm.motdepasse} onChange={(e) => setAuthForm({ ...authForm, motdepasse: e.target.value })} style={inp} />
-                </div>
-                <div style={{ textAlign: "right", marginBottom: "1rem" }}>
-                  <span onClick={() => { setShowAuth(false); setShowForgot(true); setForgotError(""); }} style={{ fontSize: 12, color: "#00A86B", cursor: "pointer" }}>Mot de passe oublié ?</span>
-                </div>
-                <button onClick={connecter} disabled={loading} className="bg" style={{ width: "100%", padding: "13px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
-                  {loading ? "Connexion…" : "✅ Se connecter"}
-                </button>
-              </>
-            )}
-
-            <div style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
-              {authMode === "register" ? (
-                <span>Déjà un compte ? <span onClick={() => { setAuthMode("login"); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>Se connecter</span></span>
-              ) : (
-                <span>Pas de compte ? <span onClick={() => { setAuthMode("register"); setAuthError(""); }} style={{ color: "#00A86B", cursor: "pointer", fontWeight: 500 }}>S'inscrire gratuitement</span></span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MES COMMANDES */}
-      {showMesCommandes && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 500, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>📦 Mes commandes</h2>
-              <span onClick={() => setShowMesCommandes(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
-            </div>
-            {mesCommandes.length === 0 ? <div style={{ textAlign: "center", padding: "2rem", color: "rgba(255,255,255,0.3)" }}>Aucune commande</div> :
-              mesCommandes.map((cmd) => (
-                <div key={cmd.id} style={{ background: "#1C2035", borderRadius: 12, padding: "1rem", marginBottom: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div style={{ fontFamily: "Syne", fontWeight: 700 }}>{cmd.numero}</div>
-                    <span style={{ background: "rgba(0,168,107,0.15)", color: "#00A86B", padding: "3px 10px", borderRadius: 999, fontSize: 12 }}>{cmd.statut}</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>{new Date(cmd.created_at).toLocaleString("fr-FR")}</div>
-                  <div style={{ fontSize: 13, color: "#00A86B", fontWeight: 700 }}>{(cmd.totalFinal || cmd.total)?.toLocaleString()} FCFA</div>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* MESSAGE */}
-      {showMessage && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 440, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>{produitNegocie ? "💬 Négocier le prix" : "💬 Message"}</h2>
-              <span onClick={() => { setShowMessage(false); setProduitNegocie(null); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
-            </div>
-            {produitNegocie && (
-              <div style={{ background: "#1C2035", borderRadius: 10, padding: "12px 14px", marginBottom: "1rem", display: "flex", alignItems: "center", gap: 10 }}>
-                {getImageUrl(produitNegocie.image) ? <img src={getImageUrl(produitNegocie.image)} alt={produitNegocie.title} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} /> : <span style={{ fontSize: "2rem" }}>{produitNegocie.emoji}</span>}
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{produitNegocie.title}</div>
-                  <div style={{ fontSize: 12, color: "#00A86B", fontWeight: 700 }}>{produitNegocie.price.toLocaleString()} FCFA</div>
-                </div>
-              </div>
-            )}
-            <textarea value={messageTexte} onChange={(e) => setMessageTexte(e.target.value)} placeholder={produitNegocie ? `Ex: Je propose ${Math.round(produitNegocie?.price * 0.85).toLocaleString()} FCFA, c'est possible ?` : "Ta question ou demande…"} style={{ ...inp, height: 120, resize: "none" }} />
-            <button onClick={envoyerMessage} className="bg" style={{ width: "100%", padding: "13px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans", marginTop: "1rem" }}>Envoyer 📤</button>
-          </div>
-        </div>
-      )}
-
-      {/* DETAIL PRODUIT */}
-      {showProduit && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 520, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>{showProduit.title}</h2>
-              <span onClick={() => setShowProduit(null)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
-            </div>
-
-            {/* Photos */}
-            <div style={{ marginBottom: "1rem" }}>
-              {(() => {
-                const photos = showProduit.images && showProduit.images.length > 0 ? showProduit.images : showProduit.image ? [showProduit.image] : [];
-                return (
-                  <>
-                    <div style={{ height: 260, background: "#1C2035", borderRadius: 12, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-                      {photos.length > 0 ? (
-                        <img src={getImageUrl(photos[photoChoisie])} alt={showProduit.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        <span style={{ fontSize: "4rem" }}>{showProduit.emoji}</span>
-                      )}
-                    </div>
-                    {photos.length > 1 && (
-                      <div style={{ display: "flex", gap: 6, overflowX: "auto" }}>
-                        {photos.map((p, i) => (
-                          <img key={i} src={getImageUrl(p)} alt="" onClick={() => setPhotoChoisie(i)} style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, cursor: "pointer", border: `2px solid ${photoChoisie === i ? "#00A86B" : "transparent"}` }} />
-                        ))}
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>📍 {showProduit.location} · 🚚 {showProduit.plage_livraison}</div>
-            {showProduit.description && <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: "1rem", lineHeight: 1.6 }}>{showProduit.description}</div>}
-
-            {/* Variantes */}
-            {showProduit.variantes && showProduit.variantes.length > 0 ? (
-              <div style={{ marginBottom: "1.5rem" }}>
-                {/* Couleurs */}
-                {[...new Set(showProduit.variantes.map(v => v.couleur).filter(Boolean))].length > 0 && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 8, fontWeight: 500 }}>Couleur :</div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {[...new Set(showProduit.variantes.map(v => v.couleur).filter(Boolean))].map((c, i) => (
-                        <button key={i} onClick={() => setVarianteChoisie(prev => ({ ...prev, couleur: c }))} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: varianteChoisie?.couleur === c ? "rgba(0,168,107,0.2)" : "#1C2035", border: `1px solid ${varianteChoisie?.couleur === c ? "#00A86B" : "rgba(255,255,255,0.1)"}`, color: varianteChoisie?.couleur === c ? "#00A86B" : "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>{c}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {/* Tailles */}
-                {[...new Set(showProduit.variantes.map(v => v.taille).filter(Boolean))].length > 0 && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 8, fontWeight: 500 }}>Taille / Volume :</div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {[...new Set(showProduit.variantes.filter(v => !varianteChoisie?.couleur || v.couleur === varianteChoisie?.couleur).map(v => v.taille).filter(Boolean))].map((t, i) => (
-                        <button key={i} onClick={() => setVarianteChoisie(prev => ({ ...prev, taille: t }))} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: varianteChoisie?.taille === t ? "rgba(0,168,107,0.2)" : "#1C2035", border: `1px solid ${varianteChoisie?.taille === t ? "#00A86B" : "rgba(255,255,255,0.1)"}`, color: varianteChoisie?.taille === t ? "#00A86B" : "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>{t}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {/* Prix selon variante */}
-                {varianteChoisie && (() => {
-                  const v = showProduit.variantes.find(v => (!varianteChoisie.couleur || v.couleur === varianteChoisie.couleur) && (!varianteChoisie.taille || v.taille === varianteChoisie.taille));
-                  return v ? (
-                    <div style={{ background: "#1C2035", borderRadius: 10, padding: "12px 16px", marginBottom: "1rem" }}>
-                      <div style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, color: "#00A86B" }}>{parseInt(v.prix).toLocaleString()} FCFA</div>
-                      <div style={{ fontSize: 12, color: v.stock === "disponible" ? "#00A86B" : "rgba(255,100,100,0.7)", marginTop: 4 }}>{v.stock === "disponible" ? "✅ En stock" : "❌ Rupture de stock"}</div>
-                    </div>
-                  ) : null;
-                })()}
-              </div>
+            {/* Commandes */}
+            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>📦 Commandes récentes</h2>
+            {commandes.length === 0 ? (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "2rem", textAlign: "center", color: "#9ca3af", marginBottom: "2rem" }}>Aucune commande pour l'instant</div>
             ) : (
-              <div style={{ background: "#1C2035", borderRadius: 10, padding: "12px 16px", marginBottom: "1.5rem" }}>
-                <div style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, color: "#00A86B" }}>{showProduit.price?.toLocaleString()} FCFA</div>
-              </div>
-            )}
-
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => {
-                const produitAvecVariante = { ...showProduit };
-                if (varianteChoisie) {
-                  const v = showProduit.variantes?.find(v => (!varianteChoisie.couleur || v.couleur === varianteChoisie.couleur) && (!varianteChoisie.taille || v.taille === varianteChoisie.taille));
-                  if (v) produitAvecVariante.price = parseInt(v.prix);
-                  produitAvecVariante.varianteChoisie = varianteChoisie;
-                }
-                ajouterAuPanier(produitAvecVariante);
-                setShowProduit(null);
-              }} className="bg" style={{ flex: 1, padding: "13px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>
-                {client ? "🛒 Ajouter au panier" : "🔒 Connexion requise"}
-              </button>
-              {client && (
-                <button onClick={() => { setProduitNegocie(showProduit); setShowMessage(true); setShowProduit(null); }} style={{ padding: "13px 14px", background: "rgba(245,200,66,0.1)", border: "1px solid rgba(245,200,66,0.3)", borderRadius: 12, fontSize: 16, cursor: "pointer", color: "#F5C842" }}>💬</button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* PANIER */}
-      {showPanier && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex" }}>
-          <div onClick={() => setShowPanier(false)} style={{ flex: 1, background: "rgba(0,0,0,0.6)" }} />
-          <div style={{ width: 400, background: "#161926", borderLeft: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", animation: "si 0.3s ease" }}>
-            <div style={{ padding: "1.5rem", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 700 }}>🛒 Panier ({nbPanier})</h2>
-              <span onClick={() => setShowPanier(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
-            </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
-              {panier.length === 0 ? <div style={{ textAlign: "center", padding: "3rem", color: "rgba(255,255,255,0.3)" }}><div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🛒</div>Panier vide</div> :
-                panier.map((p) => (
-                  <div key={p.id} style={{ background: "#1C2035", borderRadius: 12, padding: "12px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
-                    {getImageUrl(p.image) ? <img src={getImageUrl(p.image)} alt={p.title} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} /> : <span style={{ fontSize: "2rem" }}>{p.emoji}</span>}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 3 }}>{p.title}</div>
-                      <div style={{ fontSize: 12, color: "#00A86B", fontWeight: 700 }}>{(p.price * p.qty).toLocaleString()} FCFA</div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <button onClick={() => changerQty(p.id, -1)} style={{ width: 26, height: 26, borderRadius: 6, background: "#0B0E18", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer", fontSize: 14 }}>−</button>
-                      <span style={{ fontSize: 13, fontWeight: 600, minWidth: 20, textAlign: "center" }}>{p.qty}</span>
-                      <button onClick={() => changerQty(p.id, 1)} style={{ width: 26, height: 26, borderRadius: 6, background: "#0B0E18", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer", fontSize: 14 }}>+</button>
-                      <span onClick={() => retirerDuPanier(p.id)} style={{ cursor: "pointer", color: "rgba(255,100,100,0.7)", fontSize: 16, marginLeft: 4 }}>🗑</span>
+              <div style={{ display: "grid", gap: 12, marginBottom: "2rem" }}>
+                {commandes.map(cmd => (
+                  <div key={cmd.id} style={{ background: "#fff", borderRadius: 14, padding: "1.2rem 1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{cmd.numero} — {cmd.nom}</div>
+                        <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{cmd.telephone} · {cmd.ville}</div>
+                        <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{new Date(cmd.created_at).toLocaleDateString("fr-FR")}</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: "#2563eb" }}>{cmd.totalFinal?.toLocaleString()} FCFA</div>
+                        <select value={cmd.statut} onChange={async e => {
+                          await supabase.from("commandes").update({ statut: e.target.value }).eq("id", cmd.id);
+                          chargerCommandes();
+                        }} style={{ marginTop: 6, padding: "6px 10px", borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12, cursor: "pointer", color: cmd.statut === "Livré" ? "#16a34a" : cmd.statut === "Expédié" ? "#2563eb" : "#f59e0b" }}>
+                          <option>En attente</option>
+                          <option>Confirmé</option>
+                          <option>Expédié</option>
+                          <option>Livré</option>
+                          <option>Annulé</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 ))}
-            </div>
-            {panier.length > 0 && (
-              <div style={{ padding: "1.5rem", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-                  <span style={{ color: "rgba(255,255,255,0.6)" }}>Total</span>
-                  <span style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 800, color: "#00A86B" }}>{total.toLocaleString()} FCFA</span>
+              </div>
+            )}
+
+            {/* Messages */}
+            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>💬 Messages clients</h2>
+            {messages.length === 0 ? (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "2rem", textAlign: "center", color: "#9ca3af", marginBottom: "2rem" }}>Aucun message</div>
+            ) : (
+              <div style={{ display: "grid", gap: 12, marginBottom: "2rem" }}>
+                {messages.map(msg => (
+                  <div key={msg.id} style={{ background: "#fff", borderRadius: 14, padding: "1.2rem 1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{msg.nom} — {msg.telephone}</div>
+                    <div style={{ fontSize: 13, color: "#374151", marginTop: 6, background: "#f9fafb", padding: "10px 14px", borderRadius: 8 }}>{msg.message}</div>
+                    <textarea placeholder="Répondre..." value={msg.reponse || ""} onChange={async e => {
+                      await supabase.from("messages").update({ reponse: e.target.value }).eq("id", msg.id);
+                      chargerMessages();
+                    }} style={{ marginTop: 8, padding: "10px 12px", border: "1.5px solid #e5e7eb", borderRadius: 8, width: "100%", fontSize: 13, fontFamily: "'Inter', sans-serif", resize: "vertical" }} rows={2} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Produits admin */}
+            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>🛍️ Produits ({produits.length})</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
+              {produits.map(p => (
+                <div key={p.id} style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                  <div style={{ height: 120, background: "#f3f4f6", overflow: "hidden" }}>
+                    {(p.images?.[0] || p.image) ? <img src={getImageUrl(p.images?.[0] || p.image)} alt={p.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem" }}>📦</div>}
+                  </div>
+                  <div style={{ padding: "10px 12px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{p.title}</div>
+                    <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>{p.variantes?.length > 0 ? `${p.variantes.length} variantes` : `${p.price?.toLocaleString()} FCFA`}</div>
+                    <button onClick={() => supprimerProduit(p.id)} style={{ width: "100%", padding: "7px 0", background: "#fef2f2", border: "1px solid #fecaca", color: "#ef4444", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>Supprimer</button>
+                  </div>
                 </div>
-                <button onClick={() => { setShowPanier(false); setShowCommande(true); }} className="bg" style={{ width: "100%", padding: "13px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>Commander →</button>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* COMMANDE */}
-      {showCommande && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 500, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>📦 Passer commande</h2>
-              <span onClick={() => setShowCommande(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
-            </div>
-            <div style={{ background: "#1C2035", borderRadius: 12, padding: "12px 16px", marginBottom: "1.5rem" }}>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>{nbPanier} article(s)</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontFamily: "Syne", fontSize: "1.1rem", fontWeight: 800, color: "#00A86B" }}>{total.toLocaleString()} FCFA</div>
-                {codePromoValide && <div style={{ fontSize: 13, color: "#F5C842" }}>-{reductionPromo.toLocaleString()} FCFA 🎟️</div>}
+        {/* Modal ajouter produit */}
+        {showAddProduct && (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddProduct(false)}>
+            <div className="modal" style={{ maxWidth: 560 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.3rem", fontWeight: 700 }}>Ajouter un produit</h2>
+                <span onClick={() => setShowAddProduct(false)} style={{ cursor: "pointer", fontSize: 22, color: "#9ca3af" }}>×</span>
               </div>
-              {codePromoValide && <div style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 800, color: "#00A86B", marginTop: 4 }}>Total final : {totalFinal.toLocaleString()} FCFA</div>}
-            </div>
 
-            {[["nom", "Nom complet", "Ex: Jean Dupont", "text"], ["email", "Email (pour le reçu)", "exemple@gmail.com", "email"], ["telephoneLivreur", "📱 Téléphone pour le livreur", "+229 97 00 00 00", "tel"], ["ville", "Ville de livraison", "Cotonou, Porto-Novo…", "text"], ["adresse", "Adresse précise", "Quartier, repère…", "text"]].map(([key, label, ph, type]) => (
-              <div key={key} style={{ marginBottom: "1rem" }}>
-                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>{label}</label>
-                <input type={type} placeholder={ph} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} style={inp} />
+              <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Nom du produit *</label>
+              <input value={newProduct.title} onChange={e => setNewProduct({ ...newProduct, title: e.target.value })} placeholder="Ex: Robe fleurie, iPhone 14..." style={inp} />
+
+              <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Description</label>
+              <textarea value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} placeholder="Description du produit..." style={{ ...inp, resize: "vertical" }} rows={3} />
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 0 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Catégorie</label>
+                  <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} style={inp}>
+                    {CATEGORIES.filter(c => c !== "Tous").map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>État</label>
+                  <select value={newProduct.etat} onChange={e => setNewProduct({ ...newProduct, etat: e.target.value })} style={inp}>
+                    <option>Neuf</option>
+                    <option>Comme neuf</option>
+                    <option>Bon état</option>
+                  </select>
+                </div>
               </div>
-            ))}
 
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🎟️ Code promo (optionnel)</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input type="text" placeholder={`Ex: ${client?.prenom?.toLowerCase() || "prenom"}10`} value={codePromoSaisi} onChange={(e) => setCodePromoSaisi(e.target.value)} style={{ ...inp, flex: 1 }} disabled={codePromoValide} />
-                {!codePromoValide ? (
-                  <button onClick={verifierCodePromo} style={{ padding: "10px 16px", background: "rgba(245,200,66,0.15)", border: "1px solid rgba(245,200,66,0.3)", color: "#F5C842", borderRadius: 9, fontSize: 13, cursor: "pointer", fontFamily: "DM Sans", whiteSpace: "nowrap" }}>Appliquer</button>
-                ) : (
-                  <span style={{ padding: "10px 16px", background: "rgba(0,168,107,0.15)", border: "1px solid rgba(0,168,107,0.3)", color: "#00A86B", borderRadius: 9, fontSize: 13, whiteSpace: "nowrap" }}>✅ -{reductionPromo.toLocaleString()} FCFA</span>
-                )}
-              </div>
-            </div>
+              <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Délai de livraison</label>
+              <select value={newProduct.plage_livraison} onChange={e => setNewProduct({ ...newProduct, plage_livraison: e.target.value })} style={inp}>
+                <option>1-3 jours</option>
+                <option>3-5 jours</option>
+                <option>1-2 semaines</option>
+                <option>2-3 semaines</option>
+              </select>
 
-            <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 10 }}>💰 Mode de paiement</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                {PAIEMENTS.map((p) => (
-                  <div key={p.id} className="pay" onClick={() => setPaiementChoisi(p.id)} style={{ background: paiementChoisi === p.id ? "rgba(0,168,107,0.15)" : "#1C2035", border: `1px solid ${paiementChoisi === p.id ? "#00A86B" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, padding: "12px", textAlign: "center", fontSize: 12, cursor: "pointer", transition: "all 0.18s", fontWeight: paiementChoisi === p.id ? 600 : 400 }}>
-                    <div style={{ fontSize: "1.3rem", marginBottom: 4 }}>{p.icon}</div>
-                    {p.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ background: "rgba(245,200,66,0.08)", border: "1px solid rgba(245,200,66,0.2)", borderRadius: 12, padding: "1rem 1.2rem", marginBottom: "1.5rem" }}>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 6 }}>💰 Envoyez exactement <strong style={{ color: "#00A86B", fontSize: "1.1rem" }}>{totalFinal.toLocaleString()} FCFA</strong> au :</div>
-              <div style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, color: "#F5C842", marginBottom: 4 }}>{MOMO_NUMERO}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Puis ajoutez la capture d'écran ci-dessous</div>
-            </div>
-
-            <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📸 Capture du paiement <span style={{ color: "rgba(255,80,80,0.8)" }}>*obligatoire</span></label>
-              <div style={{ border: "2px dashed rgba(255,255,255,0.15)", borderRadius: 12, padding: "1.2rem", textAlign: "center", cursor: "pointer" }} onClick={() => document.getElementById("capture-input").click()}>
-                {capturePreview ? <img src={capturePreview} alt="capture" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 8 }} /> : (
-                  <div><div style={{ fontSize: "2rem", marginBottom: 6 }}>📷</div><div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Clique pour ajouter ta capture</div></div>
-                )}
-                <input id="capture-input" type="file" accept="image/*" onChange={handleCaptureChange} style={{ display: "none" }} />
-              </div>
-            </div>
-
-            <button onClick={passerCommande} disabled={loading} className="bg" style={{ width: "100%", padding: "14px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans" }}>
-              {loading ? "Envoi…" : "✅ Confirmer la commande"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* CONFIRMATION */}
-      {commandeOk && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#161926", borderRadius: 20, padding: "3rem 2rem", width: "100%", maxWidth: 420, textAlign: "center", animation: "pi 0.3s ease", border: "1px solid rgba(0,168,107,0.3)" }}>
-            <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🎉</div>
-            <h2 style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, marginBottom: "1rem", color: "#00A86B" }}>Commande confirmée !</h2>
-            <div style={{ background: "#1C2035", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem" }}>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Numéro de commande</div>
-              <div style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, color: "#F5C842", letterSpacing: "0.05em" }}>{commandeOk.numero}</div>
-            </div>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 1.7, marginBottom: "2rem" }}>
-              Nous vérifions votre paiement et confirmons rapidement. Livraison sous <strong style={{ color: "#fff" }}>3 jours à 2 semaines</strong>.
-            </p>
-            <button onClick={() => setCommandeOk(null)} className="bg" style={{ padding: "12px 32px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>Continuer les achats</button>
-          </div>
-        </div>
-      )}
-
-      {/* AJOUTER PRODUIT */}
-      {showAddProduct && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 480, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>➕ Ajouter un produit</h2>
-              <span onClick={() => setShowAddProduct(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
-            </div>
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📸 Photos (jusqu'à 5)</label>
-              <div style={{ border: "2px dashed rgba(255,255,255,0.15)", borderRadius: 12, padding: "1.5rem", textAlign: "center", cursor: "pointer" }} onClick={() => document.getElementById("photo-input").click()}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Photos (jusqu'à 5)</label>
+              <div onClick={() => document.getElementById("photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 12, padding: "1.2rem", textAlign: "center", cursor: "pointer", marginBottom: 12, background: "#fafafa" }}>
                 {imagePreviews.length > 0 ? (
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-                    {imagePreviews.map((p, i) => <img key={i} src={p} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8 }} />)}
+                    {imagePreviews.map((p, i) => <img key={i} src={p} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: 8 }} />)}
                   </div>
-                ) : <div><div style={{ fontSize: "2rem", marginBottom: 8 }}>📷</div><div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Clique pour ajouter jusqu'à 5 photos</div></div>}
-                <input id="photo-input" type="file" accept="image/*" multiple onChange={(e) => {
+                ) : (
+                  <div>
+                    <div style={{ fontSize: "1.8rem", marginBottom: 6 }}>📷</div>
+                    <div style={{ fontSize: 13, color: "#9ca3af" }}>Clique pour ajouter jusqu'à 5 photos</div>
+                  </div>
+                )}
+                <input id="photo-input" type="file" accept="image/*" multiple onChange={e => {
                   const files = Array.from(e.target.files).slice(0, 5);
                   setImageFiles(files);
                   setImagePreviews(files.map(f => URL.createObjectURL(f)));
                 }} style={{ display: "none" }} />
               </div>
-            </div>
-            {[["title", "Nom du produit", "Ex: Parfum Hugo Boss", "text"], ["price", "Prix (FCFA)", "Ex: 18500", "number"], ["location", "Ville", "Ex: Cotonou", "text"], ["description", "Description", "Décris le produit…", "text"]].map(([key, label, ph, type]) => (
-              <div key={key} style={{ marginBottom: "1rem" }}>
-                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>{label}</label>
-                <input type={type} placeholder={ph} value={newProduct[key]} onChange={(e) => setNewProduct({ ...newProduct, [key]: e.target.value })} style={inp} />
-              </div>
-            ))}
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🚚 Plage de livraison</label>
-              <select value={newProduct.plage_livraison} onChange={(e) => setNewProduct({ ...newProduct, plage_livraison: e.target.value })} style={{ ...inp, cursor: "pointer" }}>
-                {PLAGES_LIVRAISON.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Catégorie</label>
-              <select value={newProduct.category} onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} style={{ ...inp, cursor: "pointer" }}>
-                {CATEGORIES.map((c) => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
-              </select>
-            </div>
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Emoji</label>
-              <select value={newProduct.emoji} onChange={(e) => setNewProduct({ ...newProduct, emoji: e.target.value })} style={{ ...inp, cursor: "pointer" }}>
-                {["🌸", "👗", "👟", "📱", "🪢", "👜", "💍", "💻", "👒", "🕶️", "⌚", "🎒"].map((e) => <option key={e} value={e}>{e}</option>)}
-              </select>
-            </div>
-            <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>État</label>
-              <select value={newProduct.etat} onChange={(e) => setNewProduct({ ...newProduct, etat: e.target.value })} style={{ ...inp, cursor: "pointer" }}>
-                {["Neuf", "Comme neuf", "Bon état", "Usagé"].map((e) => <option key={e} value={e}>{e}</option>)}
-              </select>
-            </div>
-            {/* VARIANTES */}
-            <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 10, fontWeight: 600 }}>🎨 Variantes (couleurs/tailles/prix)</label>
-              
-              {/* Liste variantes */}
-              {variantes.length > 0 && (
-                <div style={{ marginBottom: 12 }}>
-                  {variantes.map((v, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#1C2035", borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
-                      <div style={{ fontSize: 13 }}>
-                        {v.couleur && <span style={{ color: "#F5C842", marginRight: 8 }}>🎨 {v.couleur}</span>}
-                        {v.taille && <span style={{ color: "#00A86B", marginRight: 8 }}>📏 {v.taille}</span>}
-                        <span style={{ color: "#fff", fontWeight: 600 }}>{parseInt(v.prix).toLocaleString()} FCFA</span>
-                        <span style={{ fontSize: 11, color: v.stock === "disponible" ? "#00A86B" : "rgba(255,100,100,0.7)", marginLeft: 8 }}>{v.stock === "disponible" ? "✅" : "❌"}</span>
+
+              {/* Variantes */}
+              <div style={{ borderTop: "1px solid #f3f4f6", paddingTop: "1rem", marginBottom: "1rem" }}>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: "#1a1a2e" }}>Variantes (couleurs / tailles / prix)</div>
+
+                {variantes.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    {variantes.map((v, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f9fafb", borderRadius: 8, padding: "8px 12px", marginBottom: 6, border: "1px solid #e5e7eb" }}>
+                        <div style={{ fontSize: 13 }}>
+                          {v.couleur && <span style={{ color: "#2563eb", marginRight: 8, fontWeight: 500 }}>🎨 {v.couleur}</span>}
+                          {v.taille && <span style={{ color: "#059669", marginRight: 8, fontWeight: 500 }}>📏 {v.taille}</span>}
+                          <span style={{ fontWeight: 700 }}>{parseInt(v.prix).toLocaleString()} FCFA</span>
+                          <span style={{ fontSize: 11, color: v.stock === "disponible" ? "#16a34a" : "#ef4444", marginLeft: 8 }}>{v.stock === "disponible" ? "✅ Stock" : "❌ Rupture"}</span>
+                        </div>
+                        <span onClick={() => setVariantes(prev => prev.filter((_, idx) => idx !== i))} style={{ cursor: "pointer", color: "#ef4444", fontSize: 16 }}>×</span>
                       </div>
-                      <span onClick={() => setVariantes(prev => prev.filter((_, idx) => idx !== i))} style={{ cursor: "pointer", color: "rgba(255,80,80,0.7)", fontSize: 16 }}>🗑</span>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ background: "#f9fafb", borderRadius: 12, padding: "14px", border: "1px solid #e5e7eb" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                    <div>
+                      <label style={{ fontSize: 12, color: "#6b7280", display: "block", marginBottom: 4 }}>Couleur</label>
+                      <input type="text" placeholder="Ex: Rouge, Bleu..." value={nouvVar.couleur} onChange={e => setNouvVar(p => ({ ...p, couleur: e.target.value }))} style={{ ...inp, marginBottom: 0, fontSize: 13 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: "#6b7280", display: "block", marginBottom: 4 }}>Taille / Volume</label>
+                      <input type="text" placeholder="Ex: S, M, L, 100ml..." value={nouvVar.taille} onChange={e => setNouvVar(p => ({ ...p, taille: e.target.value }))} style={{ ...inp, marginBottom: 0, fontSize: 13 }} />
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                    <div>
+                      <label style={{ fontSize: 12, color: "#6b7280", display: "block", marginBottom: 4 }}>Prix (FCFA) *</label>
+                      <input type="number" placeholder="Ex: 15000" value={nouvVar.prix} onChange={e => setNouvVar(p => ({ ...p, prix: e.target.value }))} style={{ ...inp, marginBottom: 0, fontSize: 13 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: "#6b7280", display: "block", marginBottom: 4 }}>Stock</label>
+                      <select value={nouvVar.stock} onChange={e => setNouvVar(p => ({ ...p, stock: e.target.value }))} style={{ ...inp, marginBottom: 0, fontSize: 13, cursor: "pointer" }}>
+                        <option value="disponible">✅ Disponible</option>
+                        <option value="rupture">❌ Rupture</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button onClick={() => {
+                    if (!nouvVar.prix) { alert("Le prix est obligatoire !"); return; }
+                    setVariantes(prev => [...prev, { ...nouvVar }]);
+                    setNouvVar({ couleur: "", taille: "", prix: "", stock: "disponible" });
+                  }} style={{ width: "100%", padding: "9px 0", background: "#eff6ff", border: "1.5px solid #bfdbfe", color: "#2563eb", borderRadius: 9, fontSize: 13, cursor: "pointer", fontWeight: 500 }}>
+                    + Ajouter cette variante
+                  </button>
+                </div>
+
+                {variantes.length === 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Ou prix fixe (si pas de variantes)</label>
+                    <input type="number" placeholder="Ex: 15000" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} style={inp} />
+                  </div>
+                )}
+              </div>
+
+              <button onClick={ajouterProduit} disabled={loading} className="btn-primary" style={{ width: "100%" }}>
+                {loading ? "Ajout en cours..." : "✅ Publier le produit"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal gérer clients */}
+        {gererClients && (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setGererClients(false)}>
+            <div className="modal">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.3rem", fontWeight: 700 }}>Gérer les clients</h2>
+                <span onClick={() => setGererClients(false)} style={{ cursor: "pointer", fontSize: 22, color: "#9ca3af" }}>×</span>
+              </div>
+              <input placeholder="Rechercher par email..." value={clientRecherche} onChange={e => setClientRecherche(e.target.value)} style={inp} />
+              <button className="btn-primary" style={{ width: "100%", marginBottom: 16 }} onClick={async () => {
+                const { data } = await supabase.from("users").select("*").eq("email", clientRecherche).maybeSingle();
+                setClientTrouve(data || null);
+              }}>Rechercher</button>
+              {clientTrouve === null && clientRecherche && <p style={{ color: "#ef4444", fontSize: 13 }}>Aucun client trouvé</p>}
+              {clientTrouve && (
+                <div style={{ background: "#f9fafb", borderRadius: 12, padding: "1rem", border: "1px solid #e5e7eb" }}>
+                  <div style={{ fontWeight: 600, marginBottom: 8 }}>{clientTrouve.nom}</div>
+                  <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>{clientTrouve.email} · {clientTrouve.telephone}</div>
+                  <input type="password" placeholder="Nouveau mot de passe" value={nouveauMdpClient} onChange={e => setNouveauMdpClient(e.target.value)} style={inp} />
+                  <button className="btn-primary" style={{ width: "100%" }} onClick={async () => {
+                    if (!nouveauMdpClient || nouveauMdpClient.length < 6) { alert("Mot de passe trop court !"); return; }
+                    await supabase.from("users").update({ mot_de_passe: nouveauMdpClient }).eq("id", clientTrouve.id);
+                    alert("Mot de passe mis à jour !"); setNouveauMdpClient(""); setClientTrouve(null);
+                  }}>Changer le mot de passe</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ===================== BOUTIQUE =====================
+  return (
+    <div style={{ minHeight: "100vh", background: "#f8f9fa", fontFamily: "'Inter', sans-serif" }}>
+      <style>{globalStyles}</style>
+
+      {/* NAVBAR */}
+      <nav className="navbar">
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1.5rem", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div onClick={() => setPage("boutique")} style={{ cursor: "pointer" }}>
+            <span style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.4rem", fontWeight: 800, color: "#1a1a2e" }}>FastBuy</span>
+            <span style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.4rem", fontWeight: 800, color: "#2563eb" }}>229</span>
+          </div>
+
+          <div style={{ flex: 1, maxWidth: 400, margin: "0 2rem" }}>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un produit..." style={{ ...inp, marginBottom: 0, background: "#f3f4f6", border: "1.5px solid #e5e7eb", borderRadius: 25, padding: "10px 18px", fontSize: 13 }} />
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => setPage("aide")} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer" }}>Aide</button>
+            {client ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <button onClick={() => setPage("suivi")} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer" }}>Mes commandes</button>
+                <button onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer" }}>Déconnexion</button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn-secondary" style={{ padding: "8px 16px", fontSize: 13 }} onClick={() => { setShowLogin(true); setAuthError(""); }}>Connexion</button>
+                <button className="btn-primary" style={{ padding: "8px 16px", fontSize: 13 }} onClick={() => { setShowInscription(true); setAuthError(""); }}>S'inscrire</button>
+              </div>
+            )}
+            <div style={{ position: "relative" }}>
+              <button onClick={() => setShowPanier(true)} style={{ background: "#eff6ff", border: "none", borderRadius: 10, padding: "9px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#2563eb" }}>
+                🛒 {panier.reduce((s, i) => s + i.qty, 0)}
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* HERO */}
+      {page === "boutique" && (
+        <div style={{ background: "linear-gradient(135deg, #1a1a2e 0%, #2563eb 100%)", padding: "3rem 1.5rem", textAlign: "center", color: "#fff" }}>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "2.2rem", fontWeight: 800, marginBottom: 12 }}>Bienvenue sur FastBuy 229</h1>
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", maxWidth: 500, margin: "0 auto 1.5rem" }}>La meilleure boutique en ligne du Bénin. Livraison rapide et sécurisée.</p>
+          {!client && <button className="btn-primary" style={{ background: "#f59e0b", border: "none", padding: "12px 32px", fontSize: 15 }} onClick={() => setShowInscription(true)}>Créer mon compte</button>}
+        </div>
+      )}
+
+      {/* PAGE AIDE */}
+      {page === "aide" && (
+        <div style={{ maxWidth: 680, margin: "2rem auto", padding: "0 1.5rem" }}>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.8rem", fontWeight: 800, marginBottom: "1.5rem", color: "#1a1a2e" }}>Centre d'aide</h1>
+          {[
+            { q: "Comment passer une commande ?", r: "Choisissez votre produit, ajoutez-le au panier, puis suivez les étapes de commande. Vous aurez un numéro de suivi." },
+            { q: "Comment payer ?", r: `Nous acceptons MTN MoMo, Moov Money et Celtiis. Envoyez le paiement au ${MOMO} puis téléchargez votre capture.` },
+            { q: "Délais de livraison ?", r: "Entre 1 et 3 semaines selon le produit. Le délai est indiqué sur chaque fiche produit." },
+            { q: "Comment suivre ma commande ?", r: "Dans 'Mes commandes', entrez votre numéro de commande (ex: CMD-XXXXXX) pour voir l'état en temps réel." },
+          ].map((faq, i) => (
+            <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "1.2rem 1.5rem", marginBottom: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>{faq.q}</div>
+              <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>{faq.r}</div>
+            </div>
+          ))}
+          <div style={{ display: "flex", gap: 12, marginTop: "1.5rem" }}>
+            <a href={`https://wa.me/${SUPPORT_WA}`} target="_blank" style={{ flex: 1, padding: "14px", background: "#f0fdf4", border: "1.5px solid #bbf7d0", color: "#16a34a", borderRadius: 14, textAlign: "center", textDecoration: "none", fontWeight: 600, fontSize: 14 }}>💬 WhatsApp</a>
+            <a href={`mailto:${SUPPORT_EMAIL}`} style={{ flex: 1, padding: "14px", background: "#eff6ff", border: "1.5px solid #bfdbfe", color: "#2563eb", borderRadius: 14, textAlign: "center", textDecoration: "none", fontWeight: 600, fontSize: 14 }}>📧 Email</a>
+          </div>
+        </div>
+      )}
+
+      {/* PAGE SUIVI */}
+      {page === "suivi" && (
+        <div style={{ maxWidth: 680, margin: "2rem auto", padding: "0 1.5rem" }}>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.8rem", fontWeight: 800, marginBottom: "1.5rem", color: "#1a1a2e" }}>Mes commandes</h1>
+          <input placeholder="Entrez votre numéro CMD-XXXXXX" value={cmdSuivi || ""} onChange={e => setCmdSuivi(e.target.value)} style={inp} />
+          {cmdSuivi && (() => {
+            const cmd = commandes.find(c => c.numero === cmdSuivi.toUpperCase());
+            if (!cmd) return <p style={{ color: "#ef4444", fontSize: 14 }}>Commande introuvable</p>;
+            const etapes = ["En attente", "Confirmé", "Expédié", "Livré"];
+            const idx = etapes.indexOf(cmd.statut);
+            return (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{cmd.numero}</div>
+                <div style={{ fontSize: 13, color: "#6b7280", marginBottom: "1.5rem" }}>{cmd.nom} · {cmd.totalFinal?.toLocaleString()} FCFA</div>
+                <div style={{ display: "flex", gap: 0, marginBottom: "1rem" }}>
+                  {etapes.map((e, i) => (
+                    <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: i <= idx ? "#2563eb" : "#e5e7eb", color: i <= idx ? "#fff" : "#9ca3af", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, margin: "0 auto 6px" }}>{i + 1}</div>
+                      <div style={{ fontSize: 11, color: i <= idx ? "#2563eb" : "#9ca3af", fontWeight: i === idx ? 600 : 400 }}>{e}</div>
                     </div>
                   ))}
                 </div>
-              )}
-
-              {/* Ajouter variante */}
-              <div style={{ background: "#1C2035", borderRadius: 10, padding: "12px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", display: "block", marginBottom: 4 }}>Couleur (optionnel)</label>
-                    <input type="text" placeholder="Ex: Rouge, Bleu..." value={nouvelleVariante.couleur} onChange={(e) => setNouvelleVariante(p => ({...p, couleur: e.target.value}))} style={{...inp, fontSize: 12, padding: "8px 10px"}} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", display: "block", marginBottom: 4 }}>Taille/Volume (optionnel)</label>
-                    <input type="text" placeholder="Ex: S, M, L, 100ml..." value={nouvelleVariante.taille} onChange={(e) => setNouvelleVariante(p => ({...p, taille: e.target.value}))} style={{...inp, fontSize: 12, padding: "8px 10px"}} />
-                  </div>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", display: "block", marginBottom: 4 }}>Prix (FCFA) *</label>
-                    <input type="number" placeholder="Ex: 15000" value={nouvelleVariante.prix} onChange={(e) => setNouvelleVariante(p => ({...p, prix: e.target.value}))} style={{...inp, fontSize: 12, padding: "8px 10px"}} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", display: "block", marginBottom: 4 }}>Stock</label>
-                    <select value={nouvelleVariante.stock} onChange={(e) => setNouvelleVariante(p => ({...p, stock: e.target.value}))} style={{...inp, fontSize: 12, padding: "8px 10px", cursor: "pointer"}}>
-                      <option value="disponible">✅ Disponible</option>
-                      <option value="rupture">❌ Rupture</option>
-                    </select>
-                  </div>
-                </div>
-                <button onClick={() => {
-                  if (!nouvelleVariante.prix) { alert("Le prix est obligatoire !"); return; }
-                  setVariantes(prev => [...prev, {...nouvelleVariante}]);
-                  setNouvelleVariante({ couleur: "", taille: "", prix: "", stock: "disponible" });
-                }} style={{ width: "100%", padding: "9px 0", background: "rgba(0,168,107,0.15)", border: "1px solid rgba(0,168,107,0.3)", color: "#00A86B", borderRadius: 9, fontSize: 13, cursor: "pointer", fontFamily: "DM Sans", fontWeight: 500 }}>
-                  + Ajouter cette variante
-                </button>
               </div>
+            );
+          })()}
+        </div>
+      )}
 
-              {variantes.length === 0 && (
-                <div style={{ marginTop: 8 }}>
-                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Prix de base (si pas de variantes)</label>
-                  <input type="number" placeholder="Ex: 15000" value={newProduct.price} onChange={(e) => setNewProduct({...newProduct, price: e.target.value})} style={inp} />
+      {/* BOUTIQUE */}
+      {page === "boutique" && (
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
+          {/* Catégories */}
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: "1.5rem", paddingBottom: 4 }}>
+            {CATEGORIES.map(cat => (
+              <button key={cat} onClick={() => setCatActive(cat)} style={{ padding: "8px 18px", borderRadius: 25, fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", cursor: "pointer", border: "1.5px solid", background: catActive === cat ? "#2563eb" : "#fff", color: catActive === cat ? "#fff" : "#6b7280", borderColor: catActive === cat ? "#2563eb" : "#e5e7eb", transition: "all 0.2s", fontFamily: "'Inter', sans-serif" }}>
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Grille produits */}
+          {produitsFiltres.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "4rem 2rem", color: "#9ca3af" }}>
+              <div style={{ fontSize: "3rem", marginBottom: 12 }}>🔍</div>
+              <div style={{ fontSize: 16, fontWeight: 500 }}>Aucun produit trouvé</div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
+              {produitsFiltres.map(item => (
+                <div key={item.id} className="card" onClick={() => { setShowProduit(item); setPhotoChoisie(0); setVarianteCouleur(""); setVarianteTaille(""); }} style={{ cursor: "pointer" }}>
+                  <div style={{ height: 200, background: "#f3f4f6", overflow: "hidden", position: "relative" }}>
+                    {(item.images?.[0] || item.image) ? (
+                      <img src={getImageUrl(item.images?.[0] || item.image)} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "3rem" }}>📦</div>
+                    )}
+                    <div style={{ position: "absolute", top: 10, left: 10, background: item.etat === "Neuf" ? "#eff6ff" : "#f0fdf4", color: item.etat === "Neuf" ? "#2563eb" : "#16a34a", fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20 }}>{item.etat}</div>
+                  </div>
+                  <div style={{ padding: "14px" }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</div>
+                    <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 8 }}>{item.category}</div>
+                    {item.variantes?.length > 0 && (
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }}>
+                        {[...new Set(item.variantes.map(v => v.couleur).filter(Boolean))].slice(0, 3).map((c, i) => (
+                          <span key={i} style={{ fontSize: 10, background: "#eff6ff", color: "#2563eb", padding: "2px 8px", borderRadius: 10 }}>{c}</span>
+                        ))}
+                        {[...new Set(item.variantes.map(v => v.taille).filter(Boolean))].slice(0, 3).map((t, i) => (
+                          <span key={i} style={{ fontSize: 10, background: "#f0fdf4", color: "#16a34a", padding: "2px 8px", borderRadius: 10 }}>{t}</span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ fontWeight: 700, fontSize: 15, color: "#2563eb" }}>
+                      {item.variantes?.length > 0 ? `À partir de ${Math.min(...item.variantes.map(v => parseInt(v.prix) || 0)).toLocaleString()}` : item.price?.toLocaleString()} FCFA
+                    </div>
+                  </div>
                 </div>
-              )}
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL DETAIL PRODUIT */}
+      {showProduit && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowProduit(null)}>
+          <div className="modal" style={{ maxWidth: 560 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.2rem", fontWeight: 700 }}>{showProduit.title}</h2>
+              <span onClick={() => setShowProduit(null)} style={{ cursor: "pointer", fontSize: 22, color: "#9ca3af" }}>×</span>
             </div>
 
-            <button onClick={ajouterProduit} disabled={loading} className="bg" style={{ width: "100%", padding: "14px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans" }}>
-              {loading ? "Ajout…" : "✅ Ajouter le produit"}
+            {/* Photos */}
+            {(() => {
+              const photos = showProduit.images?.length > 0 ? showProduit.images : showProduit.image ? [showProduit.image] : [];
+              return (
+                <div style={{ marginBottom: "1rem" }}>
+                  <div style={{ height: 280, background: "#f3f4f6", borderRadius: 14, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                    {photos.length > 0 ? <img src={getImageUrl(photos[photoChoisie])} alt={showProduit.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "4rem" }}>📦</span>}
+                  </div>
+                  {photos.length > 1 && (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {photos.map((p, i) => (
+                        <img key={i} src={getImageUrl(p)} alt="" onClick={() => setPhotoChoisie(i)} style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, cursor: "pointer", border: `2px solid ${photoChoisie === i ? "#2563eb" : "#e5e7eb"}` }} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 8 }}>🚚 Livraison : {showProduit.plage_livraison} · {showProduit.etat}</div>
+            {showProduit.description && <div style={{ fontSize: 13, color: "#6b7280", marginBottom: "1rem", lineHeight: 1.7 }}>{showProduit.description}</div>}
+
+            {/* Couleurs */}
+            {showProduit.variantes?.length > 0 && [...new Set(showProduit.variantes.map(v => v.couleur).filter(Boolean))].length > 0 && (
+              <div style={{ marginBottom: "1rem" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "#374151" }}>Couleur :</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {[...new Set(showProduit.variantes.map(v => v.couleur).filter(Boolean))].map((c, i) => (
+                    <button key={i} onClick={() => setVarianteCouleur(c)} style={{ padding: "8px 18px", borderRadius: 25, fontSize: 13, cursor: "pointer", border: "1.5px solid", background: varianteCouleur === c ? "#eff6ff" : "#fff", color: varianteCouleur === c ? "#2563eb" : "#374151", borderColor: varianteCouleur === c ? "#2563eb" : "#e5e7eb", fontFamily: "'Inter', sans-serif", fontWeight: varianteCouleur === c ? 600 : 400 }}>{c}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tailles */}
+            {showProduit.variantes?.length > 0 && [...new Set(showProduit.variantes.map(v => v.taille).filter(Boolean))].length > 0 && (
+              <div style={{ marginBottom: "1rem" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "#374151" }}>Taille / Volume :</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {[...new Set(showProduit.variantes.filter(v => !varianteCouleur || v.couleur === varianteCouleur).map(v => v.taille).filter(Boolean))].map((t, i) => (
+                    <button key={i} onClick={() => setVarianteTaille(t)} style={{ padding: "8px 18px", borderRadius: 25, fontSize: 13, cursor: "pointer", border: "1.5px solid", background: varianteTaille === t ? "#f0fdf4" : "#fff", color: varianteTaille === t ? "#16a34a" : "#374151", borderColor: varianteTaille === t ? "#16a34a" : "#e5e7eb", fontFamily: "'Inter', sans-serif", fontWeight: varianteTaille === t ? 600 : 400 }}>{t}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Prix selon variante */}
+            {(() => {
+              if (showProduit.variantes?.length > 0) {
+                const v = showProduit.variantes.find(v =>
+                  (!varianteCouleur || v.couleur === varianteCouleur) &&
+                  (!varianteTaille || v.taille === varianteTaille)
+                );
+                const prix = v ? parseInt(v.prix) : Math.min(...showProduit.variantes.map(v => parseInt(v.prix) || 0));
+                return (
+                  <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px 16px", marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.5rem", fontWeight: 700, color: "#2563eb" }}>
+                      {v ? prix.toLocaleString() : `À partir de ${prix.toLocaleString()}`} FCFA
+                    </div>
+                    {v && <div style={{ fontSize: 12, color: v.stock === "disponible" ? "#16a34a" : "#ef4444", fontWeight: 500 }}>{v.stock === "disponible" ? "✅ En stock" : "❌ Rupture"}</div>}
+                  </div>
+                );
+              }
+              return (
+                <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px 16px", marginBottom: "1.5rem" }}>
+                  <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.5rem", fontWeight: 700, color: "#2563eb" }}>{showProduit.price?.toLocaleString()} FCFA</div>
+                </div>
+              );
+            })()}
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => ajouterAuPanier(showProduit, varianteCouleur, varianteTaille)} className="btn-primary" style={{ flex: 1, padding: "14px 0" }}>
+                {client ? "🛒 Ajouter au panier" : "🔒 Connexion requise"}
+              </button>
+              {client && (
+                <button onClick={() => { setProduitNegocie(showProduit); setShowMessage(true); setShowProduit(null); }} style={{ padding: "14px 16px", background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: 10, fontSize: 16, cursor: "pointer" }}>💬</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PANIER */}
+      {showPanier && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowPanier(false)}>
+          <div className="modal">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.3rem", fontWeight: 700 }}>Mon panier</h2>
+              <span onClick={() => setShowPanier(false)} style={{ cursor: "pointer", fontSize: 22, color: "#9ca3af" }}>×</span>
+            </div>
+            {panier.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af" }}>
+                <div style={{ fontSize: "3rem", marginBottom: 12 }}>🛒</div>
+                <div>Votre panier est vide</div>
+              </div>
+            ) : (
+              <>
+                {panier.map(item => (
+                  <div key={item.key} style={{ display: "flex", gap: 12, alignItems: "center", padding: "12px 0", borderBottom: "1px solid #f3f4f6" }}>
+                    <div style={{ width: 56, height: 56, background: "#f3f4f6", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
+                      {(item.images?.[0] || item.image) ? <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>📦</div>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{item.title}</div>
+                      {(item.couleurChoisie || item.tailleChoisie) && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{[item.couleurChoisie, item.tailleChoisie].filter(Boolean).join(" · ")}</div>}
+                      <div style={{ fontSize: 13, color: "#2563eb", fontWeight: 600, marginTop: 2 }}>{(item.price * item.qty).toLocaleString()} FCFA</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <button onClick={() => setPanier(prev => prev.map(i => i.key === item.key ? { ...i, qty: Math.max(1, i.qty - 1) } : i))} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", fontWeight: 700 }}>-</button>
+                      <span style={{ fontSize: 13, fontWeight: 600, minWidth: 20, textAlign: "center" }}>{item.qty}</span>
+                      <button onClick={() => setPanier(prev => prev.map(i => i.key === item.key ? { ...i, qty: i.qty + 1 } : i))} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", fontWeight: 700 }}>+</button>
+                      <button onClick={() => setPanier(prev => prev.filter(i => i.key !== item.key))} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontSize: 16, marginLeft: 4 }}>×</button>
+                    </div>
+                  </div>
+                ))}
+                <div style={{ padding: "1rem 0", borderTop: "2px solid #f3f4f6", marginTop: 8 }}>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <input placeholder="Code promo" value={codePromo} onChange={e => setCodePromo(e.target.value)} style={{ ...inp, marginBottom: 0, flex: 1 }} />
+                    <button className="btn-secondary" style={{ padding: "0 16px", whiteSpace: "nowrap" }} onClick={appliquerPromo}>Appliquer</button>
+                  </div>
+                  {promoMsg && <div style={{ fontSize: 13, color: reduction > 0 ? "#16a34a" : "#ef4444", marginBottom: 12 }}>{promoMsg}</div>}
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 14, color: "#6b7280" }}>Sous-total</span>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{totalPanier.toLocaleString()} FCFA</span>
+                  </div>
+                  {reduction > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontSize: 14, color: "#16a34a" }}>Réduction -{reduction}%</span>
+                      <span style={{ fontSize: 14, color: "#16a34a" }}>-{(totalPanier - totalFinal).toLocaleString()} FCFA</span>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem", paddingTop: 8, borderTop: "1px solid #f3f4f6" }}>
+                    <span style={{ fontWeight: 700 }}>Total</span>
+                    <span style={{ fontWeight: 700, fontSize: 16, color: "#2563eb" }}>{totalFinal.toLocaleString()} FCFA</span>
+                  </div>
+                  <button className="btn-primary" style={{ width: "100%" }} onClick={() => { setShowPanier(false); setShowCommande(true); }}>Commander maintenant</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL COMMANDE */}
+      {showCommande && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowCommande(false)}>
+          <div className="modal">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.3rem", fontWeight: 700 }}>Finaliser la commande</h2>
+              <span onClick={() => setShowCommande(false)} style={{ cursor: "pointer", fontSize: 22, color: "#9ca3af" }}>×</span>
+            </div>
+            <input placeholder="Nom complet *" value={formCmd.nom} onChange={e => setFormCmd({ ...formCmd, nom: e.target.value })} style={inp} />
+            <input placeholder="Email *" type="email" value={formCmd.email} onChange={e => setFormCmd({ ...formCmd, email: e.target.value })} style={inp} />
+            <input placeholder="Téléphone *" value={formCmd.telephone} onChange={e => setFormCmd({ ...formCmd, telephone: e.target.value })} style={inp} />
+            <input placeholder="Téléphone livreur (optionnel)" value={formCmd.telephoneLivreur} onChange={e => setFormCmd({ ...formCmd, telephoneLivreur: e.target.value })} style={inp} />
+            <input placeholder="Ville *" value={formCmd.ville} onChange={e => setFormCmd({ ...formCmd, ville: e.target.value })} style={inp} />
+            <input placeholder="Adresse complète *" value={formCmd.adresse} onChange={e => setFormCmd({ ...formCmd, adresse: e.target.value })} style={inp} />
+
+            <div style={{ background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: 12, padding: "1rem", marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>💳 Paiement Mobile Money</div>
+              <div style={{ fontSize: 13, color: "#6b7280" }}>Envoyez <strong>{totalFinal.toLocaleString()} FCFA</strong> au <strong>{MOMO}</strong> (MTN MoMo, Moov ou Celtiis), puis téléchargez la capture.</div>
+            </div>
+
+            <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Capture de paiement</label>
+            <div onClick={() => document.getElementById("capture-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginBottom: 16, background: "#fafafa" }}>
+              {captureFile ? <span style={{ fontSize: 13, color: "#16a34a" }}>✅ {captureFile.name}</span> : <span style={{ fontSize: 13, color: "#9ca3af" }}>📎 Cliquer pour télécharger</span>}
+              <input id="capture-input" type="file" accept="image/*" onChange={e => setCaptureFile(e.target.files[0])} style={{ display: "none" }} />
+            </div>
+
+            <button onClick={envoyerCommande} disabled={loading} className="btn-primary" style={{ width: "100%" }}>
+              {loading ? "Envoi..." : `✅ Confirmer — ${totalFinal.toLocaleString()} FCFA`}
             </button>
           </div>
         </div>
       )}
 
-      {/* MOT DE PASSE OUBLIÉ */}
-      {showForgot && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 440, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>🔑 Mot de passe oublié</h2>
-              <span onClick={() => { setShowForgot(false); setForgotError(""); }} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
+      {/* MODAL CONFIRMATION */}
+      {showConfirm && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "3rem", marginBottom: 16 }}>🎉</div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.4rem", fontWeight: 700, marginBottom: 8 }}>Commande confirmée !</h2>
+            <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 16 }}>Merci {showConfirm.nom} ! Votre commande a été reçue.</p>
+            <div style={{ background: "#eff6ff", borderRadius: 12, padding: "1rem", marginBottom: 16 }}>
+              <div style={{ fontSize: 13, color: "#6b7280" }}>Numéro de commande</div>
+              <div style={{ fontWeight: 700, fontSize: 18, color: "#2563eb" }}>{showConfirm.numero}</div>
             </div>
-            {forgotError && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{forgotError}</div>}
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1.5rem" }}>Pour réinitialiser ton mot de passe, remplis les informations de ton compte.</p>
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Email du compte</label>
-              <input type="email" placeholder="exemple@gmail.com" value={forgotForm.email} onChange={(e) => setForgotForm({ ...forgotForm, email: e.target.value })} style={inp} />
-            </div>
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📱 Numéro de téléphone</label>
-              <input type="tel" placeholder="+229 97 00 00 00" value={forgotForm.telephone} onChange={(e) => setForgotForm({ ...forgotForm, telephone: e.target.value })} style={inp} />
-            </div>
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📅 Date de naissance</label>
-              <input type="text" placeholder="JJ/MM/AAAA" maxLength={10} value={forgotForm.dateNaissance} onChange={(e) => { let v = e.target.value.replace(/[^0-9]/g, ""); if (v.length >= 3) v = v.slice(0,2) + "/" + v.slice(2); if (v.length >= 6) v = v.slice(0,5) + "/" + v.slice(5,9); setForgotForm({ ...forgotForm, dateNaissance: v }); }} style={inp} />
-            </div>
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Nouveau mot de passe</label>
-              <input type="password" placeholder="••••••••" value={forgotForm.nouveauPwd} onChange={(e) => setForgotForm({ ...forgotForm, nouveauPwd: e.target.value })} style={inp} />
-            </div>
-            <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Confirmer le nouveau mot de passe</label>
-              <input type="password" placeholder="••••••••" value={forgotForm.confirmPwd} onChange={(e) => setForgotForm({ ...forgotForm, confirmPwd: e.target.value })} style={inp} />
-            </div>
-            <button onClick={reinitialiserPwd} disabled={forgotLoading} className="bg" style={{ width: "100%", padding: "13px 0", background: forgotLoading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: forgotLoading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
-              {forgotLoading ? "Vérification…" : "✅ Réinitialiser mon mot de passe"}
-            </button>
-            <div style={{ textAlign: "center", marginTop: "1rem" }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 10 }}>Tu ne te souviens plus de tes infos ?</div>
-              <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                <a href="https://wa.me/33775958442?text=Bonjour%2C%20j%27ai%20oubli%C3%A9%20mes%20informations%20de%20connexion%20FastBuy%20229" target="_blank" rel="noreferrer" style={{ padding: "9px 16px", background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.3)", color: "#25D366", borderRadius: 9, fontSize: 12, textDecoration: "none", fontWeight: 500 }}>💬 WhatsApp</a>
-                <a href="mailto:nahofalgbadamassi@gmail.com?subject=Aide%20mot%20de%20passe%20FastBuy%20229&body=Bonjour%2C%20j%27ai%20oubli%C3%A9%20mes%20informations%20de%20connexion" style={{ padding: "9px 16px", background: "rgba(0,168,107,0.15)", border: "1px solid rgba(0,168,107,0.3)", color: "#00A86B", borderRadius: 9, fontSize: 12, textDecoration: "none", fontWeight: 500 }}>📧 Email</a>
-              </div>
-            </div>
-            <button onClick={() => { setShowForgot(false); setShowAuth(true); setAuthMode("login"); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour à la connexion</button>
+            <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 20 }}>Gardez ce numéro pour suivre votre commande.</p>
+            <button className="btn-primary" style={{ width: "100%" }} onClick={() => setShowConfirm(null)}>Fermer</button>
           </div>
         </div>
       )}
 
+      {/* MODAL LOGIN */}
+      {showLogin && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowLogin(false)}>
+          <div className="modal">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.3rem", fontWeight: 700 }}>Connexion</h2>
+              <span onClick={() => setShowLogin(false)} style={{ cursor: "pointer", fontSize: 22, color: "#9ca3af" }}>×</span>
+            </div>
+            <input placeholder="Email ou téléphone" value={loginForm.identifiant} onChange={e => setLoginForm({ ...loginForm, identifiant: e.target.value })} style={inp} />
+            <input type="password" placeholder="Mot de passe" value={loginForm.motDePasse} onChange={e => setLoginForm({ ...loginForm, motDePasse: e.target.value })} style={inp} />
+            {authError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{authError}</div>}
+            <button className="btn-primary" style={{ width: "100%", marginBottom: 12 }} onClick={connecter}>Se connecter</button>
+            <div style={{ textAlign: "center", fontSize: 13, color: "#6b7280" }}>
+              <span style={{ cursor: "pointer", color: "#2563eb" }} onClick={() => { setShowLogin(false); setShowMdpOublie(true); setAuthError(""); }}>Mot de passe oublié ?</span>
+              {" · "}
+              <span style={{ cursor: "pointer", color: "#2563eb" }} onClick={() => { setShowLogin(false); setShowInscription(true); setAuthError(""); }}>Créer un compte</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL INSCRIPTION */}
+      {showInscription && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowInscription(false)}>
+          <div className="modal">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.3rem", fontWeight: 700 }}>Créer un compte</h2>
+              <span onClick={() => setShowInscription(false)} style={{ cursor: "pointer", fontSize: 22, color: "#9ca3af" }}>×</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 0 }}>
+              <input placeholder="Prénom *" value={inscForm.prenom} onChange={e => setInscForm({ ...inscForm, prenom: e.target.value })} style={inp} />
+              <input placeholder="Nom *" value={inscForm.nom} onChange={e => setInscForm({ ...inscForm, nom: e.target.value })} style={inp} />
+            </div>
+            <input placeholder="Email *" type="email" value={inscForm.email} onChange={e => setInscForm({ ...inscForm, email: e.target.value })} style={inp} />
+            <input placeholder="Téléphone *" value={inscForm.telephone} onChange={e => setInscForm({ ...inscForm, telephone: e.target.value })} style={inp} />
+            <input placeholder="Date de naissance JJ/MM/AAAA *" value={inscForm.date_naissance} onChange={e => formatDate(e.target.value, setInscForm, "date_naissance")} style={inp} maxLength={10} />
+            <input type="password" placeholder="Mot de passe *" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={inp} />
+            <input type="password" placeholder="Confirmer le mot de passe *" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={inp} />
+            {authError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{authError}</div>}
+            <button className="btn-primary" style={{ width: "100%", marginBottom: 12 }} onClick={inscrire}>Créer mon compte</button>
+            <div style={{ textAlign: "center", fontSize: 13, color: "#6b7280" }}>
+              Déjà un compte ?{" "}
+              <span style={{ cursor: "pointer", color: "#2563eb" }} onClick={() => { setShowInscription(false); setShowLogin(true); setAuthError(""); }}>Se connecter</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL MOT DE PASSE OUBLIÉ */}
+      {showMdpOublie && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowMdpOublie(false)}>
+          <div className="modal">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.3rem", fontWeight: 700 }}>Mot de passe oublié</h2>
+              <span onClick={() => setShowMdpOublie(false)} style={{ cursor: "pointer", fontSize: 22, color: "#9ca3af" }}>×</span>
+            </div>
+            <input placeholder="Email *" value={mdpForm.email} onChange={e => setMdpForm({ ...mdpForm, email: e.target.value })} style={inp} />
+            <input placeholder="Téléphone *" value={mdpForm.telephone} onChange={e => setMdpForm({ ...mdpForm, telephone: e.target.value })} style={inp} />
+            <input placeholder="Date de naissance JJ/MM/AAAA *" value={mdpForm.date_naissance} onChange={e => formatDate(e.target.value, setMdpForm, "date_naissance")} style={inp} maxLength={10} />
+            <input type="password" placeholder="Nouveau mot de passe *" value={mdpForm.nouveau} onChange={e => setMdpForm({ ...mdpForm, nouveau: e.target.value })} style={inp} />
+            <input type="password" placeholder="Confirmer le nouveau mot de passe *" value={mdpForm.confirmer} onChange={e => setMdpForm({ ...mdpForm, confirmer: e.target.value })} style={inp} />
+            {authError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{authError}</div>}
+            <button className="btn-primary" style={{ width: "100%", marginBottom: 16 }} onClick={reinitMdp}>Réinitialiser</button>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 12 }}>Tu ne te souviens plus de tes infos ?</div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                <a href={`https://wa.me/${SUPPORT_WA}?text=Bonjour%2C%20j%27ai%20oubli%C3%A9%20mes%20informations%20FastBuy%20229`} target="_blank" style={{ padding: "9px 18px", background: "#f0fdf4", border: "1.5px solid #bbf7d0", color: "#16a34a", borderRadius: 10, fontSize: 13, textDecoration: "none", fontWeight: 500 }}>💬 WhatsApp</a>
+                <a href={`mailto:${SUPPORT_EMAIL}?subject=Aide%20connexion%20FastBuy%20229`} style={{ padding: "9px 18px", background: "#eff6ff", border: "1.5px solid #bfdbfe", color: "#2563eb", borderRadius: 10, fontSize: 13, textDecoration: "none", fontWeight: 500 }}>📧 Email</a>
+              </div>
+            </div>
+            <div style={{ textAlign: "center", marginTop: 16 }}>
+              <span style={{ cursor: "pointer", color: "#6b7280", fontSize: 13 }} onClick={() => { setShowMdpOublie(false); setShowLogin(true); setAuthError(""); }}>← Retour à la connexion</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL MESSAGE */}
+      {showMessage && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowMessage(false)}>
+          <div className="modal">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.3rem", fontWeight: 700 }}>Envoyer un message</h2>
+              <span onClick={() => setShowMessage(false)} style={{ cursor: "pointer", fontSize: 22, color: "#9ca3af" }}>×</span>
+            </div>
+            {produitNegocie && <div style={{ background: "#f9fafb", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#374151" }}>Produit : <strong>{produitNegocie.title}</strong></div>}
+            <textarea placeholder="Votre message..." value={messageTexte} onChange={e => setMessageTexte(e.target.value)} style={{ ...inp, resize: "vertical" }} rows={4} />
+            <button className="btn-primary" style={{ width: "100%" }} onClick={async () => {
+              if (!messageTexte.trim()) return;
+              await supabase.from("messages").insert([{ user_id: client?.id, nom: client?.nom, telephone: client?.telephone, message: produitNegocie ? `[${produitNegocie.title}] ${messageTexte}` : messageTexte }]);
+              alert("Message envoyé !"); setShowMessage(false); setMessageTexte("");
+            }}>Envoyer</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
