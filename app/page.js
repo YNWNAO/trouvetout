@@ -68,6 +68,11 @@ export default function FastBuy229() {
   const [mesCommandes, setMesCommandes] = useState([]);
   const [showMesCommandes, setShowMesCommandes] = useState(false);
   const [showAdminForgot, setShowAdminForgot] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [showClients, setShowClients] = useState(false);
+  const [editClientEmail, setEditClientEmail] = useState("");
+  const [editClientNewPwd, setEditClientNewPwd] = useState("");
+  const [editClientMsg, setEditClientMsg] = useState("");
   const [showForgot, setShowForgot] = useState(false);
   const [forgotForm, setForgotForm] = useState({ email: "", telephone: "", dateNaissance: "", nouveauPwd: "", confirmPwd: "" });
   const [forgotError, setForgotError] = useState("");
@@ -98,6 +103,10 @@ export default function FastBuy229() {
   const chargerMessages = async () => {
     const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false });
     if (data) setMessages(data);
+  };
+  const chargerClients = async () => {
+    const { data } = await supabase.from("users").select("*").order("created_at", { ascending: false });
+    if (data) setClients(data);
   };
   const chargerMesCommandes = async (email) => {
     const { data } = await supabase.from("commandes").select("*").eq("email", email).order("created_at", { ascending: false });
@@ -169,7 +178,12 @@ export default function FastBuy229() {
       setForgotError("Informations incorrectes !"); setForgotLoading(false); return;
     }
     // Vérifier au moins un: téléphone OU date de naissance
-    const telOk = data.telephone === forgotForm.telephone || forgotForm.telephone === forgotForm.email;
+    // Vérifier date raisonnable (avant 2020)
+    const parts = forgotForm.dateNaissance.split("/");
+    if (parts.length === 3) {
+      const annee = parseInt(parts[2]);
+      if (annee > 2020 || annee < 1920) { setForgotError("Date de naissance invalide !"); setForgotLoading(false); return; }
+    }
     const dateOk = data.date_naissance === forgotForm.dateNaissance;
     if (!dateOk) { setForgotError("Date de naissance incorrecte !"); setForgotLoading(false); return; }
     await supabase.from("users").update({ mot_de_passe: forgotForm.nouveauPwd }).eq("id", data.id);
@@ -277,6 +291,18 @@ export default function FastBuy229() {
   };
 
   const supprimerProduit = async (id) => { if (!confirm("Supprimer ?")) return; await supabase.from("produits").delete().eq("id", id); chargerProduits(); };
+
+  const modifierMdpClient = async () => {
+    setEditClientMsg("");
+    if (!editClientEmail || !editClientNewPwd) { setEditClientMsg("Remplis les deux champs !"); return; }
+    if (editClientNewPwd.length < 6) { setEditClientMsg("Mot de passe trop court !"); return; }
+    const { data } = await supabase.from("users").select("id").eq("telephone", editClientEmail).single();
+    if (!data) { setEditClientMsg("Aucun client avec cet email !"); return; }
+    await supabase.from("users").update({ mot_de_passe: editClientNewPwd }).eq("id", data.id);
+    setEditClientMsg("✅ Mot de passe modifié !");
+    setEditClientEmail("");
+    setEditClientNewPwd("");
+  };
 
   const adminChangerPwd = () => {
     setAdminForgotError("");
@@ -554,7 +580,38 @@ export default function FastBuy229() {
             </div>
           </div>
 
-          <button onClick={() => setShowAddProduct(true)} className="bg" style={{ padding: "12px 24px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: "2rem" }}>+ Ajouter un produit</button>
+          <div style={{ display: "flex", gap: 10, marginBottom: "2rem" }}>
+            <button onClick={() => setShowAddProduct(true)} className="bg" style={{ padding: "12px 24px", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>+ Ajouter un produit</button>
+            <button onClick={() => { setShowClients(!showClients); chargerClients(); }} style={{ padding: "12px 24px", background: showClients ? "rgba(168,85,247,0.2)" : "#161926", border: "1px solid rgba(168,85,247,0.4)", color: "#A855F7", borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>👥 Gérer les clients</button>
+          </div>
+          {showClients && (
+            <div style={{ background: "#161926", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 16, padding: "1.5rem", marginBottom: "2rem" }}>
+              <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1.2rem", color: "#A855F7" }}>👥 Modifier mot de passe client</h3>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "1rem" }}>Entre l'email du client et le nouveau mot de passe.</p>
+              {editClientMsg && <div style={{ background: editClientMsg.includes("✅") ? "rgba(0,168,107,0.15)" : "rgba(255,80,80,0.15)", border: `1px solid ${editClientMsg.includes("✅") ? "rgba(0,168,107,0.3)" : "rgba(255,80,80,0.3)"}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: editClientMsg.includes("✅") ? "#00A86B" : "rgba(255,120,120,0.9)", marginBottom: "1rem" }}>{editClientMsg}</div>}
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📧 Email du client</label>
+                <input type="email" placeholder="exemple@gmail.com" value={editClientEmail} onChange={(e) => setEditClientEmail(e.target.value)} style={inp} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Nouveau mot de passe</label>
+                <input type="text" placeholder="Nouveau mot de passe" value={editClientNewPwd} onChange={(e) => setEditClientNewPwd(e.target.value)} style={inp} />
+              </div>
+              <button onClick={modifierMdpClient} className="bg" style={{ padding: "12px 24px", background: "#A855F7", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans" }}>✅ Modifier le mot de passe</button>
+              <div style={{ marginTop: "1.5rem", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "1rem" }}>
+                <h4 style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: "0.8rem" }}>Liste des clients ({clients.length})</h4>
+                {clients.map((c) => (
+                  <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{c.nom}</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{c.telephone}</div>
+                    </div>
+                    <button onClick={() => setEditClientEmail(c.telephone)} style={{ padding: "6px 12px", background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", color: "#A855F7", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "DM Sans" }}>Sélectionner</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <h3 style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Produits ({produits.length})</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 12, marginBottom: "2.5rem" }}>
@@ -664,7 +721,13 @@ export default function FastBuy229() {
                 </div>
                 <div style={{ marginBottom: "1rem" }}>
                   <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📅 Date de naissance</label>
-                  <input type="date" value={authForm.dateNaissance} onChange={(e) => setAuthForm({ ...authForm, dateNaissance: e.target.value })} style={inp} />
+                  <input type="text" placeholder="JJ/MM/AAAA" maxLength={10} value={authForm.dateNaissance} onChange={(e) => {
+                    let v = e.target.value.replace(/\D/g, "");
+                    if (v.length >= 3) v = v.slice(0,2) + "/" + v.slice(2);
+                    if (v.length >= 6) v = v.slice(0,5) + "/" + v.slice(5);
+                    setAuthForm({ ...authForm, dateNaissance: v });
+                  }} style={inp} />
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 4 }}>Ex: 15/03/1995</div>
                 </div>
                 <div style={{ marginBottom: "1rem" }}>
                   <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Mot de passe</label>
@@ -962,7 +1025,7 @@ export default function FastBuy229() {
             </div>
             <div style={{ marginBottom: "1rem" }}>
               <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📅 Date de naissance</label>
-              <input type="text" value={forgotForm.dateNaissance} placeholder="Ex: 24/10/2006" onChange={(e) => setForgotForm({ ...forgotForm, dateNaissance: e.target.value })} style={inp} />
+              <input type="date" value={forgotForm.dateNaissance} onChange={(e) => setForgotForm({ ...forgotForm, dateNaissance: e.target.value })} style={inp} />
             </div>
             <div style={{ marginBottom: "1rem" }}>
               <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Nouveau mot de passe</label>
@@ -975,7 +1038,11 @@ export default function FastBuy229() {
             <button onClick={reinitialiserPwd} disabled={forgotLoading} className="bg" style={{ width: "100%", padding: "13px 0", background: forgotLoading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: forgotLoading ? "not-allowed" : "pointer", fontFamily: "DM Sans", marginBottom: "1rem" }}>
               {forgotLoading ? "Vérification…" : "✅ Réinitialiser mon mot de passe"}
             </button>
-            <button onClick={() => { setShowForgot(false); setShowAuth(true); setAuthMode("login"); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans" }}>← Retour à la connexion</button>
+            <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>Tu ne te souviens plus de tes infos ? </span>
+              <a href={`mailto:${SUPPORT_EMAIL}?subject=Aide%20mot%20de%20passe%20oubli%C3%A9&body=Bonjour%2C%20j'ai%20oubli%C3%A9%20mes%20informations%20de%20connexion%20sur%20FastBuy%20229.%20Pouvez-vous%20m'aider%20%3F`} style={{ fontSize: 12, color: "#00A86B", textDecoration: "none" }}>📧 Contacter l'aide</a>
+            </div>
+            <button onClick={() => { setShowForgot(false); setShowAuth(true); setAuthMode("login"); }} style={{ width: "100%", padding: "10px 0", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans", marginTop: 8 }}>← Retour à la connexion</button>
           </div>
         </div>
       )}
