@@ -962,7 +962,7 @@ export default function FastBuy229() {
             </div>
             <div style={{ marginBottom: "1rem" }}>
               <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📅 Date de naissance</label>
-              <input type="date" value={forgotForm.dateNaissance} onChange={(e) => setForgotForm({ ...forgotForm, dateNaissance: e.target.value })} style={inp} />
+              <input type="text" value={forgotForm.dateNaissance} placeholder="Ex: 24/10/2006" onChange={(e) => setForgotForm({ ...forgotForm, dateNaissance: e.target.value })} style={inp} />
             </div>
             <div style={{ marginBottom: "1rem" }}>
               <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>🔒 Nouveau mot de passe</label>
