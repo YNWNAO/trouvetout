@@ -82,6 +82,9 @@ export default function FastBuy229() {
   const [adminForgotNouveauPwd, setAdminForgotNouveauPwd] = useState("");
   const [adminForgotConfirmPwd, setAdminForgotConfirmPwd] = useState("");
   const [adminForgotError, setAdminForgotError] = useState("");
+  const [adminTentatives, setAdminTentatives] = useState(0);
+  const [adminBloque, setAdminBloque] = useState(false);
+  const [adminBloqueTimer, setAdminBloqueTimer] = useState(0);
 
   useEffect(() => {
     chargerProduits();
@@ -543,8 +546,35 @@ export default function FastBuy229() {
           <h2 style={{ fontFamily: "Syne", fontSize: "1.3rem", fontWeight: 800, marginBottom: "1.5rem" }}>Espace Admin — FastBuy 229</h2>
           {!showAdminForgot ? (
             <>
-              <input type="password" value={adminPwd} onChange={(e) => setAdminPwd(e.target.value)} placeholder="••••••••" style={{ ...inp, marginBottom: 12, textAlign: "center", letterSpacing: "0.2em" }} />
-              <button onClick={() => { if (adminPwd === adminMotDePasse) { setAdminOk(true); chargerCommandes(); chargerMessages(); } else alert("Accès refusé !"); }} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: 12 }}>Accéder</button>
+              {adminBloque ? (
+                <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 10, padding: "1rem", textAlign: "center", color: "rgba(255,120,120,0.9)", fontSize: 13 }}>
+                  🔒 Trop de tentatives ! Réessaie dans <strong>{adminBloqueTimer}</strong> secondes.
+                </div>
+              ) : (
+                <>
+                  {adminTentatives > 0 && <div style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "rgba(255,120,120,0.9)", marginBottom: 10 }}>⚠️ Tentative {adminTentatives}/3 — Mot de passe incorrect !</div>}
+                  <input type="password" value={adminPwd} onChange={(e) => setAdminPwd(e.target.value)} placeholder="••••••••" style={{ ...inp, marginBottom: 12, textAlign: "center", letterSpacing: "0.2em" }} />
+                  <button onClick={() => {
+                    if (adminPwd === adminMotDePasse) {
+                      setAdminOk(true); setAdminTentatives(0); chargerCommandes(); chargerMessages();
+                    } else {
+                      const newTentatives = adminTentatives + 1;
+                      setAdminTentatives(newTentatives);
+                      setAdminPwd("");
+                      if (newTentatives >= 3) {
+                        setAdminBloque(true);
+                        let t = 300;
+                        setAdminBloqueTimer(t);
+                        const interval = setInterval(() => {
+                          t--;
+                          setAdminBloqueTimer(t);
+                          if (t <= 0) { clearInterval(interval); setAdminBloque(false); setAdminTentatives(0); }
+                        }, 1000);
+                      }
+                    }
+                  }} className="bg" style={{ width: "100%", padding: "12px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", marginBottom: 12 }}>Accéder</button>
+                </>
+              )}
               <button onClick={() => setShowAdminForgot(true)} style={{ background: "none", border: "none", color: "#00A86B", fontSize: 13, cursor: "pointer", fontFamily: "DM Sans" }}>🔑 Modifier mon mot de passe</button>
             </>
           ) : (
