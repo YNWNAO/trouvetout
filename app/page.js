@@ -51,7 +51,14 @@ export default function FastBuy229() {
   const [adminPwd, setAdminPwd] = useState("");
   const [adminMotDePasse, setAdminMotDePasse] = useState(ADMIN_PWD_DEFAULT);
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [showProduit, setShowProduit] = useState(null);
+  const [varianteChoisie, setVarianteChoisie] = useState(null);
+  const [photoChoisie, setPhotoChoisie] = useState(0);
   const [newProduct, setNewProduct] = useState({ emoji: "🌸", title: "", description: "", price: "", etat: "Neuf", category: "Parfums", location: "", plage_livraison: "1-2 semaines" });
+  const [imageFiles, setImageFiles] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [variantes, setVariantes] = useState([]);
+  const [nouvelleVariante, setNouvelleVariante] = useState({ couleur: "", taille: "", prix: "", stock: "disponible" });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [captureFile, setCaptureFile] = useState(null);
@@ -278,19 +285,36 @@ export default function FastBuy229() {
   const handleCaptureChange = (e) => { const f = e.target.files[0]; if (f) { setCaptureFile(f); setCapturePreview(URL.createObjectURL(f)); } };
 
   const ajouterProduit = async () => {
-    if (!newProduct.title || !newProduct.price || !newProduct.location) { alert("Remplis tous les champs !"); return; }
+    if (!newProduct.title || !newProduct.location) { alert("Remplis tous les champs !"); return; }
     setLoading(true);
-    let imagePath = null;
-    if (imageFile) {
+    // Upload multiple images
+    let imagePaths = [];
+    for (const file of imageFiles) {
+      const fileName = `${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage.from("produits").upload(fileName, file);
+      if (!uploadError) imagePaths.push(fileName);
+    }
+    // Also handle single image for backward compat
+    if (imageFile && imagePaths.length === 0) {
       const fileName = `${Date.now()}-${imageFile.name}`;
       const { error: uploadError } = await supabase.storage.from("produits").upload(fileName, imageFile);
-      if (!uploadError) imagePath = fileName;
+      if (!uploadError) imagePaths.push(fileName);
     }
-    await supabase.from("produits").insert([{ ...newProduct, price: parseInt(newProduct.price), image: imagePath }]);
+    const prixBase = variantes.length > 0 ? Math.min(...variantes.map(v => parseInt(v.prix) || 0)) : parseInt(newProduct.price) || 0;
+    await supabase.from("produits").insert([{ 
+      ...newProduct, 
+      price: prixBase,
+      image: imagePaths[0] || null,
+      images: imagePaths,
+      variantes: variantes
+    }]);
     await chargerProduits();
     setShowAddProduct(false);
     setNewProduct({ emoji: "🌸", title: "", description: "", price: "", etat: "Neuf", category: "Parfums", location: "", plage_livraison: "1-2 semaines" });
-    setImageFile(null); setImagePreview(null); setLoading(false);
+    setImageFile(null); setImagePreview(null);
+    setImageFiles([]); setImagePreviews([]);
+    setVariantes([]); setNouvelleVariante({ couleur: "", taille: "", prix: "", stock: "disponible" });
+    setLoading(false);
   };
 
   const supprimerProduit = async (id) => { if (!confirm("Supprimer ?")) return; await supabase.from("produits").delete().eq("id", id); chargerProduits(); };
@@ -448,11 +472,26 @@ export default function FastBuy229() {
                   </div>
                   <div style={{ padding: "12px 14px" }}>
                     <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 4 }}>{item.title}</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>📍 {item.location}</div>
-                    <div style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 800, color: "#00A86B", marginBottom: 10 }}>{item.price.toLocaleString()} <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "DM Sans", fontWeight: 400 }}>FCFA</span></div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 6 }}>📍 {item.location}</div>
+                    {item.variantes && item.variantes.length > 0 && (
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
+                        {[...new Set(item.variantes.map(v => v.couleur).filter(Boolean))].slice(0,4).map((c, i) => (
+                          <span key={i} style={{ fontSize: 10, background: "rgba(255,255,255,0.1)", borderRadius: 4, padding: "2px 6px", color: "rgba(255,255,255,0.6)" }}>{c}</span>
+                        ))}
+                        {[...new Set(item.variantes.map(v => v.taille).filter(Boolean))].slice(0,4).map((t, i) => (
+                          <span key={i} style={{ fontSize: 10, background: "rgba(0,168,107,0.15)", borderRadius: 4, padding: "2px 6px", color: "#00A86B" }}>{t}</span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ fontFamily: "Syne", fontSize: "1rem", fontWeight: 800, color: "#00A86B", marginBottom: 10 }}>
+                      {item.variantes && item.variantes.length > 0 ? (
+                        <>À partir de {Math.min(...item.variantes.map(v => parseInt(v.prix)||0)).toLocaleString()}</>
+                      ) : item.price.toLocaleString()}
+                      {" "}<span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "DM Sans", fontWeight: 400 }}>FCFA</span>
+                    </div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => ajouterAuPanier(item)} className="bg" style={{ flex: 1, padding: "9px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", transition: "background 0.18s" }}>
-                        {client ? "🛒 Acheter" : "🔒 Connexion"}
+                      <button onClick={() => { setShowProduit(item); setVarianteChoisie(null); setPhotoChoisie(0); }} className="bg" style={{ flex: 1, padding: "9px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans", transition: "background 0.18s" }}>
+                        👁️ Voir détails
                       </button>
                       {client && (
                         <button onClick={() => { setProduitNegocie(item); setMessageTexte(""); setShowMessage(true); }} style={{ padding: "9px 10px", background: "rgba(245,200,66,0.1)", border: "1px solid rgba(245,200,66,0.3)", borderRadius: 9, fontSize: 14, cursor: "pointer", color: "#F5C842" }}>💬</button>
@@ -854,6 +893,106 @@ export default function FastBuy229() {
         </div>
       )}
 
+      {/* DETAIL PRODUIT */}
+      {showProduit && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "#161926", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 520, animation: "pi 0.3s ease", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontFamily: "Syne", fontSize: "1.2rem", fontWeight: 700 }}>{showProduit.title}</h2>
+              <span onClick={() => setShowProduit(null)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
+            </div>
+
+            {/* Photos */}
+            <div style={{ marginBottom: "1rem" }}>
+              {(() => {
+                const photos = showProduit.images && showProduit.images.length > 0 ? showProduit.images : showProduit.image ? [showProduit.image] : [];
+                return (
+                  <>
+                    <div style={{ height: 260, background: "#1C2035", borderRadius: 12, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                      {photos.length > 0 ? (
+                        <img src={getImageUrl(photos[photoChoisie])} alt={showProduit.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <span style={{ fontSize: "4rem" }}>{showProduit.emoji}</span>
+                      )}
+                    </div>
+                    {photos.length > 1 && (
+                      <div style={{ display: "flex", gap: 6, overflowX: "auto" }}>
+                        {photos.map((p, i) => (
+                          <img key={i} src={getImageUrl(p)} alt="" onClick={() => setPhotoChoisie(i)} style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, cursor: "pointer", border: `2px solid ${photoChoisie === i ? "#00A86B" : "transparent"}` }} />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>📍 {showProduit.location} · 🚚 {showProduit.plage_livraison}</div>
+            {showProduit.description && <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: "1rem", lineHeight: 1.6 }}>{showProduit.description}</div>}
+
+            {/* Variantes */}
+            {showProduit.variantes && showProduit.variantes.length > 0 ? (
+              <div style={{ marginBottom: "1.5rem" }}>
+                {/* Couleurs */}
+                {[...new Set(showProduit.variantes.map(v => v.couleur).filter(Boolean))].length > 0 && (
+                  <div style={{ marginBottom: "1rem" }}>
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 8, fontWeight: 500 }}>Couleur :</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {[...new Set(showProduit.variantes.map(v => v.couleur).filter(Boolean))].map((c, i) => (
+                        <button key={i} onClick={() => setVarianteChoisie(prev => ({ ...prev, couleur: c }))} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: varianteChoisie?.couleur === c ? "rgba(0,168,107,0.2)" : "#1C2035", border: `1px solid ${varianteChoisie?.couleur === c ? "#00A86B" : "rgba(255,255,255,0.1)"}`, color: varianteChoisie?.couleur === c ? "#00A86B" : "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>{c}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Tailles */}
+                {[...new Set(showProduit.variantes.map(v => v.taille).filter(Boolean))].length > 0 && (
+                  <div style={{ marginBottom: "1rem" }}>
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 8, fontWeight: 500 }}>Taille / Volume :</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {[...new Set(showProduit.variantes.filter(v => !varianteChoisie?.couleur || v.couleur === varianteChoisie?.couleur).map(v => v.taille).filter(Boolean))].map((t, i) => (
+                        <button key={i} onClick={() => setVarianteChoisie(prev => ({ ...prev, taille: t }))} style={{ padding: "8px 16px", borderRadius: 9, fontSize: 13, background: varianteChoisie?.taille === t ? "rgba(0,168,107,0.2)" : "#1C2035", border: `1px solid ${varianteChoisie?.taille === t ? "#00A86B" : "rgba(255,255,255,0.1)"}`, color: varianteChoisie?.taille === t ? "#00A86B" : "#fff", cursor: "pointer", fontFamily: "DM Sans" }}>{t}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Prix selon variante */}
+                {varianteChoisie && (() => {
+                  const v = showProduit.variantes.find(v => (!varianteChoisie.couleur || v.couleur === varianteChoisie.couleur) && (!varianteChoisie.taille || v.taille === varianteChoisie.taille));
+                  return v ? (
+                    <div style={{ background: "#1C2035", borderRadius: 10, padding: "12px 16px", marginBottom: "1rem" }}>
+                      <div style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, color: "#00A86B" }}>{parseInt(v.prix).toLocaleString()} FCFA</div>
+                      <div style={{ fontSize: 12, color: v.stock === "disponible" ? "#00A86B" : "rgba(255,100,100,0.7)", marginTop: 4 }}>{v.stock === "disponible" ? "✅ En stock" : "❌ Rupture de stock"}</div>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+            ) : (
+              <div style={{ background: "#1C2035", borderRadius: 10, padding: "12px 16px", marginBottom: "1.5rem" }}>
+                <div style={{ fontFamily: "Syne", fontSize: "1.4rem", fontWeight: 800, color: "#00A86B" }}>{showProduit.price?.toLocaleString()} FCFA</div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => {
+                const produitAvecVariante = { ...showProduit };
+                if (varianteChoisie) {
+                  const v = showProduit.variantes?.find(v => (!varianteChoisie.couleur || v.couleur === varianteChoisie.couleur) && (!varianteChoisie.taille || v.taille === varianteChoisie.taille));
+                  if (v) produitAvecVariante.price = parseInt(v.prix);
+                  produitAvecVariante.varianteChoisie = varianteChoisie;
+                }
+                ajouterAuPanier(produitAvecVariante);
+                setShowProduit(null);
+              }} className="bg" style={{ flex: 1, padding: "13px 0", background: "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans" }}>
+                {client ? "🛒 Ajouter au panier" : "🔒 Connexion requise"}
+              </button>
+              {client && (
+                <button onClick={() => { setProduitNegocie(showProduit); setShowMessage(true); setShowProduit(null); }} style={{ padding: "13px 14px", background: "rgba(245,200,66,0.1)", border: "1px solid rgba(245,200,66,0.3)", borderRadius: 12, fontSize: 16, cursor: "pointer", color: "#F5C842" }}>💬</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* PANIER */}
       {showPanier && (
         <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex" }}>
@@ -992,10 +1131,18 @@ export default function FastBuy229() {
               <span onClick={() => setShowAddProduct(false)} style={{ cursor: "pointer", fontSize: 22, color: "rgba(255,255,255,0.4)" }}>×</span>
             </div>
             <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📸 Photo</label>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>📸 Photos (jusqu'à 5)</label>
               <div style={{ border: "2px dashed rgba(255,255,255,0.15)", borderRadius: 12, padding: "1.5rem", textAlign: "center", cursor: "pointer" }} onClick={() => document.getElementById("photo-input").click()}>
-                {imagePreview ? <img src={imagePreview} alt="preview" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 8 }} /> : <div><div style={{ fontSize: "2rem", marginBottom: 8 }}>📷</div><div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Clique pour ajouter une photo</div></div>}
-                <input id="photo-input" type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }} />
+                {imagePreviews.length > 0 ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                    {imagePreviews.map((p, i) => <img key={i} src={p} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8 }} />)}
+                  </div>
+                ) : <div><div style={{ fontSize: "2rem", marginBottom: 8 }}>📷</div><div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Clique pour ajouter jusqu'à 5 photos</div></div>}
+                <input id="photo-input" type="file" accept="image/*" multiple onChange={(e) => {
+                  const files = Array.from(e.target.files).slice(0, 5);
+                  setImageFiles(files);
+                  setImagePreviews(files.map(f => URL.createObjectURL(f)));
+                }} style={{ display: "none" }} />
               </div>
             </div>
             {[["title", "Nom du produit", "Ex: Parfum Hugo Boss", "text"], ["price", "Prix (FCFA)", "Ex: 18500", "number"], ["location", "Ville", "Ex: Cotonou", "text"], ["description", "Description", "Décris le produit…", "text"]].map(([key, label, ph, type]) => (
@@ -1028,6 +1175,69 @@ export default function FastBuy229() {
                 {["Neuf", "Comme neuf", "Bon état", "Usagé"].map((e) => <option key={e} value={e}>{e}</option>)}
               </select>
             </div>
+            {/* VARIANTES */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 10, fontWeight: 600 }}>🎨 Variantes (couleurs/tailles/prix)</label>
+              
+              {/* Liste variantes */}
+              {variantes.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  {variantes.map((v, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#1C2035", borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
+                      <div style={{ fontSize: 13 }}>
+                        {v.couleur && <span style={{ color: "#F5C842", marginRight: 8 }}>🎨 {v.couleur}</span>}
+                        {v.taille && <span style={{ color: "#00A86B", marginRight: 8 }}>📏 {v.taille}</span>}
+                        <span style={{ color: "#fff", fontWeight: 600 }}>{parseInt(v.prix).toLocaleString()} FCFA</span>
+                        <span style={{ fontSize: 11, color: v.stock === "disponible" ? "#00A86B" : "rgba(255,100,100,0.7)", marginLeft: 8 }}>{v.stock === "disponible" ? "✅" : "❌"}</span>
+                      </div>
+                      <span onClick={() => setVariantes(prev => prev.filter((_, idx) => idx !== i))} style={{ cursor: "pointer", color: "rgba(255,80,80,0.7)", fontSize: 16 }}>🗑</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Ajouter variante */}
+              <div style={{ background: "#1C2035", borderRadius: 10, padding: "12px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", display: "block", marginBottom: 4 }}>Couleur (optionnel)</label>
+                    <input type="text" placeholder="Ex: Rouge, Bleu..." value={nouvelleVariante.couleur} onChange={(e) => setNouvelleVariante(p => ({...p, couleur: e.target.value}))} style={{...inp, fontSize: 12, padding: "8px 10px"}} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", display: "block", marginBottom: 4 }}>Taille/Volume (optionnel)</label>
+                    <input type="text" placeholder="Ex: S, M, L, 100ml..." value={nouvelleVariante.taille} onChange={(e) => setNouvelleVariante(p => ({...p, taille: e.target.value}))} style={{...inp, fontSize: 12, padding: "8px 10px"}} />
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", display: "block", marginBottom: 4 }}>Prix (FCFA) *</label>
+                    <input type="number" placeholder="Ex: 15000" value={nouvelleVariante.prix} onChange={(e) => setNouvelleVariante(p => ({...p, prix: e.target.value}))} style={{...inp, fontSize: 12, padding: "8px 10px"}} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", display: "block", marginBottom: 4 }}>Stock</label>
+                    <select value={nouvelleVariante.stock} onChange={(e) => setNouvelleVariante(p => ({...p, stock: e.target.value}))} style={{...inp, fontSize: 12, padding: "8px 10px", cursor: "pointer"}}>
+                      <option value="disponible">✅ Disponible</option>
+                      <option value="rupture">❌ Rupture</option>
+                    </select>
+                  </div>
+                </div>
+                <button onClick={() => {
+                  if (!nouvelleVariante.prix) { alert("Le prix est obligatoire !"); return; }
+                  setVariantes(prev => [...prev, {...nouvelleVariante}]);
+                  setNouvelleVariante({ couleur: "", taille: "", prix: "", stock: "disponible" });
+                }} style={{ width: "100%", padding: "9px 0", background: "rgba(0,168,107,0.15)", border: "1px solid rgba(0,168,107,0.3)", color: "#00A86B", borderRadius: 9, fontSize: 13, cursor: "pointer", fontFamily: "DM Sans", fontWeight: 500 }}>
+                  + Ajouter cette variante
+                </button>
+              </div>
+
+              {variantes.length === 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <label style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 6 }}>Prix de base (si pas de variantes)</label>
+                  <input type="number" placeholder="Ex: 15000" value={newProduct.price} onChange={(e) => setNewProduct({...newProduct, price: e.target.value})} style={inp} />
+                </div>
+              )}
+            </div>
+
             <button onClick={ajouterProduit} disabled={loading} className="bg" style={{ width: "100%", padding: "14px 0", background: loading ? "#555" : "#00A86B", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "DM Sans" }}>
               {loading ? "Ajout…" : "✅ Ajouter le produit"}
             </button>
