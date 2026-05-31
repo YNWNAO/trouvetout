@@ -21,6 +21,8 @@ const globalStyles = `
 export default function FastBuy229() {
   const [page, setPage] = useState("accueil");
   const [produits, setProduits] = useState([]);
+  const [commandes, setCommandes] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [catActive, setCatActive] = useState("Tous");
   const [search, setSearch] = useState("");
   const [panier, setPanier] = useState([]);
@@ -53,26 +55,22 @@ export default function FastBuy229() {
   const [captureFile, setCaptureFile] = useState(null);
   const [codePromo, setCodePromo] = useState("");
   const [reduction, setReduction] = useState(0);
-  const [commandes, setCommandes] = useState([]);
-  const [messages, setMessages] = useState([]);
 
-  const pwdButtonStyle = {
-    position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
-    background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#374151",
-    padding: "4px 8px", zIndex: 10, lineHeight: 1
-  };
+  const pwdButtonStyle = { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#374151", padding: "4px 8px", zIndex: 10, lineHeight: 1 };
 
   useEffect(() => {
     const savedClient = localStorage.getItem("fastbuy_client");
     if (savedClient) setClient(JSON.parse(savedClient));
     const savedPanier = localStorage.getItem("fastbuy_panier");
     if (savedPanier) setPanier(JSON.parse(savedPanier));
-    
     if (typeof window !== "undefined" && window.location.search.includes("page=admin")) {
       setPage("admin");
+      chargerProduits();
+      chargerCommandes();
+      chargerMessages();
+    } else {
+      chargerProduits();
     }
-    
-    chargerProduits();
   }, []);
 
   useEffect(() => {
@@ -112,18 +110,10 @@ export default function FastBuy229() {
   const ajouterAuPanier = (prod, couleur = "", taille = "") => {
     if (!client) { setShowLogin(true); return; }
     const key = `${prod.id}-${couleur}-${taille}`;
-    let prixChoisi = prod.price;
-    if (prod.variantes && couleur && taille) {
-      try {
-        const vars = typeof prod.variantes === "string" ? JSON.parse(prod.variantes) : prod.variantes;
-        const varTrouvee = vars.find(v => v.couleur === couleur && v.taille === taille);
-        if (varTrouvee) prixChoisi = parseInt(varTrouvee.prix);
-      } catch (e) {}
-    }
     setPanier(prev => {
       const ex = prev.find(i => i.key === key);
       if (ex) return prev.map(i => i.key === key ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { ...prod, key, qty: 1, couleurChoisie: couleur, tailleChoisie: taille, price: prixChoisi }];
+      return [...prev, { ...prod, key, qty: 1, couleurChoisie: couleur, tailleChoisie: taille }];
     });
     setShowProduit(null);
     setShowPanier(true);
@@ -216,7 +206,6 @@ export default function FastBuy229() {
     }
   };
 
-  // ============ ADMIN ============
   if (page === "admin") {
     return (
       <div style={{ minHeight: "100vh", background: "#f8f9fa" }}>
@@ -229,11 +218,11 @@ export default function FastBuy229() {
                 <input type={showPwdAdmin ? "text" : "password"} value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" style={{ width: "100%", padding: "12px 40px 12px 14px", border: "1.5px solid #e5e7eb", borderRadius: 10 }} />
                 <button type="button" onClick={() => setShowPwdAdmin(p => !p)} style={pwdButtonStyle}>{showPwdAdmin ? "Masquer" : "Afficher"}</button>
               </div>
-              <button className="btn-primary" onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerMessages(); } else { alert("Incorrect !"); setAdminPwd(""); } }}>Accéder</button>
+              <button className="btn-primary" onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); } else { alert("Incorrect !"); setAdminPwd(""); } }}>Accéder</button>
             </div>
           </div>
         ) : (
-          <div style={{ padding: "2rem", maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ padding: "2rem", maxWidth: 1400, margin: "0 auto" }}>
             <div style={{ display: "flex", gap: 10, justifyContent: "space-between", marginBottom: "2rem" }}>
               <h1 style={{ fontSize: "1.8rem", fontWeight: 800 }}>Admin FastBuy</h1>
               <div style={{ display: "flex", gap: 10 }}>
@@ -258,33 +247,43 @@ export default function FastBuy229() {
             </div>
 
             <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>Commandes ({commandes.length})</h2>
-            {commandes.map(cmd => (
-              <div key={cmd.id} style={{ background: "#fff", borderRadius: 12, padding: "1rem", marginBottom: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontWeight: 600 }}>{cmd.numero} - {cmd.nom}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280" }}>{cmd.telephone} / {cmd.ville}</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontWeight: 700, color: "#2563eb" }}>{cmd.totalFinal?.toLocaleString()} FCFA</div>
-                  <select value={cmd.statut} onChange={async e => { await supabase.from("commandes").update({ statut: e.target.value }).eq("id", cmd.id); chargerCommandes(); }} style={{ marginTop: 6, padding: "4px 8px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 11 }}>
-                    <option>En attente</option>
-                    <option>Confirmé</option>
-                    <option>Expédié</option>
-                    <option>Livré</option>
-                    <option>Annulé</option>
-                  </select>
-                </div>
-              </div>
-            ))}
+            <div style={{ marginBottom: "2rem" }}>
+              {commandes.length === 0 ? (
+                <div style={{ background: "#fff", padding: "1.5rem", borderRadius: 12, textAlign: "center", color: "#9ca3af" }}>Aucune commande</div>
+              ) : (
+                commandes.map(cmd => (
+                  <div key={cmd.id} style={{ background: "#fff", borderRadius: 12, padding: "1rem", marginBottom: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{cmd.numero} - {cmd.nom}</div>
+                      <div style={{ fontSize: 12, color: "#6b7280" }}>{cmd.telephone} / {cmd.ville}</div>
+                      <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>{cmd.articles && JSON.parse(cmd.articles).length} article(s) - {cmd.totalFinal?.toLocaleString()} FCFA</div>
+                    </div>
+                    <select value={cmd.statut} onChange={async e => { await supabase.from("commandes").update({ statut: e.target.value }).eq("id", cmd.id); chargerCommandes(); }} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, cursor: "pointer", minWidth: 120 }}>
+                      <option>En attente</option>
+                      <option>Confirmé</option>
+                      <option>Expédié</option>
+                      <option>Livré</option>
+                      <option>Annulé</option>
+                    </select>
+                  </div>
+                ))
+              )}
+            </div>
 
-            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem", marginTop: "2rem" }}>Messages ({messages.length})</h2>
-            {messages.map(msg => (
-              <div key={msg.id} style={{ background: "#fff", borderRadius: 12, padding: "1rem", marginBottom: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                <div style={{ fontWeight: 600, marginBottom: 6 }}>{msg.nom} - {msg.telephone}</div>
-                <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 6, fontSize: 13, marginBottom: 6 }}>{msg.message}</div>
-                <textarea placeholder="Répondre..." value={msg.reponse || ""} onChange={async e => { await supabase.from("messages").update({ reponse: e.target.value }).eq("id", msg.id); chargerMessages(); }} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, resize: "vertical" }} rows={2} />
-              </div>
-            ))}
+            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>Messages ({messages.length})</h2>
+            <div style={{ marginBottom: "2rem" }}>
+              {messages.length === 0 ? (
+                <div style={{ background: "#fff", padding: "1.5rem", borderRadius: 12, textAlign: "center", color: "#9ca3af" }}>Aucun message</div>
+              ) : (
+                messages.map(msg => (
+                  <div key={msg.id} style={{ background: "#fff", borderRadius: 12, padding: "1rem", marginBottom: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ fontWeight: 600, marginBottom: 6 }}>{msg.nom} - {msg.telephone}</div>
+                    <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 6, fontSize: 13, marginBottom: 8 }}>{msg.message}</div>
+                    <textarea placeholder="Répondre..." value={msg.reponse || ""} onChange={async e => { await supabase.from("messages").update({ reponse: e.target.value }).eq("id", msg.id); chargerMessages(); }} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, resize: "vertical" }} rows={2} />
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 
@@ -341,7 +340,6 @@ export default function FastBuy229() {
     );
   }
 
-  // ============ CLIENT ============
   return (
     <div style={{ minHeight: "100vh", background: "#f8f9fa", paddingBottom: 80 }}>
       <style>{globalStyles}</style>
@@ -438,7 +436,7 @@ export default function FastBuy229() {
           <div className="modal">
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
               <h2 style={{ fontSize: "1.1rem", fontWeight: 700 }}>{showProduit.title}</h2>
-              <span onClick={() => setShowProduit(null)} style={{ cursor: "pointer", fontSize: 20 }}>×</span>
+              <span onClick={() => setShowProduit(null)} style={{ cursor: "pointer", fontSize: 20 }}>x</span>
             </div>
             {(() => {
               const photos = showProduit.images?.length > 0 ? showProduit.images : showProduit.image ? [showProduit.image] : [];
@@ -457,7 +455,7 @@ export default function FastBuy229() {
                 </div>
               );
             })()}
-            <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 12 }}>Livraison: {showProduit.plage_livraison} • État: {showProduit.etat}</div>
+            <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 12 }}>Livraison: {showProduit.plage_livraison} - Etat: {showProduit.etat}</div>
             
             {(() => {
               let variantes = [];
@@ -473,12 +471,6 @@ export default function FastBuy229() {
               
               const couleurs = [...new Set(variantes.map(v => v.couleur))];
               const tailles = couleurChoisie ? [...new Set(variantes.filter(v => v.couleur === couleurChoisie).map(v => v.taille))] : [];
-              
-              let prixActuel = showProduit.price;
-              if (couleurChoisie && tailleChoisie) {
-                const varTrouvee = variantes.find(v => v.couleur === couleurChoisie && v.taille === tailleChoisie);
-                if (varTrouvee) prixActuel = parseInt(varTrouvee.prix);
-              }
               
               return (
                 <>
@@ -504,21 +496,20 @@ export default function FastBuy229() {
                             </button>
                           ))}
                         </div>
-                      ) : <div style={{ fontSize: 11, color: "#9ca3af" }}>Pas de tailles disponibles</div>}
+                      ) : <div style={{ fontSize: 11, color: "#9ca3af" }}>Pas de tailles</div>}
                     </div>
                   )}
                   
-                  {couleurChoisie && tailleChoisie && (
-                    <div style={{ background: "#f0f9ff", borderRadius: 10, padding: "12px", marginBottom: "1rem", fontWeight: 700, fontSize: 14, color: "#2563eb" }}>
-                      {prixActuel?.toLocaleString()} FCFA
-                    </div>
-                  )}
+                  {couleurChoisie && tailleChoisie && (() => {
+                    const varTrouvee = variantes.find(v => v.couleur === couleurChoisie && v.taille === tailleChoisie);
+                    return <div style={{ background: "#f0f9ff", borderRadius: 10, padding: "12px", marginBottom: "1rem", fontWeight: 700, fontSize: 14, color: "#2563eb" }}>{varTrouvee ? parseInt(varTrouvee.prix)?.toLocaleString() : showProduit.price?.toLocaleString()} FCFA</div>;
+                  })()}
                 </>
               );
             })()}
             
             <button onClick={() => ajouterAuPanier(showProduit, couleurChoisie, tailleChoisie)} disabled={!couleurChoisie || !tailleChoisie} className="btn-primary" style={{ opacity: (!couleurChoisie || !tailleChoisie) ? 0.5 : 1 }}>
-              {!client ? "Connecte-toi pour ajouter" : (!couleurChoisie || !tailleChoisie) ? "Choisis couleur et taille" : "Ajouter au panier"}
+              {!client ? "Connecte-toi" : (!couleurChoisie || !tailleChoisie) ? "Choisis couleur et taille" : "Ajouter au panier"}
             </button>
           </div>
         </div>
@@ -535,14 +526,14 @@ export default function FastBuy229() {
                 {panier.map(item => (
                   <div key={item.key} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: "1px solid #f3f4f6", alignItems: "center" }}>
                     <div style={{ width: 40, height: 40, background: "#f3f4f6", borderRadius: 6, overflow: "hidden" }}>
-                      {(item.images?.[0] || item.image) ? <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>-</div>}
+                      {(item.images?.[0] || item.image) ? <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div>-</div>}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600 }}>{item.title} {item.couleurChoisie && <span style={{ color: "#6b7280" }}>• {item.couleurChoisie}</span>} {item.tailleChoisie && <span style={{ color: "#6b7280" }}>• {item.tailleChoisie}</span>}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>{item.title} {item.couleurChoisie && <span style={{ color: "#6b7280" }}>- {item.couleurChoisie}</span>} {item.tailleChoisie && <span style={{ color: "#6b7280" }}>- {item.tailleChoisie}</span>}</div>
                       <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 600, marginTop: 3 }}>{(item.price * item.qty).toLocaleString()} FCFA</div>
                     </div>
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => setPanier(prev => prev.map(i => i.key === item.key ? { ...i, qty: Math.max(1, i.qty - 1) } : i))} style={{ width: 20, height: 20, border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", borderRadius: "50%", fontSize: 10 }}>−</button>
+                      <button onClick={() => setPanier(prev => prev.map(i => i.key === item.key ? { ...i, qty: Math.max(1, i.qty - 1) } : i))} style={{ width: 20, height: 20, border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", borderRadius: "50%", fontSize: 10 }}>-</button>
                       <span style={{ fontWeight: 600, width: 14, textAlign: "center", fontSize: 12 }}>{item.qty}</span>
                       <button onClick={() => setPanier(prev => prev.map(i => i.key === item.key ? { ...i, qty: i.qty + 1 } : i))} style={{ width: 20, height: 20, border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", borderRadius: "50%", fontSize: 10 }}>+</button>
                     </div>
@@ -553,7 +544,7 @@ export default function FastBuy229() {
                     <span>Total</span>
                     <span style={{ fontSize: 15, color: "#2563eb" }}>{totalFinal.toLocaleString()} FCFA</span>
                   </div>
-                  <button className="btn-primary" onClick={() => { setShowPanier(false); setShowCommande(true); }}>Procéder au paiement</button>
+                  <button className="btn-primary" onClick={() => { setShowPanier(false); setShowCommande(true); }}>Procéder</button>
                 </div>
               </>
             )}
@@ -571,14 +562,14 @@ export default function FastBuy229() {
             <input placeholder="Ville" value={formCmd.ville} onChange={e => setFormCmd({ ...formCmd, ville: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Adresse" value={formCmd.adresse} onChange={e => setFormCmd({ ...formCmd, adresse: e.target.value })} style={{ marginBottom: 12 }} />
             <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px", marginBottom: 12, fontSize: 12 }}>
-              Envoyer <strong>{totalFinal.toLocaleString()} FCFA</strong> au numéro <strong>{MOMO}</strong>
+              Envoyer {totalFinal.toLocaleString()} FCFA au {MOMO}
             </div>
             <div onClick={() => document.getElementById("capture-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginBottom: 12, background: "#fafafa" }}>
-              {captureFile ? <span style={{ fontSize: 12, color: "#16a34a" }}>Capture reçue: {captureFile.name}</span> : <span style={{ fontSize: 12 }}>Cliquez pour ajouter la capture de paiement</span>}
+              {captureFile ? <span style={{ fontSize: 12, color: "#16a34a" }}>OK: {captureFile.name}</span> : <span style={{ fontSize: 12 }}>Cliquez pour ajouter capture</span>}
               <input id="capture-input" type="file" accept="image/*" onChange={e => setCaptureFile(e.target.files[0])} style={{ display: "none" }} />
             </div>
             <button onClick={envoyerCommande} disabled={loading} className="btn-primary">
-              {loading ? "Envoi..." : `Confirmer (${totalFinal.toLocaleString()} FCFA)`}
+              {loading ? "Envoi..." : "Confirmer"}
             </button>
           </div>
         </div>
@@ -587,9 +578,9 @@ export default function FastBuy229() {
       {showConfirm && (
         <div className="modal-overlay">
           <div className="modal" style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>✓</div>
+            <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>OK</div>
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 6 }}>Commande confirmée !</h2>
-            <p style={{ color: "#6b7280", marginBottom: 12, fontSize: 13 }}>Merci {showConfirm.nom}</p>
+            <p style={{ color: "#6b7280", marginBottom: 12, fontSize: 13 }}>{showConfirm.nom}</p>
             <div style={{ background: "#eff6ff", borderRadius: 10, padding: "10px", marginBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: "#2563eb" }}>{showConfirm.numero}</div>
             </div>
@@ -626,12 +617,12 @@ export default function FastBuy229() {
             <input placeholder="Téléphone" value={inscForm.telephone} onChange={e => setInscForm({ ...inscForm, telephone: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="JJ/MM/AAAA" value={inscForm.date_naissance} onChange={e => { let v = e.target.value.replace(/\D/g, ""); if (v.length >= 3 && v.length <= 4) v = v.slice(0, 2) + "/" + v.slice(2); else if (v.length >= 5) v = v.slice(0, 2) + "/" + v.slice(2, 4) + "/" + v.slice(4, 8); setInscForm({ ...inscForm, date_naissance: v }); }} style={{ marginBottom: 12 }} maxLength={10} />
             <div style={{ position: "relative", marginBottom: 12 }}>
-              <input type={showPwdInsc ? "text" : "password"} placeholder="Mot de passe (8 char min)" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={{ width: "100%", padding: "12px 40px 12px 14px", border: "1.5px solid #e5e7eb", borderRadius: 10 }} />
+              <input type={showPwdInsc ? "text" : "password"} placeholder="Mot de passe (8 min)" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={{ width: "100%", padding: "12px 40px 12px 14px", border: "1.5px solid #e5e7eb", borderRadius: 10 }} />
               <button type="button" onClick={() => setShowPwdInsc(p => !p)} style={pwdButtonStyle}>{showPwdInsc ? "Masquer" : "Afficher"}</button>
             </div>
-            <input type={showPwdInsc ? "text" : "password"} placeholder="Confirmer" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={{ marginBottom: 12, paddingRight: 40 }} />
+            <input type={showPwdInsc ? "text" : "password"} placeholder="Confirmer" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={{ marginBottom: 12 }} />
             {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{authError}</div>}
-            <button className="btn-primary" onClick={inscrire}>Créer mon compte</button>
+            <button className="btn-primary" onClick={inscrire}>Créer</button>
           </div>
         </div>
       )}
