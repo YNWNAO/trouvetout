@@ -86,10 +86,18 @@ export default function FastBuy229() {
   const [inscForm, setInscForm] = useState({ prenom: "", nom: "", email: "", telephone: "", date_naissance: "", mot_de_passe: "", confirmer: "" });
   const [mdpForm, setMdpForm] = useState({ email: "", telephone: "", date_naissance: "", nouveau: "", confirmer: "" });
   const [authError, setAuthError] = useState("");
+  
+  // 👁️ VARIABLES D'ÉTAT POUR AFFICHER/MASQUER LES MOTS DE PASSE
+  const [showPwdAdmin, setShowPwdAdmin] = useState(false);
+  const [showPwdAdminForgotAncien, setShowPwdAdminForgotAncien] = useState(false);
+  const [showPwdAdminForgotNouv, setShowPwdAdminForgotNouv] = useState(false);
+  const [showPwdAdminForgotConfirm, setShowPwdAdminForgotConfirm] = useState(false);
   const [showPwdLogin, setShowPwdLogin] = useState(false);
   const [showPwdInsc, setShowPwdInsc] = useState(false);
+  const [showPwdInscConfirm, setShowPwdInscConfirm] = useState(false);
   const [showPwdForgot, setShowPwdForgot] = useState(false);
-  const [showPwdAdmin, setShowPwdAdmin] = useState(false);
+  const [showPwdForgotConfirm, setShowPwdForgotConfirm] = useState(false);
+  const [showPwdClientNew, setShowPwdClientNew] = useState(false);
 
   useEffect(() => {
     const savedPwd = localStorage.getItem("fastbuy_admin_pwd");
@@ -281,7 +289,7 @@ export default function FastBuy229() {
 
   const inp = { width: "100%", padding: "12px 14px", border: "1.5px solid #e5e7eb", borderRadius: 10, fontSize: 14, fontFamily: "'Inter', sans-serif", background: "#fff", color: "#1a1a2e", outline: "none", marginBottom: 12 };
 
-  // ===================== RENDER =====================
+  // ===================== RENDER ADMIN =====================
 
   if (page === "admin") {
     return (
@@ -305,28 +313,39 @@ export default function FastBuy229() {
                   {!showAdminForgot ? (
                     <>
                       <div style={{ position: "relative", marginBottom: 12 }}>
-                      <input type={showPwdAdmin ? "text" : "password"} value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" style={{ ...inp, marginBottom: 0, paddingRight: 40 }} onKeyDown={e => e.key === "Enter" && (() => {
-                        if (adminPwd === adminMotDePasse) { setAdminOk(true); setAdminTentatives(0); chargerCommandes(); chargerMessages(); }
-                        else {
-                          const n = adminTentatives + 1; setAdminTentatives(n); setAdminPwd("");
-                          if (n >= 3) { setAdminBloque(true); let t = 300; setAdminBloqueTimer(t); const iv = setInterval(() => { t--; setAdminBloqueTimer(t); if (t <= 0) { clearInterval(iv); setAdminBloque(false); setAdminTentatives(0); } }, 1000); }
-                        }
-                      })()} />
-                      <button className="btn-primary" style={{ width: "100%" }} onClick={() => {
+                        <input type={showPwdAdmin ? "text" : "password"} value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" style={{ ...inp, marginBottom: 0, paddingRight: 40 }} onKeyDown={e => e.key === "Enter" && (() => {
+                          if (adminPwd === adminMotDePasse) { setAdminOk(true); setAdminTentatives(0); chargerCommandes(); chargerMessages(); }
+                          else {
+                            const n = adminTentatives + 1; setAdminTentatives(n); setAdminPwd("");
+                            if (n >= 3) { setAdminBloque(true); let t = 300; setAdminBloqueTimer(t); const iv = setInterval(() => { t--; setAdminBloqueTimer(t); if (t <= 0) { clearInterval(iv); setAdminBloque(false); setAdminTentatives(0); } }, 1000); }
+                          }
+                        })()} />
+                        <button onClick={() => setShowPwdAdmin(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdAdmin ? "🙈" : "👁️"}</button>
+                      </div>
+                      <button className="btn-primary" style={{ width: "100%", marginBottom: 12 }} onClick={() => {
                         if (adminPwd === adminMotDePasse) { setAdminOk(true); setAdminTentatives(0); chargerCommandes(); chargerMessages(); }
                         else {
                           const n = adminTentatives + 1; setAdminTentatives(n); setAdminPwd("");
                           if (n >= 3) { setAdminBloque(true); let t = 300; setAdminBloqueTimer(t); const iv = setInterval(() => { t--; setAdminBloqueTimer(t); if (t <= 0) { clearInterval(iv); setAdminBloque(false); setAdminTentatives(0); } }, 1000); }
                         }
                       }}>Accéder</button>
-                      <button onClick={() => setShowAdminForgot(true)} style={{ background: "none", border: "none", color: "#2563eb", fontSize: 13, cursor: "pointer", width: "100%", marginTop: 12 }}>Modifier mon mot de passe</button>
+                      <button onClick={() => setShowAdminForgot(true)} style={{ background: "none", border: "none", color: "#2563eb", fontSize: 13, cursor: "pointer", width: "100%" }}>Modifier mon mot de passe</button>
                     </>
                   ) : (
                     <>
                       <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 16 }}>Changer le mot de passe admin</p>
-                      <input type="password" value={adminForgotAncien} onChange={e => setAdminForgotAncien(e.target.value)} placeholder="Ancien mot de passe" style={inp} />
-                      <input type="password" value={adminForgotNouv} onChange={e => setAdminForgotNouv(e.target.value)} placeholder="Nouveau mot de passe" style={inp} />
-                      <input type="password" value={adminForgotConfirm} onChange={e => setAdminForgotConfirm(e.target.value)} placeholder="Confirmer" style={inp} />
+                      <div style={{ position: "relative", marginBottom: 12 }}>
+                        <input type={showPwdAdminForgotAncien ? "text" : "password"} value={adminForgotAncien} onChange={e => setAdminForgotAncien(e.target.value)} placeholder="Ancien mot de passe" style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
+                        <button onClick={() => setShowPwdAdminForgotAncien(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdAdminForgotAncien ? "🙈" : "👁️"}</button>
+                      </div>
+                      <div style={{ position: "relative", marginBottom: 12 }}>
+                        <input type={showPwdAdminForgotNouv ? "text" : "password"} value={adminForgotNouv} onChange={e => setAdminForgotNouv(e.target.value)} placeholder="Nouveau mot de passe" style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
+                        <button onClick={() => setShowPwdAdminForgotNouv(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdAdminForgotNouv ? "🙈" : "👁️"}</button>
+                      </div>
+                      <div style={{ position: "relative", marginBottom: 12 }}>
+                        <input type={showPwdAdminForgotConfirm ? "text" : "password"} value={adminForgotConfirm} onChange={e => setAdminForgotConfirm(e.target.value)} placeholder="Confirmer" style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
+                        <button onClick={() => setShowPwdAdminForgotConfirm(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdAdminForgotConfirm ? "🙈" : "👁️"}</button>
+                      </div>
                       {adminForgotError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 10 }}>{adminForgotError}</div>}
                       <button className="btn-primary" style={{ width: "100%", marginBottom: 8 }} onClick={() => {
                         if (!adminForgotAncien || !adminForgotNouv || !adminForgotConfirm) { setAdminForgotError("Remplis tous les champs !"); return; }
@@ -334,9 +353,9 @@ export default function FastBuy229() {
                         if (adminForgotNouv.length < 6) { setAdminForgotError("Trop court !"); return; }
                         if (adminForgotNouv !== adminForgotConfirm) { setAdminForgotError("Ne correspondent pas !"); return; }
                         setAdminMotDePasse(adminForgotNouv); localStorage.setItem("fastbuy_admin_pwd", adminForgotNouv);
-                        alert("Mot de passe changé !"); setShowAdminForgot(false);
+                        alert("Mot de passe changé !"); setShowAdminForgot(false); setAdminForgotAncien(""); setAdminForgotNouv(""); setAdminForgotConfirm("");
                       }}>Valider</button>
-                      <button onClick={() => setShowAdminForgot(false)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer", width: "100%" }}>← Retour</button>
+                      <button onClick={() => { setShowAdminForgot(false); setAdminForgotError(""); }} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer", width: "100%" }}>← Retour</button>
                     </>
                   )}
                 </>
@@ -573,7 +592,10 @@ export default function FastBuy229() {
                 <div style={{ background: "#f9fafb", borderRadius: 12, padding: "1rem", border: "1px solid #e5e7eb" }}>
                   <div style={{ fontWeight: 600, marginBottom: 8 }}>{clientTrouve.nom}</div>
                   <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>{clientTrouve.email} · {clientTrouve.telephone}</div>
-                  <input type="password" placeholder="Nouveau mot de passe (8+ car, lettres+chiffres)" value={nouveauMdpClient} onChange={e => setNouveauMdpClient(e.target.value)} style={inp} />
+                  <div style={{ position: "relative", marginBottom: 12 }}>
+                    <input type={showPwdClientNew ? "text" : "password"} placeholder="Nouveau mot de passe (8+ car, lettres+chiffres)" value={nouveauMdpClient} onChange={e => setNouveauMdpClient(e.target.value)} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
+                    <button onClick={() => setShowPwdClientNew(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdClientNew ? "🙈" : "👁️"}</button>
+                  </div>
                   <button className="btn-primary" style={{ width: "100%", marginBottom: 8 }} onClick={async () => {
                     if (!nouveauMdpClient || nouveauMdpClient.length < 8) { alert("Mot de passe trop court (8 min) !"); return; }
                     if (!/[a-zA-Z]/.test(nouveauMdpClient) || !/[0-9]/.test(nouveauMdpClient)) { alert("Le mot de passe doit contenir lettres ET chiffres !"); return; }
@@ -959,7 +981,7 @@ export default function FastBuy229() {
             <input placeholder="Email ou téléphone" value={loginForm.identifiant} onChange={e => setLoginForm({ ...loginForm, identifiant: e.target.value })} style={inp} />
             <div style={{ position: "relative", marginBottom: 12 }}>
               <input type={showPwdLogin ? "text" : "password"} placeholder="Mot de passe" value={loginForm.motDePasse} onChange={e => setLoginForm({ ...loginForm, motDePasse: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
-              <span onClick={() => setShowPwdLogin(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdLogin ? "🙈" : "👁️"}</span>
+              <button onClick={() => setShowPwdLogin(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdLogin ? "🙈" : "👁️"}</button>
             </div>
             {authError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{authError}</div>}
             <button className="btn-primary" style={{ width: "100%", marginBottom: 12 }} onClick={connecter}>Se connecter</button>
@@ -987,14 +1009,14 @@ export default function FastBuy229() {
             <input placeholder="Email *" type="email" value={inscForm.email} onChange={e => setInscForm({ ...inscForm, email: e.target.value })} style={inp} />
             <input placeholder="Téléphone *" value={inscForm.telephone} onChange={e => setInscForm({ ...inscForm, telephone: e.target.value })} style={inp} />
             <input placeholder="Date de naissance JJ/MM/AAAA *" value={inscForm.date_naissance} onChange={e => formatDate(e.target.value, setInscForm, "date_naissance")} style={inp} maxLength={10} />
-            <div style={{ position: "relative", marginBottom: 4 }}>
+            <div style={{ position: "relative", marginBottom: 12 }}>
               <input type={showPwdInsc ? "text" : "password"} placeholder="Mot de passe *" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
-              <span onClick={() => setShowPwdInsc(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdInsc ? "🙈" : "👁️"}</span>
+              <button onClick={() => setShowPwdInsc(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdInsc ? "🙈" : "👁️"}</button>
             </div>
             <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 12 }}>Minimum 8 caractères avec lettres et chiffres</div>
             <div style={{ position: "relative", marginBottom: 12 }}>
-              <input type={showPwdInsc ? "text" : "password"} placeholder="Confirmer le mot de passe *" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
-              <span onClick={() => setShowPwdInsc(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdInsc ? "🙈" : "👁️"}</span>
+              <input type={showPwdInscConfirm ? "text" : "password"} placeholder="Confirmer le mot de passe *" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
+              <button onClick={() => setShowPwdInscConfirm(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdInscConfirm ? "🙈" : "👁️"}</button>
             </div>
             {authError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{authError}</div>}
             <button className="btn-primary" style={{ width: "100%", marginBottom: 12 }} onClick={inscrire}>Créer mon compte</button>
@@ -1019,11 +1041,11 @@ export default function FastBuy229() {
             <input placeholder="Date de naissance JJ/MM/AAAA *" value={mdpForm.date_naissance} onChange={e => formatDate(e.target.value, setMdpForm, "date_naissance")} style={inp} maxLength={10} />
             <div style={{ position: "relative", marginBottom: 12 }}>
               <input type={showPwdForgot ? "text" : "password"} placeholder="Nouveau mot de passe *" value={mdpForm.nouveau} onChange={e => setMdpForm({ ...mdpForm, nouveau: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
-              <span onClick={() => setShowPwdForgot(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdForgot ? "🙈" : "👁️"}</span>
+              <button onClick={() => setShowPwdForgot(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdForgot ? "🙈" : "👁️"}</button>
             </div>
             <div style={{ position: "relative", marginBottom: 12 }}>
-              <input type={showPwdForgot ? "text" : "password"} placeholder="Confirmer le nouveau mot de passe *" value={mdpForm.confirmer} onChange={e => setMdpForm({ ...mdpForm, confirmer: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
-              <span onClick={() => setShowPwdForgot(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdForgot ? "🙈" : "👁️"}</span>
+              <input type={showPwdForgotConfirm ? "text" : "password"} placeholder="Confirmer le nouveau mot de passe *" value={mdpForm.confirmer} onChange={e => setMdpForm({ ...mdpForm, confirmer: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
+              <button onClick={() => setShowPwdForgotConfirm(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdForgotConfirm ? "🙈" : "👁️"}</button>
             </div>
             {authError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{authError}</div>}
             <button className="btn-primary" style={{ width: "100%", marginBottom: 16 }} onClick={reinitMdp}>Réinitialiser</button>
