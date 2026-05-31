@@ -46,6 +46,8 @@ export default function FastBuy229() {
   const [clientRecherche, setClientRecherche] = useState("");
   const [clientTrouve, setClientTrouve] = useState(null);
   const [nouveauMdpClient, setNouveauMdpClient] = useState("");
+  const [showContact, setShowContact] = useState(false);
+  const [messageContact, setMessageContact] = useState("");
   const [newProduct, setNewProduct] = useState({ title: "", description: "", etat: "Neuf", category: "Vêtements", plage_livraison: "1-2 semaines" });
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -180,6 +182,23 @@ export default function FastBuy229() {
     setCaptureFile(null);
   };
 
+  const envoyerMessage = async () => {
+    if (!messageContact.trim()) { alert("Message vide !"); return; }
+    if (!client) { alert("Connecte-toi d'abord !"); return; }
+    setLoading(true);
+    await supabase.from("messages").insert([{
+      user_id: client.id,
+      nom: client.nom,
+      telephone: client.telephone || "",
+      message: messageContact,
+      reponse: ""
+    }]);
+    alert("Message envoyé ! L'admin va te répondre.");
+    setMessageContact("");
+    setShowContact(false);
+    setLoading(false);
+  };
+
   const ajouterProduit = async () => {
     if (!newProduct.title) { alert("Titre requis !"); return; }
     if (variantes.length === 0) { alert("Ajoute une variante !"); return; }
@@ -266,13 +285,15 @@ export default function FastBuy229() {
                         <div style={{ fontSize: 12, color: "#6b7280" }}>{cmd.telephone} / {cmd.ville}</div>
                         <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>{cmd.totalFinal?.toLocaleString()} FCFA</div>
                       </div>
-                      <select value={cmd.statut} onChange={async e => { await supabase.from("commandes").update({ statut: e.target.value }).eq("id", cmd.id); chargerCommandes(); }} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, cursor: "pointer", minWidth: 120 }}>
-                        <option>En attente</option>
-                        <option>Confirmé</option>
-                        <option>Expédié</option>
-                        <option>Livré</option>
-                        <option>Annulé</option>
-                      </select>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <select value={cmd.statut} onChange={async e => { await supabase.from("commandes").update({ statut: e.target.value }).eq("id", cmd.id); chargerCommandes(); }} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, cursor: "pointer", minWidth: 120 }}>
+                          <option>En attente</option>
+                          <option>Confirmé</option>
+                          <option>Expédié</option>
+                          <option>Livré</option>
+                          <option>Annulé</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -287,8 +308,9 @@ export default function FastBuy229() {
                 messages.map(msg => (
                   <div key={msg.id} style={{ background: "#fff", borderRadius: 12, padding: "1rem", marginBottom: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                     <div style={{ fontWeight: 600, marginBottom: 6 }}>{msg.nom} - {msg.telephone}</div>
-                    <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 6, fontSize: 13, marginBottom: 8 }}>{msg.message}</div>
-                    <textarea placeholder="Répondre..." value={msg.reponse || ""} onChange={async e => { await supabase.from("messages").update({ reponse: e.target.value }).eq("id", msg.id); }} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, resize: "vertical", marginBottom: 8 }} rows={2} />
+                    <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 6, fontSize: 13, marginBottom: 8, borderLeft: "3px solid #2563eb" }}>{msg.message}</div>
+                    {msg.reponse && <div style={{ background: "#f0f9ff", padding: "8px", borderRadius: 6, fontSize: 12, marginBottom: 8, borderLeft: "3px solid #10b981" }}>Réponse: {msg.reponse}</div>}
+                    <textarea placeholder="Répondre..." value={msg.reponse || ""} onChange={async e => { await supabase.from("messages").update({ reponse: e.target.value }).eq("id", msg.id); chargerMessages(); }} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, resize: "vertical" }} rows={2} />
                   </div>
                 ))
               )}
@@ -359,6 +381,7 @@ export default function FastBuy229() {
               {clientTrouve && (
                 <div style={{ background: "#f9fafb", borderRadius: 12, padding: "1rem", border: "1px solid #e5e7eb", marginBottom: 16 }}>
                   <div style={{ fontWeight: 600, marginBottom: 12 }}>{clientTrouve.nom}</div>
+                  <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>{clientTrouve.email} - {clientTrouve.telephone}</div>
                   <input type="password" placeholder="Nouveau mot de passe" value={nouveauMdpClient} onChange={e => setNouveauMdpClient(e.target.value)} style={{ marginBottom: 10 }} />
                   <div style={{ display: "flex", gap: 10 }}>
                     <button className="btn-primary" style={{ background: "#10b981" }} onClick={async () => {
@@ -383,7 +406,7 @@ export default function FastBuy229() {
               <div style={{ marginTop: 16, maxHeight: 300, overflowY: "auto" }}>
                 <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: 10 }}>Tous les clients</h3>
                 {clients.map(c => (
-                  <div key={c.id} style={{ background: "#fff", borderRadius: 8, padding: "10px", marginBottom: 8, border: "1px solid #e5e7eb", fontSize: 12 }}>
+                  <div key={c.id} onClick={() => setClientTrouve(c)} style={{ background: "#fff", borderRadius: 8, padding: "10px", marginBottom: 8, border: `2px solid ${clientTrouve?.id === c.id ? "#2563eb" : "#e5e7eb"}`, fontSize: 12, cursor: "pointer", background: clientTrouve?.id === c.id ? "#eff6ff" : "#fff" }}>
                     <div style={{ fontWeight: 600 }}>{c.nom}</div>
                     <div style={{ color: "#6b7280", fontSize: 11 }}>{c.email} - {c.telephone}</div>
                   </div>
@@ -409,7 +432,7 @@ export default function FastBuy229() {
         ) : (
           <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => setShowLogin(true)}>Connexion</span>
         )}
-      </div>
+      </span>
 
       <div style={{ background: "#fff", padding: "10px 1.5rem", display: "flex", gap: 8, overflowX: "auto", borderBottom: "1px solid #e5e7eb" }}>
         {CATEGORIES.map(cat => (
@@ -558,8 +581,22 @@ export default function FastBuy229() {
               );
             })()}
             
-            <button onClick={() => ajouterAuPanier(showProduit, couleurChoisie, tailleChoisie)} disabled={!couleurChoisie || !tailleChoisie} className="btn-primary" style={{ opacity: (!couleurChoisie || !tailleChoisie) ? 0.5 : 1 }}>
+            <button onClick={() => ajouterAuPanier(showProduit, couleurChoisie, tailleChoisie)} disabled={!couleurChoisie || !tailleChoisie} className="btn-primary" style={{ opacity: (!couleurChoisie || !tailleChoisie) ? 0.5 : 1, marginBottom: 8 }}>
               {!client ? "Connecte-toi" : (!couleurChoisie || !tailleChoisie) ? "Choisis" : "Ajouter"}
+            </button>
+
+            {client && <button onClick={() => { setShowProduit(null); setShowContact(true); }} style={{ width: "100%", padding: "10px 0", background: "#fff3cd", border: "1px solid #ffc107", color: "#856404", borderRadius: 10, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>Vous avez un problème ?</button>}
+          </div>
+        </div>
+      )}
+
+      {showContact && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowContact(false)}>
+          <div className="modal">
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Nous contacter</h2>
+            <textarea placeholder="Décrivez votre problème..." value={messageContact} onChange={e => setMessageContact(e.target.value)} style={{ width: "100%", padding: "12px", border: "1.5px solid #e5e7eb", borderRadius: 10, fontSize: 14, marginBottom: 12, resize: "vertical" }} rows={4} />
+            <button className="btn-primary" onClick={envoyerMessage} disabled={loading}>
+              {loading ? "Envoi..." : "Envoyer"}
             </button>
           </div>
         </div>
