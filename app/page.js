@@ -186,12 +186,21 @@ export default function FastBuy229() {
     setAuthError("");
     const { identifiant, motDePasse } = loginForm;
     if (!identifiant || !motDePasse) { setAuthError("Remplis tous les champs !"); return; }
-    const { data } = await supabase.from("users").select("*").or(`email.eq.${identifiant},telephone.eq.${identifiant}`).maybeSingle();
+    
+    // Chercher par email d'abord
+    let { data } = await supabase.from("users").select("*").eq("email", identifiant).maybeSingle();
+    
+    // Si pas trouvé par email, chercher par téléphone
+    if (!data) {
+      ({ data } = await supabase.from("users").select("*").eq("telephone", identifiant).maybeSingle());
+    }
+    
     if (!data || data.mot_de_passe !== motDePasse) { setAuthError("Identifiant/mot de passe incorrect !"); return; }
     const user = { id: data.id, nom: data.nom, email: data.email, telephone: data.telephone };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
     setShowLogin(false);
+    setLoginForm({ identifiant: "", motDePasse: "" });
   };
 
   const reinitMdp = async () => {
@@ -206,9 +215,15 @@ export default function FastBuy229() {
     const dn = data.date_naissance;
     const dnNorm = dn?.includes("-") ? dn.split("-").reverse().join("/") : dn;
     if (dnNorm !== date_naissance) { setAuthError("Date naissance incorrecte !"); return; }
-    await supabase.from("users").update({ mot_de_passe: nouveau }).eq("id", data.id);
-    alert("Mot de passe réinitialisé !");
-    setShowMdpOublie(false);
+    try {
+      const { error } = await supabase.from("users").update({ mot_de_passe: nouveau }).eq("id", data.id);
+      if (error) { setAuthError("Erreur: " + error.message); return; }
+      alert("✅ Mot de passe réinitialisé ! Tu peux te connecter.");
+      setShowMdpOublie(false);
+      setMdpForm({ email: "", telephone: "", date_naissance: "", nouveau: "", confirmer: "" });
+    } catch (e) {
+      setAuthError("Erreur: " + e.message);
+    }
   };
 
   const envoyerCommande = async () => {
@@ -559,15 +574,29 @@ export default function FastBuy229() {
                   <div style={{ fontWeight: 600, marginBottom: 8 }}>{clientTrouve.nom}</div>
                   <input type="password" placeholder="Nouveau MDP" value={nouveauMdpClient} onChange={e => setNouveauMdpClient(e.target.value)} style={inp} />
                   <button className="btn-primary" style={{ width: "100%", marginBottom: 8 }} onClick={async () => {
-                    if (nouveauMdpClient.length < 8) { alert("8 min !"); return; }
-                    await supabase.from("users").update({ mot_de_passe: nouveauMdpClient }).eq("id", clientTrouve.id);
-                    alert("Mis à jour !"); setNouveauMdpClient(""); setClientTrouve(null);
+                    if (nouveauMdpClient.length < 8) { alert("Minimum 8 caractères !"); return; }
+                    try {
+                      const { error } = await supabase.from("users").update({ mot_de_passe: nouveauMdpClient }).eq("id", clientTrouve.id);
+                      if (error) { alert("Erreur: " + error.message); return; }
+                      alert("✅ Mot de passe changé !"); 
+                      setNouveauMdpClient(""); 
+                      setClientTrouve(null); 
+                      setClientRecherche("");
+                    } catch (e) {
+                      alert("Erreur: " + e.message);
+                    }
                   }}>Changer</button>
                   <button onClick={async () => {
-                    if (!confirm(`Supprimer le compte de ${clientTrouve.nom} ?`)) return;
-                    await supabase.from("users").delete().eq("id", clientTrouve.id);
-                    alert("Compte supprimé !");
-                    setClientTrouve(null); setClientRecherche("");
+                    if (!confirm(`Supprimer le compte de ${clientTrouve.nom} ?\nCette action est définitive !`)) return;
+                    try {
+                      const { error } = await supabase.from("users").delete().eq("id", clientTrouve.id);
+                      if (error) { alert("Erreur: " + error.message); return; }
+                      alert("✅ Compte supprimé définitivement !"); 
+                      setClientTrouve(null); 
+                      setClientRecherche("");
+                    } catch (e) {
+                      alert("Erreur: " + e.message);
+                    }
                   }} style={{ width: "100%", padding: "10px 0", background: "#fef2f2", border: "1.5px solid #fecaca", color: "#ef4444", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 500, marginTop: 8 }}>
                     🗑 Supprimer ce compte
                   </button>
