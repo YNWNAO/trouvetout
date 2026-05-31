@@ -195,7 +195,19 @@ export default function FastBuy229() {
       ({ data } = await supabase.from("users").select("*").eq("telephone", identifiant).maybeSingle());
     }
     
-    if (!data || data.mot_de_passe !== motDePasse) { setAuthError("Identifiant/mot de passe incorrect !"); return; }
+    // Si toujours pas trouvé → compte n'existe pas
+    if (!data) { 
+      setAuthError("❌ Compte non trouvé. Tu dois d'abord t'inscrire !"); 
+      return; 
+    }
+    
+    // Si trouvé mais MDP incorrect
+    if (data.mot_de_passe !== motDePasse) { 
+      setAuthError("❌ Mot de passe incorrect !"); 
+      return; 
+    }
+    
+    // Connexion réussie
     const user = { id: data.id, nom: data.nom, email: data.email, telephone: data.telephone };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
