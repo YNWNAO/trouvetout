@@ -20,6 +20,8 @@ const globalStyles = `
 
 export default function FastBuy229() {
   const [page, setPage] = useState("accueil");
+  const [genreChoisi, setGenreChoisi] = useState(null);
+  const [showGenreModal, setShowGenreModal] = useState(true);
   const [produits, setProduits] = useState([]);
   const [commandes, setCommandes] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -52,7 +54,7 @@ export default function FastBuy229() {
   const [heroIndex, setHeroIndex] = useState(0);
   const [forgotData, setForgotData] = useState({ email: "", telephone: "", date_naissance: "", nouveauMdp: "", confirmer: "" });
   const [forgotError, setForgotError] = useState("");
-  const [newProduct, setNewProduct] = useState({ title: "", description: "", etat: "Neuf", category: "Vêtements", plage_livraison: "1-2 semaines" });
+  const [newProduct, setNewProduct] = useState({ title: "", description: "", etat: "Neuf", category: "Vêtements", genre: "Homme", plage_livraison: "1-2 semaines" });
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [variantes, setVariantes] = useState([]);
@@ -70,13 +72,21 @@ export default function FastBuy229() {
   const pwdButtonStyle = { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#374151", padding: "4px 8px", zIndex: 10 };
 
   useEffect(() => {
+    const savedGenre = localStorage.getItem("fastbuy_genre");
     const savedClient = localStorage.getItem("fastbuy_client");
-    if (savedClient) setClient(JSON.parse(savedClient));
     const savedPanier = localStorage.getItem("fastbuy_panier");
+    
+    if (savedGenre) {
+      setGenreChoisi(savedGenre);
+      setShowGenreModal(false);
+    }
+    if (savedClient) setClient(JSON.parse(savedClient));
     if (savedPanier) setPanier(JSON.parse(savedPanier));
+    
     chargerProduits();
     if (typeof window !== "undefined" && window.location.search.includes("page=admin")) {
       setPage("admin");
+      setShowGenreModal(false);
     }
   }, []);
 
@@ -113,11 +123,18 @@ export default function FastBuy229() {
   const produitsFiltres = produits.filter(p => {
     const matchCat = catActive === "Tous" || p.category === catActive;
     const matchSearch = !search || p.title?.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
+    const matchGenre = !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi;
+    return matchCat && matchSearch && matchGenre;
   });
 
   const totalPanier = panier.reduce((s, i) => s + i.price * i.qty, 0);
   const totalFinal = Math.round(totalPanier * (1 - reduction / 100));
+
+  const choisirGenre = (genre) => {
+    setGenreChoisi(genre);
+    localStorage.setItem("fastbuy_genre", genre);
+    setShowGenreModal(false);
+  };
 
   const ajouterAuPanier = (prod, couleur = "", taille = "") => {
     if (!client) { setShowLogin(true); return; }
@@ -243,7 +260,7 @@ export default function FastBuy229() {
       alert("Produit créé !");
       await chargerProduits();
       setShowAddProduct(false);
-      setNewProduct({ title: "", description: "", etat: "Neuf", category: "Vêtements", plage_livraison: "1-2 semaines" });
+      setNewProduct({ title: "", description: "", etat: "Neuf", category: "Vêtements", genre: "Homme", plage_livraison: "1-2 semaines" });
       setImageFiles([]); setImagePreviews([]); setVariantes([]);
       setLoading(false);
     } catch (e) {
@@ -290,7 +307,7 @@ export default function FastBuy229() {
                     {(p.images?.[0] || p.image) ? <img src={getImageUrl(p.images?.[0] || p.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Pas d'image</div>}
                   </div>
                   <div style={{ padding: "8px" }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>{p.title?.slice(0, 15)}</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>{p.title?.slice(0, 15)} ({p.genre})</div>
                     <button onClick={async () => { if (confirm("Supprimer?")) { await supabase.from("produits").delete().eq("id", p.id); await chargerProduits(); } }} style={{ width: "100%", padding: "3px 0", background: "#fef2f2", border: "none", color: "#ef4444", borderRadius: 4, fontSize: 9, cursor: "pointer", fontWeight: 600 }}>Supprimer</button>
                   </div>
                 </div>
@@ -348,6 +365,11 @@ export default function FastBuy229() {
               <input value={newProduct.title} onChange={e => setNewProduct({ ...newProduct, title: e.target.value })} placeholder="Titre" style={{ marginBottom: 12 }} />
               <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} style={{ marginBottom: 12 }}>
                 {CATEGORIES.filter(c => c !== "Tous").map(c => <option key={c}>{c}</option>)}
+              </select>
+              <select value={newProduct.genre} onChange={e => setNewProduct({ ...newProduct, genre: e.target.value })} style={{ marginBottom: 12 }}>
+                <option>Homme</option>
+                <option>Femme</option>
+                <option>Unisexe</option>
               </select>
               <div onClick={() => document.getElementById("photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginBottom: 12, background: "#fafafa" }}>
                 {imagePreviews.length > 0 ? (
@@ -438,6 +460,21 @@ export default function FastBuy229() {
             </div>
           </div>
         )}
+
+        {showForgotPassword && (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForgotPassword(false)}>
+            <div className="modal">
+              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Mot de passe oublié</h2>
+              <input placeholder="Email" value={forgotData.email} onChange={e => setForgotData({ ...forgotData, email: e.target.value })} style={{ marginBottom: 12 }} />
+              <input placeholder="Téléphone" value={forgotData.telephone} onChange={e => setForgotData({ ...forgotData, telephone: e.target.value })} style={{ marginBottom: 12 }} />
+              <input placeholder="JJ/MM/AAAA" value={forgotData.date_naissance} onChange={e => { let v = e.target.value.replace(/\D/g, ""); if (v.length >= 3 && v.length <= 4) v = v.slice(0, 2) + "/" + v.slice(2); else if (v.length >= 5) v = v.slice(0, 2) + "/" + v.slice(2, 4) + "/" + v.slice(4, 8); setForgotData({ ...forgotData, date_naissance: v }); }} style={{ marginBottom: 12 }} maxLength={10} />
+              <input type="password" placeholder="Nouveau mot de passe" value={forgotData.nouveauMdp} onChange={e => setForgotData({ ...forgotData, nouveauMdp: e.target.value })} style={{ marginBottom: 12 }} />
+              <input type="password" placeholder="Confirmer" value={forgotData.confirmer} onChange={e => setForgotData({ ...forgotData, confirmer: e.target.value })} style={{ marginBottom: 12 }} />
+              {forgotError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{forgotError}</div>}
+              <button className="btn-primary" onClick={reinitialiserMdp}>Réinitialiser</button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -446,12 +483,24 @@ export default function FastBuy229() {
     <div style={{ minHeight: "100vh", background: "#f8f9fa", paddingBottom: 80 }}>
       <style>{globalStyles}</style>
 
+      {showGenreModal && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ textAlign: "center" }}>
+            <h1 style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: "1rem" }}>FastBuy</h1>
+            <p style={{ fontSize: 14, color: "#6b7280", marginBottom: "2rem" }}>Qu'est-ce que tu cherches ?</p>
+            <button className="btn-primary" style={{ marginBottom: 12 }} onClick={() => choisirGenre("Homme")}>Pour Homme</button>
+            <button className="btn-primary" style={{ marginBottom: 12, background: "#ec4899" }} onClick={() => choisirGenre("Femme")}>Pour Femme</button>
+            <button className="btn-primary" style={{ background: "#8b5cf6" }} onClick={() => choisirGenre("Tous")}>Voir Tout</button>
+          </div>
+        </div>
+      )}
+
       <div style={{ background: "#1a1a2e", color: "#fff", padding: "8px 1.5rem", fontSize: 12, textAlign: "center", fontWeight: 600 }}>
         Livraison gratuite à partir de 20000 FCFA | 10% réduction 1ère commande
       </div>
 
       <div style={{ position: "sticky", top: 0, background: "#fff", padding: "12px 1.5rem", display: "flex", alignItems: "center", gap: 12, zIndex: 100, boxShadow: "0 2px 10px rgba(0,0,0,0.1)", borderBottom: "2px solid #2563eb" }}>
-        <div onClick={() => setPage("accueil")} style={{ cursor: "pointer", fontWeight: 800, fontSize: "1.3rem", color: "#2563eb" }}>FastBuy</div>
+        <div onClick={() => { setPage("accueil"); }} style={{ cursor: "pointer", fontWeight: 800, fontSize: "1.3rem", color: "#2563eb" }}>FastBuy</div>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, color: "#1a1a2e" }} />
         <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#1a1a2e" }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
         {client ? (
@@ -459,6 +508,7 @@ export default function FastBuy229() {
         ) : (
           <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#2563eb" }} onClick={() => setShowLogin(true)}>Connexion</span>
         )}
+        <span style={{ cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, color: "#6b7280", padding: "4px 8px", background: "#f3f4f6", borderRadius: 6 }} onClick={() => setShowGenreModal(true)}>{genreChoisi}</span>
       </div>
 
       <div style={{ background: "#fff", padding: "10px 1.5rem", display: "flex", gap: 8, overflowX: "auto", borderBottom: "1px solid #e5e7eb" }}>
@@ -471,10 +521,10 @@ export default function FastBuy229() {
 
       {page === "accueil" && (
         <>
-          {produits.length > 0 && (
+          {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).length > 0 && (
             <div style={{ position: "relative", height: 250, background: "#000", overflow: "hidden", marginBottom: 20 }}>
               <div style={{ display: "flex", transition: "transform 0.3s ease", transform: `translateX(-${heroIndex * 100}%)` }}>
-                {produits.slice(0, 5).map((item, i) => (
+                {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).slice(0, 5).map((item, i) => (
                   <div key={i} style={{ minWidth: "100%", height: 250, position: "relative" }}>
                     {(item.images?.[0] || item.image) && <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)", color: "#fff", padding: "1rem" }}>
@@ -483,8 +533,8 @@ export default function FastBuy229() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => setHeroIndex(heroIndex > 0 ? heroIndex - 1 : produits.length - 1)} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer", fontSize: 18, fontWeight: 700 }}>{'<'}</button>
-              <button onClick={() => setHeroIndex(heroIndex < produits.length - 1 ? heroIndex + 1 : 0)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer", fontSize: 18, fontWeight: 700 }}>{'>'}</button>
+              <button onClick={() => setHeroIndex(heroIndex > 0 ? heroIndex - 1 : Math.max(0, produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).length - 1))} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer", fontSize: 18, fontWeight: 700 }}>{'<'}</button>
+              <button onClick={() => setHeroIndex(heroIndex < Math.max(0, produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).length - 1) ? heroIndex + 1 : 0)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer", fontSize: 18, fontWeight: 700 }}>{'>'}</button>
             </div>
           )}
 
@@ -492,7 +542,7 @@ export default function FastBuy229() {
             <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Catégories</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
               {CATEGORIES.filter(c => c !== "Tous").map(cat => {
-                const catProduits = produits.filter(p => p.category === cat);
+                const catProduits = produits.filter(p => p.category === cat && (!genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi));
                 const premierProduit = catProduits[0];
                 return (
                   <div key={cat} onClick={() => { setCatActive(cat); setPage("produits"); }} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", height: 140, position: "relative" }}>
@@ -511,11 +561,11 @@ export default function FastBuy229() {
             </div>
           </div>
 
-          {produits.length > 0 && (
+          {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).length > 0 && (
             <div style={{ padding: "0 1.5rem 2rem" }}>
               <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Nouveautés</h2>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
-                {produits.slice(0, 8).map(item => (
+                {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).slice(0, 8).map(item => (
                   <div key={item.id} onClick={() => { setShowProduit(item); setPhotoChoisie(0); setCouleurChoisie(""); setTailleChoisie(""); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.06)", cursor: "pointer" }}>
                     <div style={{ height: 130, background: "#f3f4f6", overflow: "hidden" }}>
                       {(item.images?.[0] || item.image) ? <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: 12 }}>Pas d'image</div>}
