@@ -25,7 +25,6 @@ export default function FastBuy229() {
   const [loading, setLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showInscription, setShowInscription] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showPanier, setShowPanier] = useState(false);
   const [showCommande, setShowCommande] = useState(false);
   const [showConfirm, setShowConfirm] = useState(null);
@@ -43,8 +42,6 @@ export default function FastBuy229() {
   const [messageAuClient, setMessageAuClient] = useState("");
   const [messageContact, setMessageContact] = useState("");
   const [heroIndex, setHeroIndex] = useState(0);
-  const [forgotData, setForgotData] = useState({ email: "", telephone: "", date_naissance: "", nouveauMdp: "", confirmer: "" });
-  const [forgotError, setForgotError] = useState("");
   const [loginForm, setLoginForm] = useState({ identifiant: "", motDePasse: "" });
   const [inscForm, setInscForm] = useState({ prenom: "", nom: "", email: "", telephone: "", date_naissance: "", mot_de_passe: "", confirmer: "" });
   const [authError, setAuthError] = useState("");
@@ -56,11 +53,9 @@ export default function FastBuy229() {
     const savedGenre = localStorage.getItem("fastbuy_genre");
     const savedClient = localStorage.getItem("fastbuy_client");
     const savedPanier = localStorage.getItem("fastbuy_panier");
-    
     if (savedGenre) { setGenreChoisi(savedGenre); setShowGenreModal(false); }
     if (savedClient) setClient(JSON.parse(savedClient));
     if (savedPanier) setPanier(JSON.parse(savedPanier));
-    
     chargerProduits();
     chargerMessages();
     if (typeof window !== "undefined" && window.location.search.includes("page=admin")) {
@@ -70,51 +65,21 @@ export default function FastBuy229() {
   }, []);
 
   useEffect(() => { localStorage.setItem("fastbuy_panier", JSON.stringify(panier)); }, [panier]);
-
   useEffect(() => {
     const interval = setInterval(() => {
       if (showClientMessages || showGererClients || page === "admin") chargerMessages();
     }, 2000);
     return () => clearInterval(interval);
   }, [showClientMessages, showGererClients, page]);
-
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, selectedClientId]);
 
-  const chargerProduits = async () => {
-    const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false });
-    if (data) setProduits(data);
-  };
+  const chargerProduits = async () => { const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false }); if (data) setProduits(data); };
+  const chargerCommandes = async () => { const { data } = await supabase.from("commandes").select("*").order("created_at", { ascending: false }); if (data) setCommandes(data); };
+  const chargerMessages = async () => { try { const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: true }); if (data) setMessages(data); } catch (e) { console.error("Erreur:", e); } };
+  const chargerClients = async () => { const { data } = await supabase.from("users").select("*").order("created_at", { ascending: false }); if (data) setClients(data); };
 
-  const chargerCommandes = async () => {
-    const { data } = await supabase.from("commandes").select("*").order("created_at", { ascending: false });
-    if (data) setCommandes(data);
-  };
-
-  const chargerMessages = async () => {
-    try {
-      const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: true });
-      if (data) setMessages(data);
-    } catch (e) {
-      console.error("Erreur chargement:", e);
-    }
-  };
-
-  const chargerClients = async () => {
-    const { data } = await supabase.from("users").select("*").order("created_at", { ascending: false });
-    if (data) setClients(data);
-  };
-
-  const getImageUrl = (path) => {
-    if (!path) return null;
-    if (path.startsWith("http")) return path;
-    return `https://nuhpdqioggxznceqvpvx.supabase.co/storage/v1/object/public/produits/${path}`;
-  };
-
-  const formatTime = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  };
+  const getImageUrl = (path) => { if (!path) return null; if (path.startsWith("http")) return path; return `https://nuhpdqioggxznceqvpvx.supabase.co/storage/v1/object/public/produits/${path}`; };
+  const formatTime = (dateString) => { if (!dateString) return ""; const date = new Date(dateString); return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); };
 
   const produitsFiltres = produits.filter(p => {
     const matchCat = catActive === "Tous" || p.category === catActive;
@@ -126,41 +91,15 @@ export default function FastBuy229() {
   const totalPanier = panier.reduce((s, i) => s + i.price * i.qty, 0);
   const totalFinal = Math.round(totalPanier);
 
-  const choisirGenre = (genre) => {
-    setGenreChoisi(genre);
-    localStorage.setItem("fastbuy_genre", genre);
-    setShowGenreModal(false);
-  };
-
-  const ajouterAuPanier = (prod) => {
-    if (!client) { setShowLogin(true); return; }
-    const key = `${prod.id}-${couleurChoisie}-${tailleChoisie}`;
-    setPanier(prev => {
-      const ex = prev.find(i => i.key === key);
-      if (ex) return prev.map(i => i.key === key ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { ...prod, key, qty: 1 }];
-    });
-    setShowProduit(null);
-  };
+  const choisirGenre = (genre) => { setGenreChoisi(genre); localStorage.setItem("fastbuy_genre", genre); setShowGenreModal(false); };
+  const ajouterAuPanier = (prod) => { if (!client) { setShowLogin(true); return; } const key = `${prod.id}`; setPanier(prev => { const ex = prev.find(i => i.key === key); if (ex) return prev.map(i => i.key === key ? { ...i, qty: i.qty + 1 } : i); return [...prev, { ...prod, key, qty: 1 }]; }); setShowProduit(null); };
 
   const inscrire = async () => {
     setAuthError("");
-    if (!inscForm.prenom || !inscForm.nom || !inscForm.email || !inscForm.telephone || !inscForm.date_naissance || !inscForm.mot_de_passe) {
-      setAuthError("Remplis tous les champs!");
-      return;
-    }
-    if (inscForm.mot_de_passe !== inscForm.confirmer) {
-      setAuthError("Les mots de passe ne correspondent pas!");
-      return;
-    }
-    const { data, error } = await supabase.from("users").insert([{ 
-      nom: `${inscForm.prenom} ${inscForm.nom}`, 
-      email: inscForm.email, 
-      telephone: inscForm.telephone, 
-      date_naissance: inscForm.date_naissance, 
-      mot_de_passe: inscForm.mot_de_passe 
-    }]).select().single();
-    if (error) { setAuthError("Erreur inscription!"); return; }
+    if (!inscForm.prenom || !inscForm.nom || !inscForm.email || !inscForm.telephone || !inscForm.date_naissance || !inscForm.mot_de_passe) { setAuthError("Remplis tous les champs!"); return; }
+    if (inscForm.mot_de_passe !== inscForm.confirmer) { setAuthError("Les mots de passe ne correspondent pas!"); return; }
+    const { data, error } = await supabase.from("users").insert([{ nom: `${inscForm.prenom} ${inscForm.nom}`, email: inscForm.email, telephone: inscForm.telephone, date_naissance: inscForm.date_naissance, mot_de_passe: inscForm.mot_de_passe }]).select().single();
+    if (error) { setAuthError("Erreur!"); return; }
     const user = { id: data.id, nom: data.nom, email: data.email, telephone: data.telephone };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
@@ -170,9 +109,7 @@ export default function FastBuy229() {
   const connecter = async () => {
     setAuthError("");
     let { data } = await supabase.from("users").select("*").eq("email", loginForm.identifiant).maybeSingle();
-    if (!data) {
-      ({ data } = await supabase.from("users").select("*").eq("telephone", loginForm.identifiant).maybeSingle());
-    }
+    if (!data) { ({ data } = await supabase.from("users").select("*").eq("telephone", loginForm.identifiant).maybeSingle()); }
     if (!data) { setAuthError("Compte non trouvé!"); return; }
     if (data.mot_de_passe !== loginForm.motDePasse) { setAuthError("Mot de passe incorrect!"); return; }
     const user = { id: data.id, nom: data.nom, email: data.email, telephone: data.telephone };
@@ -186,14 +123,7 @@ export default function FastBuy229() {
     if (!messageContact.trim()) { alert("Message vide!"); return; }
     setLoading(true);
     try {
-      const { error } = await supabase.from("messages").insert([{
-        user_id: client?.id || null,
-        nom: client?.nom || "Visiteur",
-        telephone: client?.telephone || "",
-        message: messageContact,
-        sender_type: "client"
-      }]);
-      if (error) throw error;
+      await supabase.from("messages").insert([{ user_id: client?.id || null, nom: client?.nom || "Visiteur", telephone: client?.telephone || "", message: messageContact, sender_type: "client" }]);
       alert("Message envoyé!");
       setMessageContact("");
       setShowContactAdmin(false);
@@ -208,15 +138,7 @@ export default function FastBuy229() {
     if (!messageAuClient.trim() || !selectedClientId) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from("messages").insert([{
-        user_id: selectedClientId,
-        nom: "Admin FastBuy",
-        telephone: ADMIN_WHATSAPP,
-        message: messageAuClient,
-        sender_type: "admin",
-        conversation_id: selectedClientId
-      }]);
-      if (error) throw error;
+      await supabase.from("messages").insert([{ user_id: selectedClientId, nom: "Admin", message: messageAuClient, sender_type: "admin", conversation_id: selectedClientId }]);
       setMessageAuClient("");
       chargerMessages();
     } catch (e) {
@@ -226,10 +148,7 @@ export default function FastBuy229() {
   };
 
   const envoyerCommande = async () => {
-    if (!formCmd.nom || !formCmd.email || !formCmd.telephone || !formCmd.ville || !formCmd.adresse) { 
-      alert("Remplis tous les champs!"); 
-      return; 
-    }
+    if (!formCmd.nom || !formCmd.email || !formCmd.telephone || !formCmd.ville || !formCmd.adresse) { alert("Remplis tous!"); return; }
     if (panier.length === 0) { alert("Panier vide!"); return; }
     if (!captureFile) { alert("Capture requise!"); return; }
     setLoading(true);
@@ -238,26 +157,11 @@ export default function FastBuy229() {
     const { error } = await supabase.storage.from("produits").upload(fn, captureFile);
     if (!error) capturePath = fn;
     const num = "CMD-" + Math.random().toString(36).substr(2, 6).toUpperCase();
-    await supabase.from("commandes").insert([{
-      numero: num, 
-      nom: formCmd.nom, 
-      email: formCmd.email, 
-      telephone: formCmd.telephone, 
-      ville: formCmd.ville, 
-      adresse: formCmd.adresse, 
-      articles: JSON.stringify(panier),
-      total: totalPanier, 
-      totalFinal, 
-      statut: "En attente", 
-      paiement: "En attente", 
-      capture: capturePath, 
-      user_id: client?.id
-    }]);
+    await supabase.from("commandes").insert([{ numero: num, nom: formCmd.nom, email: formCmd.email, telephone: formCmd.telephone, ville: formCmd.ville, adresse: formCmd.adresse, articles: JSON.stringify(panier), total: totalPanier, totalFinal, statut: "En attente", paiement: "En attente", capture: capturePath, user_id: client?.id }]);
     setShowConfirm({ numero: num, nom: formCmd.nom, totalFinal });
     setPanier([]);
     setShowCommande(false);
     setLoading(false);
-    setCaptureFile(null);
   };
 
   const conversationMap = {};
@@ -279,7 +183,7 @@ export default function FastBuy229() {
             <div style={{ background: "#fff", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 400 }}>
               <h1 style={{ fontSize: "1.6rem", fontWeight: 800, textAlign: "center", marginBottom: "2rem" }}>Admin</h1>
               <input type="password" value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" style={{ marginBottom: 12 }} />
-              <button className="btn-primary" onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerMessages(); chargerClients(); } else { alert("Incorrect!"); setAdminPwd(""); } }}>Accéder</button>
+              <button className="btn-primary" onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerClients(); chargerMessages(); } else { alert("Incorrect!"); setAdminPwd(""); } }}>Accéder</button>
             </div>
           </div>
         ) : (
@@ -288,26 +192,8 @@ export default function FastBuy229() {
               <h1 style={{ fontSize: "1.8rem", fontWeight: 800 }}>Admin</h1>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#10b981" }} onClick={() => { setShowGererClients(true); chargerClients(); chargerMessages(); }}>Gérer Clients</button>
-                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#f59e0b" }} onClick={() => { chargerCommandes(); chargerMessages(); }}>Actualiser</button>
-                <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "10px 18px", background: "#fef2f2", border: "1px solid #fecaca", color: "#ef4444", borderRadius: 10, cursor: "pointer", fontWeight: 600 }}>Déco</button>
+                <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "10px 18px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 10, cursor: "pointer", fontWeight: 600 }}>Déco</button>
               </div>
-            </div>
-
-            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>Messages ({messages.filter(m => !m.reponse && m.sender_type === "client").length})</h2>
-            <div style={{ marginBottom: "2rem", maxHeight: 500, overflowY: "auto" }}>
-              {messages.filter(m => m.sender_type === "client" && !m.reponse).length === 0 ? (
-                <div style={{ background: "#fff", padding: "1.5rem", borderRadius: 12, textAlign: "center", color: "#9ca3af" }}>Aucun message</div>
-              ) : (
-                messages.filter(m => m.sender_type === "client" && !m.reponse).map(msg => (
-                  <div key={msg.id} style={{ background: "#fff", borderRadius: 12, padding: "1rem", marginBottom: 10 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 6 }}>{msg.nom} - {msg.telephone}</div>
-                    <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 6, fontSize: 13, marginBottom: 8, borderLeft: "3px solid #2563eb" }}>
-                      {msg.message}
-                      <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{formatTime(msg.created_at)}</div>
-                    </div>
-                  </div>
-                ))
-              )}
             </div>
           </div>
         )}
@@ -325,11 +211,9 @@ export default function FastBuy229() {
                     </div>
                   ))}
                 </div>
-
                 {clientTrouve ? (
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "1rem" }}>
-                    <div style={{ fontWeight: 600, marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid #e5e7eb" }}>{clientTrouve.nom}</div>
-
+                    <div style={{ fontWeight: 600, marginBottom: "1rem" }}>{clientTrouve.nom}</div>
                     <div style={{ flex: 1, overflowY: "auto", marginBottom: "1rem", display: "flex", flexDirection: "column", gap: 8 }}>
                       {messagesForClient.map(msg => (
                         <div key={msg.id} style={{ display: "flex", justifyContent: msg.sender_type === "admin" ? "flex-end" : "flex-start" }}>
@@ -341,7 +225,6 @@ export default function FastBuy229() {
                       ))}
                       <div ref={messagesEndRef} />
                     </div>
-
                     <div style={{ display: "flex", gap: 8 }}>
                       <input value={messageAuClient} onChange={e => setMessageAuClient(e.target.value)} placeholder="Message..." style={{ flex: 1, marginBottom: 0 }} />
                       <button onClick={envoyerMessageAuClient} disabled={loading} className="btn-primary" style={{ width: "auto", padding: "8px 16px" }}>Envoyer</button>
@@ -362,11 +245,12 @@ export default function FastBuy229() {
     <div style={{ minHeight: "100vh", background: "#f8f9fa", paddingBottom: 80 }}>
       <style>{globalStyles}</style>
 
+      <div style={{ background: "#1a1a2e", color: "#fff", padding: "8px 1.5rem", fontSize: 12, textAlign: "center", fontWeight: 600 }}>Livraison gratuite à partir de 20000 FCFA | 10% réduction 1ère commande</div>
+
       {showGenreModal && (
         <div className="modal-overlay">
           <div className="modal" style={{ textAlign: "center" }}>
             <h1 style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: "1rem" }}>FastBuy</h1>
-            <p style={{ fontSize: 14, color: "#6b7280", marginBottom: "2rem" }}>Qu'est-ce que tu cherches?</p>
             <button className="btn-primary" style={{ marginBottom: 12 }} onClick={() => choisirGenre("Homme")}>Pour Homme</button>
             <button className="btn-primary" style={{ marginBottom: 12, background: "#ec4899" }} onClick={() => choisirGenre("Femme")}>Pour Femme</button>
             <button className="btn-primary" style={{ background: "#8b5cf6" }} onClick={() => choisirGenre("Tous")}>Voir Tout</button>
@@ -374,36 +258,122 @@ export default function FastBuy229() {
         </div>
       )}
 
-      <div style={{ position: "sticky", top: 0, background: "#fff", padding: "12px 1.5rem", display: "flex", alignItems: "center", gap: 12, zIndex: 100, boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
+      <div style={{ position: "sticky", top: 0, background: "#fff", padding: "12px 1.5rem", display: "flex", alignItems: "center", gap: 12, zIndex: 100, boxShadow: "0 2px 10px rgba(0,0,0,0.1)", borderBottom: "2px solid #2563eb" }}>
         <div onClick={() => { setPage("accueil"); setCatActive("Tous"); }} style={{ cursor: "pointer", fontWeight: 800, fontSize: "1.3rem", color: "#2563eb" }}>FastBuy</div>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }} />
-        <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#1a1a2e" }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
+        <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
         {client ? (
           <>
-            <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#06b6d4" }} onClick={() => { setShowClientMessages(true); chargerMessages(); }}>Messages</span>
-            <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#1a1a2e" }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
+            <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#06b6d4" }} onClick={() => { setShowClientMessages(true); chargerMessages(); }}>Messages {clientMessages.length > 0 && <span style={{ background: "#ef4444", color: "#fff", borderRadius: "50%", padding: "2px 6px", fontSize: 10 }}>{clientMessages.length}</span>}</span>
+            <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
           </>
         ) : (
           <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#2563eb" }} onClick={() => setShowLogin(true)}>Connexion</span>
         )}
       </div>
 
+      <div style={{ background: "#fff", padding: "10px 1.5rem", display: "flex", gap: 8, overflowX: "auto", borderBottom: "1px solid #e5e7eb" }}>
+        {CATEGORIES.map(cat => (
+          <button key={cat} onClick={() => { setCatActive(cat); setPage("produits"); }} style={{ padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", cursor: "pointer", background: catActive === cat ? "#2563eb" : "#f3f4f6", color: catActive === cat ? "#fff" : "#6b7280", border: "none" }}>
+            {cat}
+          </button>
+        ))}
+      </div>
+
       {page === "accueil" && (
-        <div style={{ padding: "1.5rem" }}>
-          <button onClick={() => setShowContactAdmin(true)} style={{ padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 8, fontSize: 11, cursor: "pointer", fontWeight: 600, marginBottom: "1rem" }}>Nous Contacter</button>
-          <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Produits ({produits.length})</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
-            {produits.slice(0, 12).map(item => (
-              <div key={item.id} onClick={() => { setShowProduit(item); setPhotoChoisie(0); setCouleurChoisie(""); setTailleChoisie(""); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.06)", cursor: "pointer" }}>
-                <div style={{ height: 100, background: "#f3f4f6", overflow: "hidden" }}>
-                  {item.image ? <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
-                </div>
-                <div style={{ padding: "8px" }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, marginBottom: 4, color: "#6b7280" }}>{item.title?.slice(0, 15)}</div>
-                  <div style={{ fontWeight: 700, fontSize: 11, color: "#2563eb" }}>{item.price?.toLocaleString()} FCFA</div>
-                </div>
+        <>
+          {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).length > 0 && (
+            <div style={{ position: "relative", height: 250, background: "#000", overflow: "hidden", marginBottom: 20 }}>
+              <div style={{ display: "flex", transition: "transform 0.3s ease", transform: `translateX(-${heroIndex * 100}%)` }}>
+                {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).slice(0, 5).map((item, i) => (
+                  <div key={i} style={{ minWidth: "100%", height: 250, position: "relative" }}>
+                    {item.image && <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  </div>
+                ))}
               </div>
-            ))}
+              <button onClick={() => setHeroIndex(heroIndex > 0 ? heroIndex - 1 : 4)} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer" }}>{'<'}</button>
+              <button onClick={() => setHeroIndex(heroIndex < 4 ? heroIndex + 1 : 0)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer" }}>{'>'}</button>
+            </div>
+          )}
+
+          <div style={{ padding: "1.5rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h2 style={{ fontSize: "1rem", fontWeight: 700 }}>Catégories</h2>
+              <button onClick={() => setShowContactAdmin(true)} style={{ padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 8, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Nous Contacter</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
+              {CATEGORIES.filter(c => c !== "Tous").map(cat => {
+                const catProduits = produits.filter(p => p.category === cat && (!genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi));
+                const premierProduit = catProduits[0];
+                return (
+                  <div key={cat} onClick={() => { setCatActive(cat); setPage("produits"); }} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", cursor: "pointer", height: 140, position: "relative" }}>
+                    {premierProduit && premierProduit.image ? (
+                      <img src={getImageUrl(premierProduit.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Pas d'image</div>
+                    )}
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)", color: "#fff", padding: "8px" }}>
+                      <div style={{ fontWeight: 600, fontSize: 12 }}>{cat}</div>
+                      <div style={{ fontSize: 10 }}>{catProduits.length} articles</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).length > 0 && (
+            <div style={{ padding: "0 1.5rem 2rem" }}>
+              <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Nouveautés</h2>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
+                {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).slice(0, 8).map(item => (
+                  <div key={item.id} onClick={() => { setShowProduit(item); setPhotoChoisie(0); setCouleurChoisie(""); setTailleChoisie(""); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.06)", cursor: "pointer" }}>
+                    <div style={{ height: 130, background: "#f3f4f6", overflow: "hidden" }}>
+                      {item.image ? <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+                    </div>
+                    <div style={{ padding: "8px" }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, marginBottom: 4, color: "#6b7280" }}>{item.title?.slice(0, 18)}</div>
+                      <div style={{ fontWeight: 700, fontSize: 11, color: "#2563eb" }}>{item.price?.toLocaleString()} FCFA</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {page === "produits" && (
+        <div style={{ padding: "1.5rem" }}>
+          {produitsFiltres.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af" }}>Aucun produit</div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
+              {produitsFiltres.map(item => (
+                <div key={item.id} onClick={() => { setShowProduit(item); setPhotoChoisie(0); setCouleurChoisie(""); setTailleChoisie(""); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", cursor: "pointer" }}>
+                  <div style={{ height: 130, background: "#f3f4f6" }}>
+                    {item.image ? <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+                  </div>
+                  <div style={{ padding: "8px" }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, marginBottom: 4, color: "#6b7280" }}>{item.title}</div>
+                    <div style={{ fontWeight: 700, fontSize: 11, color: "#2563eb" }}>{item.price?.toLocaleString()} FCFA</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showProduit && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowProduit(null)}>
+          <div className="modal">
+            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>{showProduit.title}</h2>
+            <div style={{ height: 200, background: "#f3f4f6", borderRadius: 12, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {showProduit.image ? <img src={getImageUrl(showProduit.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+            </div>
+            <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px", marginBottom: "1rem", fontWeight: 700, color: "#2563eb" }}>{showProduit.price?.toLocaleString()} FCFA</div>
+            <button onClick={() => ajouterAuPanier(showProduit)} className="btn-primary">{!client ? "Connecte-toi" : "Ajouter"}</button>
           </div>
         </div>
       )}
@@ -416,7 +386,7 @@ export default function FastBuy229() {
               <div style={{ fontSize: 12, color: "#1a1a2e", marginBottom: 6 }}><strong>Email:</strong> {ADMIN_EMAIL}</div>
               <div style={{ fontSize: 12, color: "#1a1a2e" }}><strong>WhatsApp:</strong> {ADMIN_WHATSAPP}</div>
             </div>
-            <textarea placeholder="Votre message..." value={messageContact} onChange={e => setMessageContact(e.target.value)} style={{ width: "100%", padding: "12px", border: "1.5px solid #e5e7eb", borderRadius: 10, fontSize: 14, marginBottom: 12, resize: "vertical" }} rows={4} />
+            <textarea placeholder="Votre message..." value={messageContact} onChange={e => setMessageContact(e.target.value)} style={{ width: "100%", padding: "12px", border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 12, resize: "vertical" }} rows={4} />
             <button className="btn-primary" onClick={envoyerMessage} disabled={loading}>{loading ? "Envoi..." : "Envoyer"}</button>
           </div>
         </div>
@@ -425,7 +395,7 @@ export default function FastBuy229() {
       {showClientMessages && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowClientMessages(false)}>
           <div className="modal" style={{ maxWidth: "700px", maxHeight: "80vh", display: "flex", flexDirection: "column", padding: 0 }}>
-            <div style={{ background: "#2563eb", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Messages ({clientMessages.length})</div>
+            <div style={{ background: "#2563eb", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Messages</div>
             <div style={{ flex: 1, overflowY: "auto", padding: "1rem", display: "flex", flexDirection: "column", gap: 8 }}>
               {clientMessages.length === 0 ? (
                 <div style={{ textAlign: "center", color: "#9ca3af" }}>Aucun message</div>
@@ -445,19 +415,6 @@ export default function FastBuy229() {
         </div>
       )}
 
-      {showProduit && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowProduit(null)}>
-          <div className="modal">
-            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>{showProduit.title}</h2>
-            <div style={{ height: 200, background: "#f3f4f6", borderRadius: 12, marginBottom: 12, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {showProduit.image ? <img src={getImageUrl(showProduit.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
-            </div>
-            <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px", marginBottom: "1rem", fontWeight: 700, fontSize: 14, color: "#2563eb" }}>{showProduit.price?.toLocaleString()} FCFA</div>
-            <button onClick={() => ajouterAuPanier(showProduit)} className="btn-primary">{!client ? "Connecte-toi" : "Ajouter"}</button>
-          </div>
-        </div>
-      )}
-
       {showPanier && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowPanier(false)}>
           <div className="modal">
@@ -467,14 +424,14 @@ export default function FastBuy229() {
             ) : (
               <>
                 {panier.map(item => (
-                  <div key={item.key} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: "1px solid #f3f4f6", alignItems: "center" }}>
+                  <div key={item.key} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: "1px solid #f3f4f6" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12, fontWeight: 600 }}>{item.title}</div>
-                      <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>{(item.price * item.qty).toLocaleString()} FCFA</div>
+                      <div style={{ fontSize: 12, color: "#2563eb" }}>{(item.price * item.qty).toLocaleString()} FCFA</div>
                     </div>
                     <div style={{ display: "flex", gap: 4 }}>
                       <button onClick={() => setPanier(prev => prev.map(i => i.key === item.key ? { ...i, qty: Math.max(1, i.qty - 1) } : i))} style={{ width: 20, height: 20, border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", borderRadius: "50%" }}>-</button>
-                      <span style={{ fontWeight: 600, width: 14, textAlign: "center" }}>{item.qty}</span>
+                      <span style={{ width: 14, textAlign: "center", fontWeight: 600 }}>{item.qty}</span>
                       <button onClick={() => setPanier(prev => prev.map(i => i.key === item.key ? { ...i, qty: i.qty + 1 } : i))} style={{ width: 20, height: 20, border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", borderRadius: "50%" }}>+</button>
                     </div>
                   </div>
