@@ -39,6 +39,8 @@ export default function FastBuy229() {
   const [showConfirm, setShowConfirm] = useState(null);
   const [showProduit, setShowProduit] = useState(null);
   const [photoChoisie, setPhotoChoisie] = useState(0);
+  const [couleurChoisie, setCouleurChoisie] = useState("");
+  const [tailleChoisie, setTailleChoisie] = useState("");
   const [showLogin, setShowLogin] = useState(false);
   const [showInscription, setShowInscription] = useState(false);
   const [showMdpOublie, setShowMdpOublie] = useState(false);
@@ -66,7 +68,7 @@ export default function FastBuy229() {
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [variantes, setVariantes] = useState([]);
-  const [nouvVar, setNouvVar] = useState({ couleur: "", taille: "", prix: "", stock: "disponible" });
+  const [nouvVar, setNouvVar] = useState({ couleur: "", taille: "", prix: "", stock: "disponible", quantite: "" });
   const [newProduct, setNewProduct] = useState({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", plage_livraison: "1-2 semaines" });
   const [formCmd, setFormCmd] = useState({ nom: "", email: "", telephone: "", telephoneLivreur: "", ville: "", adresse: "" });
   const [loginForm, setLoginForm] = useState({ identifiant: "", motDePasse: "" });
@@ -142,13 +144,22 @@ export default function FastBuy229() {
   const totalPanier = panier.reduce((s, i) => s + i.price * i.qty, 0);
   const totalFinal = Math.round(totalPanier * (1 - reduction / 100));
 
-  const ajouterAuPanier = (prod) => {
+  const ajouterAuPanier = (prod, couleur = "", taille = "") => {
     if (!client) { setShowLogin(true); return; }
-    const key = `${prod.id}`;
+    const key = `${prod.id}-${couleur}-${taille}`;
+    // Récupérer le prix correct selon la variante
+    let prixChoisi = prod.price;
+    if (prod.variantes && couleur && taille) {
+      try {
+        const vars = typeof prod.variantes === "string" ? JSON.parse(prod.variantes) : prod.variantes;
+        const varTrouvee = vars.find(v => v.couleur === couleur && v.taille === taille);
+        if (varTrouvee) prixChoisi = parseInt(varTrouvee.prix);
+      } catch (e) {}
+    }
     setPanier(prev => {
       const ex = prev.find(i => i.key === key);
       if (ex) return prev.map(i => i.key === key ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { ...prod, key, qty: 1 }];
+      return [...prev, { ...prod, key, qty: 1, couleurChoisie: couleur, tailleChoisie: taille, price: prixChoisi }];
     });
     setShowProduit(null);
     setShowPanier(true);
@@ -226,6 +237,7 @@ export default function FastBuy229() {
 
   const ajouterProduit = async () => {
     if (!newProduct.title) { alert("Titre obligatoire !"); return; }
+    if (variantes.length === 0 && !newProduct.price) { alert("Prix obligatoire !"); return; }
     setLoading(true);
     let imagePaths = [];
     for (const file of imageFiles) {
@@ -233,14 +245,27 @@ export default function FastBuy229() {
       await supabase.storage.from("produits").upload(fn, file);
       imagePaths.push(fn);
     }
-    const prixBase = parseInt(newProduct.price) || 0;
+    // Si variantes → le prix est le min des variantes. Sinon c'est le prix fixe
+    let prixBase = 0;
+    if (variantes.length > 0) {
+      prixBase = Math.min(...variantes.map(v => parseInt(v.prix) || 0));
+    } else {
+      prixBase = parseInt(newProduct.price) || 0;
+    }
+    
     await supabase.from("produits").insert([{
-      ...newProduct, price: prixBase, image: imagePaths[0] || null, images: imagePaths
+      ...newProduct, 
+      price: prixBase, 
+      image: imagePaths[0] || null, 
+      images: imagePaths,
+      variantes: variantes.length > 0 ? JSON.stringify(variantes.map(({ id, ...v }) => v)) : null
     }]);
     await chargerProduits();
     setShowAddProduct(false);
     setNewProduct({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", plage_livraison: "1-2 semaines" });
     setImageFiles([]); setImagePreviews([]);
+    setVariantes([]);
+    setNouvVar({ couleur: "", taille: "", prix: "", stock: "disponible", quantite: "" });
     setLoading(false);
   };
 
@@ -436,8 +461,10 @@ export default function FastBuy229() {
         {/* Modal ajouter produit */}
         {showAddProduct && (
           <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddProduct(false)}>
-            <div className="modal" style={{ maxWidth: 560 }}>
+            <div className="modal" style={{ maxWidth: 600, maxHeight: "95vh", overflowY: "auto" }}>
               <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Ajouter produit</h2>
+              
+              {/* Infos de base */}
               <input value={newProduct.title} onChange={e => setNewProduct({ ...newProduct, title: e.target.value })} placeholder="Titre *" style={inp} />
               <textarea value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} placeholder="Description" style={{ ...inp, resize: "vertical" }} rows={2} />
               <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} style={inp}>
@@ -454,8 +481,10 @@ export default function FastBuy229() {
                 <option>1-2 semaines</option>
                 <option>2-3 semaines</option>
               </select>
-              <input type="number" placeholder="Prix FCFA" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} style={inp} />
-              <div onClick={() => document.getElementById("photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginBottom: 12, background: "#fafafa" }}>
+
+              {/* Photos */}
+              <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Photos (max 5)</label>
+              <div onClick={() => document.getElementById("photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginBottom: 16, background: "#fafafa" }}>
                 {imagePreviews.length > 0 ? (
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
                     {imagePreviews.map((p, i) => <img key={i} src={p} alt="" style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 4 }} />)}
@@ -469,6 +498,51 @@ export default function FastBuy229() {
                   setImagePreviews(files.map(f => URL.createObjectURL(f)));
                 }} style={{ display: "none" }} />
               </div>
+
+              {/* VARIANTES */}
+              <div style={{ background: "#f0f9ff", border: "1px solid #bfdbfe", borderRadius: 12, padding: "1rem", marginBottom: 16 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12, color: "#1e40af" }}>📦 Variantes (Optionnel)</div>
+                
+                {/* Formulaire variante */}
+                <input placeholder="Couleur (ex: Rouge, Bleu)" value={nouvVar.couleur} onChange={e => setNouvVar({ ...nouvVar, couleur: e.target.value })} style={{ ...inp, marginBottom: 10 }} />
+                <input placeholder="Taille/Volume (ex: M, L, 100ml)" value={nouvVar.taille} onChange={e => setNouvVar({ ...nouvVar, taille: e.target.value })} style={{ ...inp, marginBottom: 10 }} />
+                <input type="number" placeholder="Prix FCFA *" value={nouvVar.prix} onChange={e => setNouvVar({ ...nouvVar, prix: e.target.value })} style={{ ...inp, marginBottom: 10 }} />
+                <select value={nouvVar.stock} onChange={e => setNouvVar({ ...nouvVar, stock: e.target.value })} style={{ ...inp, marginBottom: 10 }}>
+                  <option value="disponible">Disponible</option>
+                  <option value="rupture">Rupture</option>
+                </select>
+                <input type="number" placeholder="Quantité disponible" value={nouvVar.quantite} onChange={e => setNouvVar({ ...nouvVar, quantite: e.target.value })} style={inp} />
+                <button onClick={() => {
+                  if (!nouvVar.prix) { alert("Prix obligatoire !"); return; }
+                  setVariantes([...variantes, { ...nouvVar, id: Date.now() }]);
+                  setNouvVar({ couleur: "", taille: "", prix: "", stock: "disponible", quantite: "" });
+                }} style={{ width: "100%", padding: "10px 0", background: "#dbeafe", border: "1px solid #93c5fd", color: "#1e40af", borderRadius: 8, fontSize: 12, cursor: "pointer", fontWeight: 600, marginTop: 8 }}>
+                  + Ajouter cette variante
+                </button>
+
+                {/* Liste variantes */}
+                {variantes.length > 0 && (
+                  <div style={{ marginTop: 12, maxHeight: 200, overflowY: "auto" }}>
+                    {variantes.map(v => (
+                      <div key={v.id} style={{ background: "#fff", borderRadius: 8, padding: "8px 10px", marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, border: "1px solid #e5e7eb" }}>
+                        <span style={{ flex: 1 }}>
+                          {v.couleur && <strong>{v.couleur}</strong>} {v.taille && <strong>{v.taille}</strong>} — <strong>{v.prix} FCFA</strong> ({v.stock})
+                        </span>
+                        <button onClick={() => setVariantes(variantes.filter(vv => vv.id !== v.id))} style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#ef4444", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 11 }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Prix fixe (si pas de variantes) */}
+              {variantes.length === 0 && (
+                <>
+                  <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Prix fixe (si pas de variantes)</label>
+                  <input type="number" placeholder="Prix FCFA" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} style={{ ...inp, marginBottom: 16 }} />
+                </>
+              )}
+
               <button onClick={ajouterProduit} disabled={loading} className="btn-primary" style={{ width: "100%" }}>
                 {loading ? "..." : "✅ Publier"}
               </button>
@@ -495,6 +569,14 @@ export default function FastBuy229() {
                     await supabase.from("users").update({ mot_de_passe: nouveauMdpClient }).eq("id", clientTrouve.id);
                     alert("Mis à jour !"); setNouveauMdpClient(""); setClientTrouve(null);
                   }}>Changer</button>
+                  <button onClick={async () => {
+                    if (!confirm(`Supprimer le compte de ${clientTrouve.nom} ?`)) return;
+                    await supabase.from("users").delete().eq("id", clientTrouve.id);
+                    alert("Compte supprimé !");
+                    setClientTrouve(null); setClientRecherche("");
+                  }} style={{ width: "100%", padding: "10px 0", background: "#fef2f2", border: "1.5px solid #fecaca", color: "#ef4444", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 500, marginTop: 8 }}>
+                    🗑 Supprimer ce compte
+                  </button>
                 </div>
               )}
             </div>
@@ -599,7 +681,7 @@ export default function FastBuy229() {
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
               {produitsFiltres.map(item => (
-                <div key={item.id} className="card" onClick={() => setShowProduit(item)} style={{ cursor: "pointer" }}>
+                <div key={item.id} className="card" onClick={() => { setShowProduit(item); setPhotoChoisie(0); setCouleurChoisie(""); setTailleChoisie(""); }} style={{ cursor: "pointer" }}>
                   <div style={{ height: 180, background: "#f3f4f6", overflow: "hidden" }}>
                     {(item.images?.[0] || item.image) ? <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>📦</div>}
                   </div>
@@ -642,8 +724,77 @@ export default function FastBuy229() {
             })()}
             <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 8 }}>🚚 {showProduit.plage_livraison} · {showProduit.etat}</div>
             {showProduit.description && <div style={{ fontSize: 13, color: "#6b7280", marginBottom: "1rem" }}>{showProduit.description}</div>}
-            <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px", marginBottom: "1.5rem", fontWeight: 700, fontSize: 15, color: "#2563eb" }}>{showProduit.price?.toLocaleString()} FCFA</div>
-            <button onClick={() => ajouterAuPanier(showProduit)} className="btn-primary" style={{ width: "100%", padding: "12px 0" }}>
+            
+            {/* VARIANTES */}
+            {(() => {
+              let variantes = [];
+              try {
+                if (showProduit.variantes) {
+                  variantes = typeof showProduit.variantes === "string" ? JSON.parse(showProduit.variantes) : showProduit.variantes;
+                }
+              } catch (e) {}
+              
+              if (variantes.length === 0) {
+                return (
+                  <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px", marginBottom: "1.5rem", fontWeight: 700, fontSize: 15, color: "#2563eb" }}>
+                    {showProduit.price?.toLocaleString()} FCFA
+                  </div>
+                );
+              }
+              
+              // Récupérer les couleurs et tailles uniques
+              const couleurs = [...new Set(variantes.map(v => v.couleur).filter(c => c))];
+              const tailles = couleurs.includes(couleurChoisie) 
+                ? [...new Set(variantes.filter(v => v.couleur === couleurChoisie).map(v => v.taille).filter(t => t))]
+                : [...new Set(variantes.map(v => v.taille).filter(t => t))];
+              
+              // Trouver le prix et stock actuels
+              let prixActuel = showProduit.price;
+              let stockActuel = "disponible";
+              if (couleurChoisie && tailleChoisie) {
+                const varTrouvee = variantes.find(v => v.couleur === couleurChoisie && v.taille === tailleChoisie);
+                if (varTrouvee) {
+                  prixActuel = parseInt(varTrouvee.prix);
+                  stockActuel = varTrouvee.stock;
+                }
+              }
+              
+              return (
+                <>
+                  {couleurs.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: "#374151" }}>Couleur</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {couleurs.map(c => (
+                          <button key={c} onClick={() => setCouleurChoisie(c)} style={{ padding: "6px 12px", borderRadius: 8, border: `2px solid ${couleurChoisie === c ? "#2563eb" : "#e5e7eb"}`, background: couleurChoisie === c ? "#eff6ff" : "#fff", color: couleurChoisie === c ? "#2563eb" : "#6b7280", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {tailles.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: "#374151" }}>Taille/Volume</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {tailles.map(t => (
+                          <button key={t} onClick={() => setTailleChoisie(t)} style={{ padding: "6px 12px", borderRadius: 8, border: `2px solid ${tailleChoisie === t ? "#2563eb" : "#e5e7eb"}`, background: tailleChoisie === t ? "#eff6ff" : "#fff", color: tailleChoisie === t ? "#2563eb" : "#6b7280", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div style={{ background: stockActuel === "rupture" ? "#fef2f2" : "#f9fafb", borderRadius: 12, padding: "12px", marginBottom: "1.5rem", fontWeight: 700, fontSize: 15, color: stockActuel === "rupture" ? "#ef4444" : "#2563eb" }}>
+                    {prixActuel?.toLocaleString()} FCFA {stockActuel === "rupture" && "— Rupture"}
+                  </div>
+                </>
+              );
+            })()}
+            
+            <button onClick={() => ajouterAuPanier(showProduit, couleurChoisie, tailleChoisie)} className="btn-primary" style={{ width: "100%", padding: "12px 0" }}>
               {client ? "🛒 Ajouter" : "🔒 Connecte-toi"}
             </button>
           </div>
@@ -665,7 +816,11 @@ export default function FastBuy229() {
                       {(item.images?.[0] || item.image) ? <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div>📦</div>}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{item.title}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>
+                        {item.title}
+                        {item.couleurChoisie && <span style={{ fontSize: 12, color: "#6b7280" }}> • {item.couleurChoisie}</span>}
+                        {item.tailleChoisie && <span style={{ fontSize: 12, color: "#6b7280" }}> • {item.tailleChoisie}</span>}
+                      </div>
                       <div style={{ fontSize: 13, color: "#2563eb", fontWeight: 600, marginTop: 4 }}>{(item.price * item.qty).toLocaleString()} FCFA</div>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
