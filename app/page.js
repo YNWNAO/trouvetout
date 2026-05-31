@@ -48,6 +48,7 @@ export default function FastBuy229() {
   const [nouveauMdpClient, setNouveauMdpClient] = useState("");
   const [showContact, setShowContact] = useState(false);
   const [messageContact, setMessageContact] = useState("");
+  const [heroIndex, setHeroIndex] = useState(0);
   const [newProduct, setNewProduct] = useState({ title: "", description: "", etat: "Neuf", category: "Vêtements", plage_livraison: "1-2 semaines" });
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -285,15 +286,13 @@ export default function FastBuy229() {
                         <div style={{ fontSize: 12, color: "#6b7280" }}>{cmd.telephone} / {cmd.ville}</div>
                         <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>{cmd.totalFinal?.toLocaleString()} FCFA</div>
                       </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <select value={cmd.statut} onChange={async e => { await supabase.from("commandes").update({ statut: e.target.value }).eq("id", cmd.id); chargerCommandes(); }} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, cursor: "pointer", minWidth: 120 }}>
-                          <option>En attente</option>
-                          <option>Confirmé</option>
-                          <option>Expédié</option>
-                          <option>Livré</option>
-                          <option>Annulé</option>
-                        </select>
-                      </div>
+                      <select value={cmd.statut} onChange={async e => { await supabase.from("commandes").update({ statut: e.target.value }).eq("id", cmd.id); chargerCommandes(); }} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, cursor: "pointer", minWidth: 120 }}>
+                        <option>En attente</option>
+                        <option>Confirmé</option>
+                        <option>Expédié</option>
+                        <option>Livré</option>
+                        <option>Annulé</option>
+                      </select>
                     </div>
                   </div>
                 ))
@@ -423,16 +422,20 @@ export default function FastBuy229() {
     <div style={{ minHeight: "100vh", background: "#f8f9fa", paddingBottom: 80 }}>
       <style>{globalStyles}</style>
 
-      <div style={{ position: "sticky", top: 0, background: "#2563eb", color: "#fff", padding: "12px 1.5rem", display: "flex", alignItems: "center", gap: 12, zIndex: 100, boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
-        <div onClick={() => setPage("accueil")} style={{ cursor: "pointer", fontWeight: 800, fontSize: "1.2rem" }}>FastBuy</div>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "none", fontSize: 13, background: "#fff", color: "#1a1a2e" }} />
-        <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
+      <div style={{ background: "#1a1a2e", color: "#fff", padding: "8px 1.5rem", fontSize: 12, textAlign: "center", fontWeight: 600 }}>
+        Livraison gratuite à partir de 20000 FCFA | 10% réduction 1ère commande
+      </div>
+
+      <div style={{ position: "sticky", top: 0, background: "#fff", padding: "12px 1.5rem", display: "flex", alignItems: "center", gap: 12, zIndex: 100, boxShadow: "0 2px 10px rgba(0,0,0,0.1)", borderBottom: "2px solid #2563eb" }}>
+        <div onClick={() => setPage("accueil")} style={{ cursor: "pointer", fontWeight: 800, fontSize: "1.3rem", color: "#2563eb" }}>FastBuy</div>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, color: "#1a1a2e" }} />
+        <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#1a1a2e" }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
         {client ? (
-          <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
+          <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#1a1a2e" }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
         ) : (
-          <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => setShowLogin(true)}>Connexion</span>
+          <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#2563eb" }} onClick={() => setShowLogin(true)}>Connexion</span>
         )}
-      </span>
+      </div>
 
       <div style={{ background: "#fff", padding: "10px 1.5rem", display: "flex", gap: 8, overflowX: "auto", borderBottom: "1px solid #e5e7eb" }}>
         {CATEGORIES.map(cat => (
@@ -444,22 +447,33 @@ export default function FastBuy229() {
 
       {page === "accueil" && (
         <>
-          <div style={{ background: "linear-gradient(135deg, #2563eb 0%, #1e40af 100%)", color: "#fff", padding: "2.5rem 1.5rem", textAlign: "center" }}>
-            <h1 style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 8 }}>Bienvenue</h1>
-            <p style={{ fontSize: 14, marginBottom: "1.5rem", opacity: 0.9 }}>Vêtements, chaussures et accessoires de qualité</p>
-            <button onClick={() => setPage("produits")} style={{ background: "#fff", color: "#2563eb", border: "none", borderRadius: 8, padding: "10px 24px", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Voir les produits</button>
-          </div>
+          {produits.length > 0 && (
+            <div style={{ position: "relative", height: 250, background: "#000", overflow: "hidden", marginBottom: 20 }}>
+              <div style={{ display: "flex", transition: "transform 0.3s ease", transform: `translateX(-${heroIndex * 100}%)` }}>
+                {produits.slice(0, 5).map((item, i) => (
+                  <div key={i} style={{ minWidth: "100%", height: 250, position: "relative" }}>
+                    {(item.images?.[0] || item.image) && <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)", color: "#fff", padding: "1rem" }}>
+                      <div style={{ fontWeight: 700, fontSize: 16 }}>{item.title}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setHeroIndex(heroIndex > 0 ? heroIndex - 1 : produits.length - 1)} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer", fontSize: 18, fontWeight: 700 }}>{'<'}</button>
+              <button onClick={() => setHeroIndex(heroIndex < produits.length - 1 ? heroIndex + 1 : 0)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer", fontSize: 18, fontWeight: 700 }}>{'>'}</button>
+            </div>
+          )}
 
-          <div style={{ padding: "2rem 1.5rem" }}>
+          <div style={{ padding: "1.5rem" }}>
             <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Catégories</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10 }}>
               {CATEGORIES.filter(c => c !== "Tous").map(cat => {
                 const catProduits = produits.filter(p => p.category === cat);
                 return (
-                  <div key={cat} onClick={() => { setCatActive(cat); setPage("produits"); }} style={{ background: "#fff", borderRadius: 14, overflow: "hidden", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", height: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div key={cat} onClick={() => { setCatActive(cat); setPage("produits"); }} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", height: 110, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #e5e7eb" }}>
                     <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: "2rem", marginBottom: 6, fontWeight: 700, color: "#2563eb" }}>{catProduits.length}</div>
-                      <div style={{ fontWeight: 600, fontSize: 11 }}>{cat}</div>
+                      <div style={{ fontSize: "1.8rem", marginBottom: 4, fontWeight: 700, color: "#2563eb" }}>{catProduits.length}</div>
+                      <div style={{ fontWeight: 600, fontSize: 10 }}>{cat}</div>
                     </div>
                   </div>
                 );
@@ -470,15 +484,15 @@ export default function FastBuy229() {
           {produits.length > 0 && (
             <div style={{ padding: "0 1.5rem 2rem" }}>
               <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Nouveautés</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
-                {produits.slice(0, 4).map(item => (
-                  <div key={item.id} onClick={() => { setShowProduit(item); setPhotoChoisie(0); setCouleurChoisie(""); setTailleChoisie(""); }} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", cursor: "pointer" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
+                {produits.slice(0, 8).map(item => (
+                  <div key={item.id} onClick={() => { setShowProduit(item); setPhotoChoisie(0); setCouleurChoisie(""); setTailleChoisie(""); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.06)", cursor: "pointer" }}>
                     <div style={{ height: 130, background: "#f3f4f6", overflow: "hidden" }}>
-                      {(item.images?.[0] || item.image) ? <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Pas d'image</div>}
+                      {(item.images?.[0] || item.image) ? <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: 12 }}>Pas d'image</div>}
                     </div>
-                    <div style={{ padding: "10px" }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>{item.title?.slice(0, 20)}</div>
-                      <div style={{ fontWeight: 700, fontSize: 12, color: "#2563eb" }}>{item.price?.toLocaleString()} FCFA</div>
+                    <div style={{ padding: "8px" }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, marginBottom: 4, color: "#6b7280" }}>{item.title?.slice(0, 18)}</div>
+                      <div style={{ fontWeight: 700, fontSize: 11, color: "#2563eb" }}>{item.price?.toLocaleString()} FCFA</div>
                     </div>
                   </div>
                 ))}
@@ -493,15 +507,15 @@ export default function FastBuy229() {
           {produitsFiltres.length === 0 ? (
             <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af" }}>Aucun produit</div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
               {produitsFiltres.map(item => (
-                <div key={item.id} onClick={() => { setShowProduit(item); setPhotoChoisie(0); setCouleurChoisie(""); setTailleChoisie(""); }} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", cursor: "pointer" }}>
+                <div key={item.id} onClick={() => { setShowProduit(item); setPhotoChoisie(0); setCouleurChoisie(""); setTailleChoisie(""); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.06)", cursor: "pointer" }}>
                   <div style={{ height: 130, background: "#f3f4f6", overflow: "hidden" }}>
-                    {(item.images?.[0] || item.image) ? <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Pas d'image</div>}
+                    {(item.images?.[0] || item.image) ? <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: 12 }}>Pas d'image</div>}
                   </div>
-                  <div style={{ padding: "10px" }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>{item.title}</div>
-                    <div style={{ fontWeight: 700, fontSize: 12, color: "#2563eb" }}>{item.price?.toLocaleString()} FCFA</div>
+                  <div style={{ padding: "8px" }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, marginBottom: 4, color: "#6b7280" }}>{item.title}</div>
+                    <div style={{ fontWeight: 700, fontSize: 11, color: "#2563eb" }}>{item.price?.toLocaleString()} FCFA</div>
                   </div>
                 </div>
               ))}
