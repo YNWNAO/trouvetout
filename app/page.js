@@ -27,6 +27,7 @@ export default function FastBuy229() {
   const [produits, setProduits] = useState([]);
   const [commandes, setCommandes] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [miseAJourLivraison, setMiseAJourLivraison] = useState([]);
   const [clients, setClients] = useState([]);
   const [catActive, setCatActive] = useState("Tous");
   const [search, setSearch] = useState("");
@@ -41,6 +42,7 @@ export default function FastBuy229() {
   const [showConfirm, setShowConfirm] = useState(null);
   const [showProduit, setShowProduit] = useState(null);
   const [showContactAdmin, setShowContactAdmin] = useState(false);
+  const [showSuiviLivraison, setShowSuiviLivraison] = useState(false);
   const [photoChoisie, setPhotoChoisie] = useState(0);
   const [couleurChoisie, setCouleurChoisie] = useState("");
   const [tailleChoisie, setTailleChoisie] = useState("");
@@ -53,6 +55,7 @@ export default function FastBuy229() {
   const [clientTrouve, setClientTrouve] = useState(null);
   const [nouveauMdpClient, setNouveauMdpClient] = useState("");
   const [messageAuClient, setMessageAuClient] = useState("");
+  const [miseAJourLivraisonText, setMiseAJourLivraisonText] = useState("");
   const [messageContact, setMessageContact] = useState("");
   const [messageContactNom, setMessageContactNom] = useState("");
   const [messageContactTel, setMessageContactTel] = useState("");
@@ -73,6 +76,7 @@ export default function FastBuy229() {
   const [captureFile, setCaptureFile] = useState(null);
   const [codePromo, setCodePromo] = useState("");
   const [reduction, setReduction] = useState(0);
+  const [reponseMessage, setReponseMessage] = useState({});
 
   const pwdButtonStyle = { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#374151", padding: "4px 8px", zIndex: 10 };
 
@@ -89,6 +93,8 @@ export default function FastBuy229() {
     if (savedPanier) setPanier(JSON.parse(savedPanier));
     
     chargerProduits();
+    chargerMessages();
+    chargerMiseAJourLivraison();
     if (typeof window !== "undefined" && window.location.search.includes("page=admin")) {
       setPage("admin");
       setShowGenreModal(false);
@@ -112,6 +118,11 @@ export default function FastBuy229() {
   const chargerMessages = async () => {
     const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false });
     if (data) setMessages(data);
+  };
+
+  const chargerMiseAJourLivraison = async () => {
+    const { data } = await supabase.from("messages").select("*").eq("type", "livraison").order("created_at", { ascending: false });
+    if (data) setMiseAJourLivraison(data);
   };
 
   const chargerClients = async () => {
@@ -241,6 +252,17 @@ export default function FastBuy229() {
     setMessageContactNom("");
     setMessageContactTel("");
     setShowContactAdmin(false);
+    chargerMessages();
+    setLoading(false);
+  };
+
+  const repondreAuMessage = async (msgId) => {
+    if (!reponseMessage[msgId]?.trim()) { alert("Message vide !"); return; }
+    setLoading(true);
+    await supabase.from("messages").update({ reponse: reponseMessage[msgId] }).eq("id", msgId);
+    alert("Réponse envoyée !");
+    setReponseMessage({ ...reponseMessage, [msgId]: "" });
+    chargerMessages();
     setLoading(false);
   };
 
@@ -252,11 +274,27 @@ export default function FastBuy229() {
       nom: "Admin FastBuy",
       telephone: ADMIN_WHATSAPP,
       message: messageAuClient,
-      reponse: "Admin",
-      type: "admin_to_client"
+      reponse: "Admin"
     }]);
     alert("Message envoyé au client !");
     setMessageAuClient("");
+    setLoading(false);
+  };
+
+  const envoyerMiseAJourLivraison = async () => {
+    if (!miseAJourLivraisonText.trim()) { alert("Message vide !"); return; }
+    setLoading(true);
+    await supabase.from("messages").insert([{
+      user_id: clientTrouve.id,
+      nom: "Livraison",
+      telephone: ADMIN_WHATSAPP,
+      message: miseAJourLivraisonText,
+      reponse: "Admin",
+      type: "livraison"
+    }]);
+    alert("Mise à jour de livraison envoyée !");
+    setMiseAJourLivraisonText("");
+    chargerMiseAJourLivraison();
     setLoading(false);
   };
 
@@ -304,9 +342,6 @@ export default function FastBuy229() {
                 <button type="button" onClick={() => setShowPwdAdmin(p => !p)} style={pwdButtonStyle}>{showPwdAdmin ? "Masquer" : "Afficher"}</button>
               </div>
               <button className="btn-primary" onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerMessages(); chargerClients(); } else { alert("Incorrect !"); setAdminPwd(""); } }}>Accéder</button>
-              <div style={{ textAlign: "center", marginTop: 12 }}>
-                <span style={{ cursor: "pointer", color: "#2563eb", fontSize: 12 }} onClick={() => { setShowForgotPassword(true); setAdminOk(false); }}>Mot de passe oublié ?</span>
-              </div>
             </div>
           </div>
         ) : (
@@ -371,8 +406,15 @@ export default function FastBuy229() {
                   <div key={msg.id} style={{ background: "#fff", borderRadius: 12, padding: "1rem", marginBottom: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                     <div style={{ fontWeight: 600, marginBottom: 6 }}>{msg.nom} - {msg.telephone}</div>
                     <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 6, fontSize: 13, marginBottom: 8, borderLeft: "3px solid #2563eb" }}>{msg.message}</div>
-                    {msg.reponse && msg.type !== "admin_to_client" && <div style={{ background: "#f0f9ff", padding: "8px", borderRadius: 6, fontSize: 12, marginBottom: 8, borderLeft: "3px solid #10b981" }}>Réponse: {msg.reponse}</div>}
-                    {msg.type !== "admin_to_client" && <textarea placeholder="Répondre..." value={msg.reponse || ""} onChange={async e => { await supabase.from("messages").update({ reponse: e.target.value }).eq("id", msg.id); chargerMessages(); }} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, resize: "vertical" }} rows={2} />}
+                    {msg.reponse && <div style={{ background: "#f0f9ff", padding: "8px", borderRadius: 6, fontSize: 12, marginBottom: 8, borderLeft: "3px solid #10b981" }}>Réponse: {msg.reponse}</div>}
+                    {!msg.reponse && (
+                      <div>
+                        <textarea placeholder="Répondre..." value={reponseMessage[msg.id] || ""} onChange={e => setReponseMessage({ ...reponseMessage, [msg.id]: e.target.value })} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, resize: "vertical", marginBottom: 8 }} rows={2} />
+                        <button className="btn-primary" style={{ fontSize: 12, padding: "8px" }} onClick={() => repondreAuMessage(msg.id)} disabled={loading}>
+                          {loading ? "Envoi..." : "Envoyer Réponse"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -437,7 +479,7 @@ export default function FastBuy229() {
 
         {showGererClients && (
           <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowGererClients(false)}>
-            <div className="modal" style={{ maxWidth: "600px" }}>
+            <div className="modal" style={{ maxWidth: "650px" }}>
               <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Gérer Clients ({clients.length})</h2>
               <input placeholder="Rechercher par email..." value={clientRecherche} onChange={e => setClientRecherche(e.target.value)} style={{ marginBottom: 12 }} />
               <button className="btn-primary" style={{ marginBottom: 16 }} onClick={async () => {
@@ -448,13 +490,21 @@ export default function FastBuy229() {
               {clientTrouve && (
                 <div style={{ background: "#f9fafb", borderRadius: 12, padding: "1rem", border: "1px solid #e5e7eb", marginBottom: 16 }}>
                   <div style={{ fontWeight: 600, marginBottom: 12 }}>{clientTrouve.nom}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>{clientTrouve.email} - {clientTrouve.telephone}</div>
+                  <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>{clientTrouve.email} - {clientTrouve.telephone}</div>
                   
-                  <div style={{ marginBottom: 12 }}>
+                  <div style={{ marginBottom: 16, borderBottom: "1px solid #e5e7eb", paddingBottom: 16 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8 }}>Envoyer un message</div>
                     <textarea placeholder="Message au client..." value={messageAuClient} onChange={e => setMessageAuClient(e.target.value)} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, marginBottom: 8, resize: "vertical" }} rows={2} />
-                    <button className="btn-primary" style={{ marginBottom: 12, background: "#8b5cf6" }} onClick={envoyerMessageAuClient} disabled={loading}>
+                    <button className="btn-primary" style={{ background: "#8b5cf6", marginBottom: 12 }} onClick={envoyerMessageAuClient} disabled={loading}>
                       {loading ? "Envoi..." : "Envoyer Message"}
+                    </button>
+                  </div>
+
+                  <div style={{ marginBottom: 16, borderBottom: "1px solid #e5e7eb", paddingBottom: 16 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8 }}>Mise à jour de livraison</div>
+                    <textarea placeholder="Exemple: Votre colis est à Cotonou et arrivera demain..." value={miseAJourLivraisonText} onChange={e => setMiseAJourLivraisonText(e.target.value)} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, marginBottom: 8, resize: "vertical" }} rows={2} />
+                    <button className="btn-primary" style={{ background: "#06b6d4", marginBottom: 12 }} onClick={envoyerMiseAJourLivraison} disabled={loading}>
+                      {loading ? "Envoi..." : "Envoyer Mise à Jour"}
                     </button>
                   </div>
 
@@ -491,21 +541,6 @@ export default function FastBuy229() {
             </div>
           </div>
         )}
-
-        {showForgotPassword && (
-          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForgotPassword(false)}>
-            <div className="modal">
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Mot de passe oublié</h2>
-              <input placeholder="Email" value={forgotData.email} onChange={e => setForgotData({ ...forgotData, email: e.target.value })} style={{ marginBottom: 12 }} />
-              <input placeholder="Téléphone" value={forgotData.telephone} onChange={e => setForgotData({ ...forgotData, telephone: e.target.value })} style={{ marginBottom: 12 }} />
-              <input placeholder="JJ/MM/AAAA" value={forgotData.date_naissance} onChange={e => { let v = e.target.value.replace(/\D/g, ""); if (v.length >= 3 && v.length <= 4) v = v.slice(0, 2) + "/" + v.slice(2); else if (v.length >= 5) v = v.slice(0, 2) + "/" + v.slice(2, 4) + "/" + v.slice(4, 8); setForgotData({ ...forgotData, date_naissance: v }); }} style={{ marginBottom: 12 }} maxLength={10} />
-              <input type="password" placeholder="Nouveau mot de passe" value={forgotData.nouveauMdp} onChange={e => setForgotData({ ...forgotData, nouveauMdp: e.target.value })} style={{ marginBottom: 12 }} />
-              <input type="password" placeholder="Confirmer" value={forgotData.confirmer} onChange={e => setForgotData({ ...forgotData, confirmer: e.target.value })} style={{ marginBottom: 12 }} />
-              {forgotError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{forgotError}</div>}
-              <button className="btn-primary" onClick={reinitialiserMdp}>Réinitialiser</button>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
@@ -535,7 +570,10 @@ export default function FastBuy229() {
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, color: "#1a1a2e" }} />
         <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#1a1a2e" }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
         {client ? (
-          <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#1a1a2e" }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
+          <>
+            <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#06b6d4" }} onClick={() => { setShowSuiviLivraison(true); chargerMiseAJourLivraison(); }}>Livraison</span>
+            <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#1a1a2e" }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
+          </>
         ) : (
           <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#2563eb" }} onClick={() => setShowLogin(true)}>Connexion</span>
         )}
@@ -740,6 +778,35 @@ export default function FastBuy229() {
             <button className="btn-primary" onClick={envoyerMessage} disabled={loading}>
               {loading ? "Envoi..." : "Envoyer"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {showSuiviLivraison && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowSuiviLivraison(false)}>
+          <div className="modal">
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Suivi de Livraison</h2>
+            {miseAJourLivraison.filter(m => m.user_id === client?.id).length === 0 ? (
+              <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af" }}>Pas de mise à jour pour le moment</div>
+            ) : (
+              <div style={{ maxHeight: 400, overflowY: "auto" }}>
+                {miseAJourLivraison.filter(m => m.user_id === client?.id).map(update => (
+                  <div key={update.id} style={{ background: "#f0f9ff", borderRadius: 12, padding: "1rem", marginBottom: 12, borderLeft: "4px solid #06b6d4" }}>
+                    <div style={{ fontWeight: 600, marginBottom: 6, color: "#0369a1" }}>Mise à jour livraison</div>
+                    <div style={{ fontSize: 13, color: "#1a1a2e", marginBottom: 8 }}>{update.message}</div>
+                    <div style={{ fontSize: 10, color: "#6b7280" }}>{new Date(update.created_at).toLocaleDateString('fr-FR')}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ background: "#fffbeb", borderRadius: 12, padding: "1rem", marginTop: "1.5rem", fontSize: 12 }}>
+              <strong>Des questions ?</strong> Contactez-nous:
+              <div style={{ marginTop: 8, color: "#92400e" }}>
+                📧 {ADMIN_EMAIL}
+                <br />
+                💬 {ADMIN_WHATSAPP}
+              </div>
+            </div>
           </div>
         </div>
       )}
