@@ -94,7 +94,7 @@ export default function FastBuy229() {
     if (savedClient) setClient(JSON.parse(savedClient));
     const savedPanier = localStorage.getItem("fastbuy_panier");
     if (savedPanier) setPanier(JSON.parse(savedPanier));
-    if (typeof window !== "undefined" && window.location.pathname === "/admin" || window.location.search.includes("page=admin") || window.location.search.includes("page=admin")) setPage("admin");
+    if (typeof window !== "undefined" && window.location.pathname === "/admin") setPage("admin");
     chargerProduits();
   }, []);
 
@@ -154,7 +154,8 @@ export default function FastBuy229() {
     const { prenom, nom, email, telephone, date_naissance, mot_de_passe, confirmer } = inscForm;
     if (!prenom || !nom || !email || !telephone || !date_naissance || !mot_de_passe) { setAuthError("Remplis tous les champs !"); return; }
     if (mot_de_passe !== confirmer) { setAuthError("Les mots de passe ne correspondent pas !"); return; }
-    if (mot_de_passe.length < 6) { setAuthError("Mot de passe trop court (6 min) !"); return; }
+    if (mot_de_passe.length < 8) { setAuthError("Mot de passe trop court (8 min) !"); return; }
+    if (!/[a-zA-Z]/.test(mot_de_passe) || !/[0-9]/.test(mot_de_passe)) { setAuthError("Le mot de passe doit contenir des lettres ET des chiffres !"); return; }
     const { data: exist } = await supabase.from("users").select("id").eq("email", email).maybeSingle();
     if (exist) { setAuthError("Cet email est déjà utilisé !"); return; }
     const { data, error } = await supabase.from("users").insert([{ nom: `${prenom} ${nom}`, email, telephone, date_naissance, mot_de_passe }]).select().single();
@@ -567,12 +568,18 @@ export default function FastBuy229() {
                 <div style={{ background: "#f9fafb", borderRadius: 12, padding: "1rem", border: "1px solid #e5e7eb" }}>
                   <div style={{ fontWeight: 600, marginBottom: 8 }}>{clientTrouve.nom}</div>
                   <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>{clientTrouve.email} · {clientTrouve.telephone}</div>
-                  <input type="password" placeholder="Nouveau mot de passe" value={nouveauMdpClient} onChange={e => setNouveauMdpClient(e.target.value)} style={inp} />
-                  <button className="btn-primary" style={{ width: "100%" }} onClick={async () => {
-                    if (!nouveauMdpClient || nouveauMdpClient.length < 6) { alert("Mot de passe trop court !"); return; }
+                  <input type="password" placeholder="Nouveau mot de passe (8+ car, lettres+chiffres)" value={nouveauMdpClient} onChange={e => setNouveauMdpClient(e.target.value)} style={inp} />
+                  <button className="btn-primary" style={{ width: "100%", marginBottom: 8 }} onClick={async () => {
+                    if (!nouveauMdpClient || nouveauMdpClient.length < 8) { alert("Mot de passe trop court (8 min) !"); return; }
+                    if (!/[a-zA-Z]/.test(nouveauMdpClient) || !/[0-9]/.test(nouveauMdpClient)) { alert("Le mot de passe doit contenir lettres ET chiffres !"); return; }
                     await supabase.from("users").update({ mot_de_passe: nouveauMdpClient }).eq("id", clientTrouve.id);
                     alert("Mot de passe mis à jour !"); setNouveauMdpClient(""); setClientTrouve(null);
                   }}>Changer le mot de passe</button>
+                  <button onClick={async () => {
+                    if (!confirm(`Supprimer définitivement le compte de ${clientTrouve.nom} ?`)) return;
+                    await supabase.from("users").delete().eq("id", clientTrouve.id);
+                    alert("Compte supprimé ! Il pourra recréer un compte."); setClientTrouve(null); setClientRecherche(""); chargerClients();
+                  }} style={{ width: "100%", padding: "10px 0", background: "#fef2f2", border: "1.5px solid #fecaca", color: "#ef4444", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 500 }}>🗑 Supprimer ce compte</button>
                 </div>
               )}
             </div>
@@ -973,6 +980,7 @@ export default function FastBuy229() {
             <input placeholder="Téléphone *" value={inscForm.telephone} onChange={e => setInscForm({ ...inscForm, telephone: e.target.value })} style={inp} />
             <input placeholder="Date de naissance JJ/MM/AAAA *" value={inscForm.date_naissance} onChange={e => formatDate(e.target.value, setInscForm, "date_naissance")} style={inp} maxLength={10} />
             <input type="password" placeholder="Mot de passe *" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={inp} />
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: -8, marginBottom: 12 }}>Minimum 8 caractères avec lettres et chiffres</div>
             <input type="password" placeholder="Confirmer le mot de passe *" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={inp} />
             {authError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{authError}</div>}
             <button className="btn-primary" style={{ width: "100%", marginBottom: 12 }} onClick={inscrire}>Créer mon compte</button>
