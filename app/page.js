@@ -26,8 +26,7 @@ export default function FastBuy229() {
   const [showGenreModal, setShowGenreModal] = useState(true);
   const [produits, setProduits] = useState([]);
   const [commandes, setCommandes] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [miseAJourLivraison, setMiseAJourLivraison] = useState([]);
+  const [conversations, setConversations] = useState([]);
   const [clients, setClients] = useState([]);
   const [catActive, setCatActive] = useState("Tous");
   const [search, setSearch] = useState("");
@@ -42,7 +41,8 @@ export default function FastBuy229() {
   const [showConfirm, setShowConfirm] = useState(null);
   const [showProduit, setShowProduit] = useState(null);
   const [showContactAdmin, setShowContactAdmin] = useState(false);
-  const [showSuiviLivraison, setShowSuiviLivraison] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState(null);
   const [photoChoisie, setPhotoChoisie] = useState(0);
   const [couleurChoisie, setCouleurChoisie] = useState("");
   const [tailleChoisie, setTailleChoisie] = useState("");
@@ -53,12 +53,9 @@ export default function FastBuy229() {
   const [showGererClients, setShowGererClients] = useState(false);
   const [clientRecherche, setClientRecherche] = useState("");
   const [clientTrouve, setClientTrouve] = useState(null);
+  const [selectedAdminConversation, setSelectedAdminConversation] = useState(null);
   const [nouveauMdpClient, setNouveauMdpClient] = useState("");
-  const [messageAuClient, setMessageAuClient] = useState("");
-  const [miseAJourLivraisonText, setMiseAJourLivraisonText] = useState("");
-  const [messageContact, setMessageContact] = useState("");
-  const [messageContactNom, setMessageContactNom] = useState("");
-  const [messageContactTel, setMessageContactTel] = useState("");
+  const [messageText, setMessageText] = useState("");
   const [heroIndex, setHeroIndex] = useState(0);
   const [forgotData, setForgotData] = useState({ email: "", telephone: "", date_naissance: "", nouveauMdp: "", confirmer: "" });
   const [forgotError, setForgotError] = useState("");
@@ -76,7 +73,6 @@ export default function FastBuy229() {
   const [captureFile, setCaptureFile] = useState(null);
   const [codePromo, setCodePromo] = useState("");
   const [reduction, setReduction] = useState(0);
-  const [reponseMessage, setReponseMessage] = useState({});
 
   const pwdButtonStyle = { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#374151", padding: "4px 8px", zIndex: 10 };
 
@@ -93,8 +89,7 @@ export default function FastBuy229() {
     if (savedPanier) setPanier(JSON.parse(savedPanier));
     
     chargerProduits();
-    chargerMessages();
-    chargerMiseAJourLivraison();
+    chargerConversations();
     if (typeof window !== "undefined" && window.location.search.includes("page=admin")) {
       setPage("admin");
       setShowGenreModal(false);
@@ -104,6 +99,15 @@ export default function FastBuy229() {
   useEffect(() => {
     localStorage.setItem("fastbuy_panier", JSON.stringify(panier));
   }, [panier]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (selectedConversation || selectedAdminConversation) {
+        chargerConversations();
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [selectedConversation, selectedAdminConversation]);
 
   const chargerProduits = async () => {
     const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false });
@@ -115,14 +119,9 @@ export default function FastBuy229() {
     if (data) setCommandes(data);
   };
 
-  const chargerMessages = async () => {
+  const chargerConversations = async () => {
     const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false });
-    if (data) setMessages(data);
-  };
-
-  const chargerMiseAJourLivraison = async () => {
-    const { data } = await supabase.from("messages").select("*").eq("type", "livraison").order("created_at", { ascending: false });
-    if (data) setMiseAJourLivraison(data);
+    if (data) setConversations(data);
   };
 
   const chargerClients = async () => {
@@ -238,63 +237,32 @@ export default function FastBuy229() {
   };
 
   const envoyerMessage = async () => {
-    if (!messageContact.trim()) { alert("Message vide !"); return; }
+    if (!messageText.trim()) { alert("Message vide !"); return; }
     setLoading(true);
     await supabase.from("messages").insert([{
       user_id: client?.id || null,
-      nom: messageContactNom || "Visiteur",
-      telephone: messageContactTel || "",
-      message: messageContact,
-      reponse: ""
+      sender_type: "client",
+      sender_name: client?.nom || "Client",
+      message: messageText,
+      conversation_id: client?.id
     }]);
-    alert("Message envoyé ! L'admin va te répondre.");
-    setMessageContact("");
-    setMessageContactNom("");
-    setMessageContactTel("");
-    setShowContactAdmin(false);
-    chargerMessages();
+    setMessageText("");
+    chargerConversations();
     setLoading(false);
   };
 
-  const repondreAuMessage = async (msgId) => {
-    if (!reponseMessage[msgId]?.trim()) { alert("Message vide !"); return; }
-    setLoading(true);
-    await supabase.from("messages").update({ reponse: reponseMessage[msgId] }).eq("id", msgId);
-    alert("Réponse envoyée !");
-    setReponseMessage({ ...reponseMessage, [msgId]: "" });
-    chargerMessages();
-    setLoading(false);
-  };
-
-  const envoyerMessageAuClient = async () => {
-    if (!messageAuClient.trim()) { alert("Message vide !"); return; }
+  const envoyerMessageAdmin = async (clientId) => {
+    if (!messageText.trim()) { alert("Message vide !"); return; }
     setLoading(true);
     await supabase.from("messages").insert([{
-      user_id: clientTrouve.id,
-      nom: "Admin FastBuy",
-      telephone: ADMIN_WHATSAPP,
-      message: messageAuClient,
-      reponse: "Admin"
+      user_id: clientId,
+      sender_type: "admin",
+      sender_name: "Admin FastBuy",
+      message: messageText,
+      conversation_id: clientId
     }]);
-    alert("Message envoyé au client !");
-    setMessageAuClient("");
-    setLoading(false);
-  };
-
-  const envoyerMiseAJourLivraison = async () => {
-    if (!miseAJourLivraisonText.trim()) { alert("Message vide !"); return; }
-    setLoading(true);
-    await supabase.from("messages").insert([{
-      user_id: clientTrouve.id,
-      nom: "Livraison",
-      telephone: ADMIN_WHATSAPP,
-      message: miseAJourLivraisonText,
-      reponse: "Admin",
-      type: "livraison"
-    }]);
-    alert("Mise à jour de livraison envoyée !");
-    setMiseAJourLivraisonText("");
-    chargerMiseAJourLivraison();
+    setMessageText("");
+    chargerConversations();
     setLoading(false);
   };
 
@@ -329,6 +297,18 @@ export default function FastBuy229() {
     }
   };
 
+  const getConversationTitle = (conv) => {
+    if (conv.sender_type === "client") return conv.sender_name;
+    return "Admin FastBuy";
+  };
+
+  const getConversationPreview = (conv) => {
+    return conv.message?.substring(0, 40) + "...";
+  };
+
+  const clientConversations = conversations.filter(m => m.user_id === client?.id || m.conversation_id === client?.id);
+  const adminConversations = conversations.length > 0 ? Array.from(new Map(conversations.map(m => [m.conversation_id || m.user_id, m])).values()) : [];
+
   if (page === "admin") {
     return (
       <div style={{ minHeight: "100vh", background: "#f8f9fa" }}>
@@ -341,7 +321,7 @@ export default function FastBuy229() {
                 <input type={showPwdAdmin ? "text" : "password"} value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" style={{ width: "100%", padding: "12px 40px 12px 14px", border: "1.5px solid #e5e7eb", borderRadius: 10 }} />
                 <button type="button" onClick={() => setShowPwdAdmin(p => !p)} style={pwdButtonStyle}>{showPwdAdmin ? "Masquer" : "Afficher"}</button>
               </div>
-              <button className="btn-primary" onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerMessages(); chargerClients(); } else { alert("Incorrect !"); setAdminPwd(""); } }}>Accéder</button>
+              <button className="btn-primary" onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerConversations(); chargerClients(); } else { alert("Incorrect !"); setAdminPwd(""); } }}>Accéder</button>
             </div>
           </div>
         ) : (
@@ -350,8 +330,7 @@ export default function FastBuy229() {
               <h1 style={{ fontSize: "1.8rem", fontWeight: 800 }}>Admin FastBuy</h1>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => setShowAddProduct(true)}>Ajouter Produit</button>
-                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#10b981" }} onClick={() => { setShowGererClients(true); chargerClients(); }}>Gérer Clients</button>
-                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#f59e0b" }} onClick={() => { chargerCommandes(); chargerMessages(); }}>Actualiser</button>
+                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#f59e0b" }} onClick={() => { chargerCommandes(); chargerConversations(); }}>Actualiser</button>
                 <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "10px 18px", background: "#fef2f2", border: "1px solid #fecaca", color: "#ef4444", borderRadius: 10, cursor: "pointer", fontWeight: 600 }}>Déconnexion</button>
               </div>
             </div>
@@ -364,7 +343,7 @@ export default function FastBuy229() {
                     {(p.images?.[0] || p.image) ? <img src={getImageUrl(p.images?.[0] || p.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Pas d'image</div>}
                   </div>
                   <div style={{ padding: "8px" }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>{p.title?.slice(0, 15)} ({p.genre})</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>{p.title?.slice(0, 15)}</div>
                     <button onClick={async () => { if (confirm("Supprimer?")) { await supabase.from("produits").delete().eq("id", p.id); await chargerProduits(); } }} style={{ width: "100%", padding: "3px 0", background: "#fef2f2", border: "none", color: "#ef4444", borderRadius: 4, fontSize: 9, cursor: "pointer", fontWeight: 600 }}>Supprimer</button>
                   </div>
                 </div>
@@ -372,7 +351,7 @@ export default function FastBuy229() {
             </div>
 
             <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>Commandes ({commandes.length})</h2>
-            <div style={{ marginBottom: "2rem" }}>
+            <div style={{ marginBottom: "2rem", maxHeight: 400, overflowY: "auto" }}>
               {commandes.length === 0 ? (
                 <div style={{ background: "#fff", padding: "1.5rem", borderRadius: 12, textAlign: "center", color: "#9ca3af" }}>Aucune commande</div>
               ) : (
@@ -397,26 +376,37 @@ export default function FastBuy229() {
               )}
             </div>
 
-            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>Messages ({messages.length})</h2>
-            <div style={{ marginBottom: "2rem" }}>
-              {messages.length === 0 ? (
-                <div style={{ background: "#fff", padding: "1.5rem", borderRadius: 12, textAlign: "center", color: "#9ca3af" }}>Aucun message</div>
-              ) : (
-                messages.map(msg => (
-                  <div key={msg.id} style={{ background: "#fff", borderRadius: 12, padding: "1rem", marginBottom: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                    <div style={{ fontWeight: 600, marginBottom: 6 }}>{msg.nom} - {msg.telephone}</div>
-                    <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 6, fontSize: 13, marginBottom: 8, borderLeft: "3px solid #2563eb" }}>{msg.message}</div>
-                    {msg.reponse && <div style={{ background: "#f0f9ff", padding: "8px", borderRadius: 6, fontSize: 12, marginBottom: 8, borderLeft: "3px solid #10b981" }}>Réponse: {msg.reponse}</div>}
-                    {!msg.reponse && (
-                      <div>
-                        <textarea placeholder="Répondre..." value={reponseMessage[msg.id] || ""} onChange={e => setReponseMessage({ ...reponseMessage, [msg.id]: e.target.value })} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, resize: "vertical", marginBottom: 8 }} rows={2} />
-                        <button className="btn-primary" style={{ fontSize: 12, padding: "8px" }} onClick={() => repondreAuMessage(msg.id)} disabled={loading}>
-                          {loading ? "Envoi..." : "Envoyer Réponse"}
-                        </button>
-                      </div>
-                    )}
+            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>Messages ({adminConversations.filter(c => c.sender_type === "client").length})</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 20, marginBottom: "2rem", maxHeight: 600 }}>
+              <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                <div style={{ maxHeight: 550, overflowY: "auto" }}>
+                  {adminConversations.filter(c => c.sender_type === "client").map(conv => (
+                    <div key={conv.id} onClick={() => setSelectedAdminConversation(conv.conversation_id || conv.user_id)} style={{ padding: "1rem", borderBottom: "1px solid #e5e7eb", cursor: "pointer", background: selectedAdminConversation === (conv.conversation_id || conv.user_id) ? "#eff6ff" : "#fff" }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{conv.sender_name}</div>
+                      <div style={{ fontSize: 12, color: "#6b7280" }}>{getConversationPreview(conv)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {selectedAdminConversation && (
+                <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column" }}>
+                  <div style={{ background: "#f3f4f6", padding: "1rem", borderBottom: "1px solid #e5e7eb", fontWeight: 600 }}>
+                    Conversation
                   </div>
-                ))
+                  <div style={{ flex: 1, padding: "1rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+                    {conversations.filter(m => (m.conversation_id || m.user_id) === selectedAdminConversation).map(msg => (
+                      <div key={msg.id} style={{ padding: "8px 12px", borderRadius: 8, background: msg.sender_type === "admin" ? "#eff6ff" : "#f3f4f6", alignSelf: msg.sender_type === "admin" ? "flex-end" : "flex-start", maxWidth: "80%" }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: msg.sender_type === "admin" ? "#1e40af" : "#6b7280" }}>{msg.sender_name}</div>
+                        <div style={{ fontSize: 12 }}>{msg.message}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ padding: "1rem", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8 }}>
+                    <input value={messageText} onChange={e => setMessageText(e.target.value)} placeholder="Message..." style={{ flex: 1 }} />
+                    <button onClick={() => envoyerMessageAdmin(selectedAdminConversation)} disabled={loading} className="btn-primary" style={{ width: "auto", padding: "8px 16px" }}>Envoyer</button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -476,71 +466,6 @@ export default function FastBuy229() {
             </div>
           </div>
         )}
-
-        {showGererClients && (
-          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowGererClients(false)}>
-            <div className="modal" style={{ maxWidth: "650px" }}>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Gérer Clients ({clients.length})</h2>
-              <input placeholder="Rechercher par email..." value={clientRecherche} onChange={e => setClientRecherche(e.target.value)} style={{ marginBottom: 12 }} />
-              <button className="btn-primary" style={{ marginBottom: 16 }} onClick={async () => {
-                const { data } = await supabase.from("users").select("*").eq("email", clientRecherche).maybeSingle();
-                setClientTrouve(data);
-              }}>Rechercher</button>
-
-              {clientTrouve && (
-                <div style={{ background: "#f9fafb", borderRadius: 12, padding: "1rem", border: "1px solid #e5e7eb", marginBottom: 16 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 12 }}>{clientTrouve.nom}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>{clientTrouve.email} - {clientTrouve.telephone}</div>
-                  
-                  <div style={{ marginBottom: 16, borderBottom: "1px solid #e5e7eb", paddingBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8 }}>Envoyer un message</div>
-                    <textarea placeholder="Message au client..." value={messageAuClient} onChange={e => setMessageAuClient(e.target.value)} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, marginBottom: 8, resize: "vertical" }} rows={2} />
-                    <button className="btn-primary" style={{ background: "#8b5cf6", marginBottom: 12 }} onClick={envoyerMessageAuClient} disabled={loading}>
-                      {loading ? "Envoi..." : "Envoyer Message"}
-                    </button>
-                  </div>
-
-                  <div style={{ marginBottom: 16, borderBottom: "1px solid #e5e7eb", paddingBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8 }}>Mise à jour de livraison</div>
-                    <textarea placeholder="Exemple: Votre colis est à Cotonou et arrivera demain..." value={miseAJourLivraisonText} onChange={e => setMiseAJourLivraisonText(e.target.value)} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, marginBottom: 8, resize: "vertical" }} rows={2} />
-                    <button className="btn-primary" style={{ background: "#06b6d4", marginBottom: 12 }} onClick={envoyerMiseAJourLivraison} disabled={loading}>
-                      {loading ? "Envoi..." : "Envoyer Mise à Jour"}
-                    </button>
-                  </div>
-
-                  <input type="password" placeholder="Nouveau mot de passe" value={nouveauMdpClient} onChange={e => setNouveauMdpClient(e.target.value)} style={{ marginBottom: 10 }} />
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button className="btn-primary" style={{ background: "#10b981" }} onClick={async () => {
-                      if (nouveauMdpClient.length < 8) { alert("Minimum 8 caractères !"); return; }
-                      await supabase.from("users").update({ mot_de_passe: nouveauMdpClient }).eq("id", clientTrouve.id);
-                      alert("Mot de passe changé !");
-                      setNouveauMdpClient("");
-                      setClientTrouve(null);
-                    }}>Changer MDP</button>
-                    <button className="btn-primary" style={{ background: "#ef4444" }} onClick={async () => {
-                      if (confirm("Supprimer ce client définitivement?")) {
-                        await supabase.from("users").delete().eq("id", clientTrouve.id);
-                        alert("Client supprimé !");
-                        setClientTrouve(null);
-                        await chargerClients();
-                      }
-                    }}>Supprimer</button>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ marginTop: 16, maxHeight: 300, overflowY: "auto" }}>
-                <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: 10 }}>Tous les clients</h3>
-                {clients.map(c => (
-                  <div key={c.id} onClick={() => setClientTrouve(c)} style={{ background: "#fff", borderRadius: 8, padding: "10px", marginBottom: 8, border: `2px solid ${clientTrouve?.id === c.id ? "#2563eb" : "#e5e7eb"}`, fontSize: 12, cursor: "pointer", background: clientTrouve?.id === c.id ? "#eff6ff" : "#fff" }}>
-                    <div style={{ fontWeight: 600 }}>{c.nom}</div>
-                    <div style={{ color: "#6b7280", fontSize: 11 }}>{c.email} - {c.telephone}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
@@ -571,7 +496,10 @@ export default function FastBuy229() {
         <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#1a1a2e" }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
         {client ? (
           <>
-            <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#06b6d4" }} onClick={() => { setShowSuiviLivraison(true); chargerMiseAJourLivraison(); }}>Livraison</span>
+            <span style={{ position: "relative", cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#06b6d4" }} onClick={() => { setShowMessages(true); chargerConversations(); }}>
+              Messages
+              {clientConversations.length > 0 && <span style={{ position: "absolute", top: -8, right: -10, background: "#ef4444", color: "#fff", borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>{clientConversations.length}</span>}
+            </span>
             <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#1a1a2e" }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
           </>
         ) : (
@@ -767,45 +695,45 @@ export default function FastBuy229() {
                 <strong>WhatsApp:</strong> {ADMIN_WHATSAPP}
               </div>
             </div>
-
-            <div style={{ marginBottom: "1rem" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Ou envoyez-nous un message:</div>
-              <input placeholder="Votre nom" value={messageContactNom} onChange={e => setMessageContactNom(e.target.value)} style={{ marginBottom: 10 }} />
-              <input placeholder="Votre téléphone" value={messageContactTel} onChange={e => setMessageContactTel(e.target.value)} style={{ marginBottom: 10 }} />
-              <textarea placeholder="Votre message..." value={messageContact} onChange={e => setMessageContact(e.target.value)} style={{ width: "100%", padding: "12px", border: "1.5px solid #e5e7eb", borderRadius: 10, fontSize: 14, marginBottom: 12, resize: "vertical" }} rows={4} />
-            </div>
-
-            <button className="btn-primary" onClick={envoyerMessage} disabled={loading}>
-              {loading ? "Envoi..." : "Envoyer"}
-            </button>
           </div>
         </div>
       )}
 
-      {showSuiviLivraison && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowSuiviLivraison(false)}>
-          <div className="modal">
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Suivi de Livraison</h2>
-            {miseAJourLivraison.filter(m => m.user_id === client?.id).length === 0 ? (
-              <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af" }}>Pas de mise à jour pour le moment</div>
-            ) : (
-              <div style={{ maxHeight: 400, overflowY: "auto" }}>
-                {miseAJourLivraison.filter(m => m.user_id === client?.id).map(update => (
-                  <div key={update.id} style={{ background: "#f0f9ff", borderRadius: 12, padding: "1rem", marginBottom: 12, borderLeft: "4px solid #06b6d4" }}>
-                    <div style={{ fontWeight: 600, marginBottom: 6, color: "#0369a1" }}>Mise à jour livraison</div>
-                    <div style={{ fontSize: 13, color: "#1a1a2e", marginBottom: 8 }}>{update.message}</div>
-                    <div style={{ fontSize: 10, color: "#6b7280" }}>{new Date(update.created_at).toLocaleDateString('fr-FR')}</div>
+      {showMessages && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowMessages(false)}>
+          <div className="modal" style={{ maxWidth: "700px", maxHeight: "80vh", display: "flex", flexDirection: "column", padding: 0 }}>
+            <div style={{ background: "#2563eb", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Messages</div>
+            <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+              {!selectedConversation ? (
+                <div style={{ width: "100%", overflowY: "auto", padding: "1rem" }}>
+                  {clientConversations.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af" }}>Aucun message</div>
+                  ) : (
+                    clientConversations.map(msg => (
+                      <div key={msg.id} onClick={() => setSelectedConversation(msg)} style={{ padding: "1rem", borderRadius: 12, background: "#f3f4f6", marginBottom: 8, cursor: "pointer" }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{msg.sender_name}</div>
+                        <div style={{ fontSize: 12, color: "#6b7280" }}>{msg.message?.substring(0, 50)}...</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div style={{ width: "100%", display: "flex", flexDirection: "column" }}>
+                  <div style={{ background: "#f3f4f6", padding: "1rem", borderBottom: "1px solid #e5e7eb", fontWeight: 600, cursor: "pointer" }} onClick={() => setSelectedConversation(null)}>← Retour</div>
+                  <div style={{ flex: 1, overflowY: "auto", padding: "1rem", display: "flex", flexDirection: "column", gap: 8 }}>
+                    {conversations.filter(m => (m.conversation_id || m.user_id) === (selectedConversation.conversation_id || selectedConversation.user_id)).map(msg => (
+                      <div key={msg.id} style={{ padding: "8px 12px", borderRadius: 8, background: msg.sender_type === "admin" ? "#eff6ff" : "#f3f4f6", alignSelf: msg.sender_type === "admin" ? "flex-start" : "flex-end", maxWidth: "80%" }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: msg.sender_type === "admin" ? "#1e40af" : "#6b7280" }}>{msg.sender_name}</div>
+                        <div style={{ fontSize: 12 }}>{msg.message}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-            <div style={{ background: "#fffbeb", borderRadius: 12, padding: "1rem", marginTop: "1.5rem", fontSize: 12 }}>
-              <strong>Des questions ?</strong> Contactez-nous:
-              <div style={{ marginTop: 8, color: "#92400e" }}>
-                📧 {ADMIN_EMAIL}
-                <br />
-                💬 {ADMIN_WHATSAPP}
-              </div>
+                  <div style={{ padding: "1rem", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8 }}>
+                    <input value={messageText} onChange={e => setMessageText(e.target.value)} placeholder="Message..." style={{ flex: 1, marginBottom: 0 }} />
+                    <button onClick={envoyerMessage} disabled={loading} className="btn-primary" style={{ width: "auto", padding: "8px 16px" }}>Envoyer</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -825,7 +753,7 @@ export default function FastBuy229() {
                       {(item.images?.[0] || item.image) ? <img src={getImageUrl(item.images?.[0] || item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div>-</div>}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600 }}>{item.title} {item.couleurChoisie && <span style={{ color: "#6b7280" }}>- {item.couleurChoisie}</span>}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>{item.title}</div>
                       <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>{(item.price * item.qty).toLocaleString()} FCFA</div>
                     </div>
                     <div style={{ display: "flex", gap: 4 }}>
