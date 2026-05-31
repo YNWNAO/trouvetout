@@ -237,7 +237,7 @@ export default function FastBuy229() {
 
   const ajouterProduit = async () => {
     if (!newProduct.title) { alert("Titre obligatoire !"); return; }
-    if (variantes.length === 0 && !newProduct.price) { alert("Prix obligatoire !"); return; }
+    if (variantes.length === 0) { alert("Ajoute au moins une variante (Couleur + Taille) !"); return; }
     setLoading(true);
     let imagePaths = [];
     for (const file of imageFiles) {
@@ -245,20 +245,15 @@ export default function FastBuy229() {
       await supabase.storage.from("produits").upload(fn, file);
       imagePaths.push(fn);
     }
-    // Si variantes → le prix est le min des variantes. Sinon c'est le prix fixe
-    let prixBase = 0;
-    if (variantes.length > 0) {
-      prixBase = Math.min(...variantes.map(v => parseInt(v.prix) || 0));
-    } else {
-      prixBase = parseInt(newProduct.price) || 0;
-    }
+    // Le prix est le minimum des variantes
+    const prixBase = Math.min(...variantes.map(v => parseInt(v.prix) || 0));
     
     await supabase.from("produits").insert([{
       ...newProduct, 
       price: prixBase, 
       image: imagePaths[0] || null, 
       images: imagePaths,
-      variantes: variantes.length > 0 ? JSON.stringify(variantes.map(({ id, ...v }) => v)) : null
+      variantes: JSON.stringify(variantes.map(({ id, ...v }) => v))
     }]);
     await chargerProduits();
     setShowAddProduct(false);
@@ -501,19 +496,19 @@ export default function FastBuy229() {
 
               {/* VARIANTES */}
               <div style={{ background: "#f0f9ff", border: "1px solid #bfdbfe", borderRadius: 12, padding: "1rem", marginBottom: 16 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12, color: "#1e40af" }}>📦 Variantes (Optionnel)</div>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12, color: "#1e40af" }}>📦 Variantes (Couleur + Taille)</div>
                 
                 {/* Formulaire variante */}
-                <input placeholder="Couleur (ex: Rouge, Bleu)" value={nouvVar.couleur} onChange={e => setNouvVar({ ...nouvVar, couleur: e.target.value })} style={{ ...inp, marginBottom: 10 }} />
-                <input placeholder="Taille/Volume (ex: M, L, 100ml)" value={nouvVar.taille} onChange={e => setNouvVar({ ...nouvVar, taille: e.target.value })} style={{ ...inp, marginBottom: 10 }} />
+                <input placeholder="Couleur (ex: Rouge, Bleu) *" value={nouvVar.couleur} onChange={e => setNouvVar({ ...nouvVar, couleur: e.target.value })} style={{ ...inp, marginBottom: 10 }} />
+                <input placeholder="Taille/Volume (ex: S, M, L, XL) *" value={nouvVar.taille} onChange={e => setNouvVar({ ...nouvVar, taille: e.target.value })} style={{ ...inp, marginBottom: 10 }} />
                 <input type="number" placeholder="Prix FCFA *" value={nouvVar.prix} onChange={e => setNouvVar({ ...nouvVar, prix: e.target.value })} style={{ ...inp, marginBottom: 10 }} />
                 <select value={nouvVar.stock} onChange={e => setNouvVar({ ...nouvVar, stock: e.target.value })} style={{ ...inp, marginBottom: 10 }}>
-                  <option value="disponible">Disponible</option>
-                  <option value="rupture">Rupture</option>
+                  <option value="disponible">Stock: Disponible</option>
+                  <option value="rupture">Stock: Rupture</option>
                 </select>
-                <input type="number" placeholder="Quantité disponible" value={nouvVar.quantite} onChange={e => setNouvVar({ ...nouvVar, quantite: e.target.value })} style={inp} />
+                <input type="number" placeholder="Quantité en stock" value={nouvVar.quantite} onChange={e => setNouvVar({ ...nouvVar, quantite: e.target.value })} style={inp} />
                 <button onClick={() => {
-                  if (!nouvVar.prix) { alert("Prix obligatoire !"); return; }
+                  if (!nouvVar.couleur || !nouvVar.taille || !nouvVar.prix) { alert("Couleur, Taille et Prix obligatoires !"); return; }
                   setVariantes([...variantes, { ...nouvVar, id: Date.now() }]);
                   setNouvVar({ couleur: "", taille: "", prix: "", stock: "disponible", quantite: "" });
                 }} style={{ width: "100%", padding: "10px 0", background: "#dbeafe", border: "1px solid #93c5fd", color: "#1e40af", borderRadius: 8, fontSize: 12, cursor: "pointer", fontWeight: 600, marginTop: 8 }}>
@@ -522,11 +517,12 @@ export default function FastBuy229() {
 
                 {/* Liste variantes */}
                 {variantes.length > 0 && (
-                  <div style={{ marginTop: 12, maxHeight: 200, overflowY: "auto" }}>
+                  <div style={{ marginTop: 12, maxHeight: 250, overflowY: "auto" }}>
+                    <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8, fontWeight: 500 }}>({variantes.length} variantes)</div>
                     {variantes.map(v => (
                       <div key={v.id} style={{ background: "#fff", borderRadius: 8, padding: "8px 10px", marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, border: "1px solid #e5e7eb" }}>
                         <span style={{ flex: 1 }}>
-                          {v.couleur && <strong>{v.couleur}</strong>} {v.taille && <strong>{v.taille}</strong>} — <strong>{v.prix} FCFA</strong> ({v.stock})
+                          <strong>{v.couleur}</strong> • <strong>{v.taille}</strong> → <strong>{v.prix} FCFA</strong>
                         </span>
                         <button onClick={() => setVariantes(variantes.filter(vv => vv.id !== v.id))} style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#ef4444", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 11 }}>✕</button>
                       </div>
@@ -535,12 +531,10 @@ export default function FastBuy229() {
                 )}
               </div>
 
-              {/* Prix fixe (si pas de variantes) */}
               {variantes.length === 0 && (
-                <>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Prix fixe (si pas de variantes)</label>
-                  <input type="number" placeholder="Prix FCFA" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} style={{ ...inp, marginBottom: 16 }} />
-                </>
+                <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 10, padding: "10px 12px", marginBottom: 16, fontSize: 12, color: "#92400e" }}>
+                  ⚠️ Ajoute au moins une variante (Couleur + Taille)
+                </div>
               )}
 
               <button onClick={ajouterProduit} disabled={loading} className="btn-primary" style={{ width: "100%" }}>
@@ -742,60 +736,108 @@ export default function FastBuy229() {
                 );
               }
               
-              // Récupérer les couleurs et tailles uniques
-              const couleurs = [...new Set(variantes.map(v => v.couleur).filter(c => c))];
-              const tailles = couleurs.includes(couleurChoisie) 
-                ? [...new Set(variantes.filter(v => v.couleur === couleurChoisie).map(v => v.taille).filter(t => t))]
-                : [...new Set(variantes.map(v => v.taille).filter(t => t))];
+              // Récupérer les couleurs disponibles
+              const couleurs = [...new Set(variantes.map(v => v.couleur))];
+              
+              // Récupérer les tailles filtrées selon la couleur choisie
+              const tailles = couleurChoisie 
+                ? [...new Set(variantes.filter(v => v.couleur === couleurChoisie).map(v => v.taille))]
+                : [];
               
               // Trouver le prix et stock actuels
               let prixActuel = showProduit.price;
               let stockActuel = "disponible";
+              let varianteTrouvee = null;
+              
               if (couleurChoisie && tailleChoisie) {
-                const varTrouvee = variantes.find(v => v.couleur === couleurChoisie && v.taille === tailleChoisie);
-                if (varTrouvee) {
-                  prixActuel = parseInt(varTrouvee.prix);
-                  stockActuel = varTrouvee.stock;
+                varianteTrouvee = variantes.find(v => v.couleur === couleurChoisie && v.taille === tailleChoisie);
+                if (varianteTrouvee) {
+                  prixActuel = parseInt(varianteTrouvee.prix);
+                  stockActuel = varianteTrouvee.stock;
                 }
               }
               
               return (
                 <>
-                  {couleurs.length > 0 && (
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: "#374151" }}>Couleur</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {couleurs.map(c => (
-                          <button key={c} onClick={() => setCouleurChoisie(c)} style={{ padding: "6px 12px", borderRadius: 8, border: `2px solid ${couleurChoisie === c ? "#2563eb" : "#e5e7eb"}`, background: couleurChoisie === c ? "#eff6ff" : "#fff", color: couleurChoisie === c ? "#2563eb" : "#6b7280", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                            {c}
-                          </button>
-                        ))}
-                      </div>
+                  {/* COULEUR - OBLIGATOIRE */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: "#1a1a2e" }}>🎨 Couleur *</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {couleurs.map(c => (
+                        <button 
+                          key={c} 
+                          onClick={() => { setCouleurChoisie(c); setTailleChoisie(""); }} 
+                          style={{ 
+                            padding: "8px 14px", 
+                            borderRadius: 8, 
+                            border: `2px solid ${couleurChoisie === c ? "#2563eb" : "#e5e7eb"}`, 
+                            background: couleurChoisie === c ? "#eff6ff" : "#fff", 
+                            color: couleurChoisie === c ? "#2563eb" : "#6b7280", 
+                            fontSize: 13, 
+                            fontWeight: 600, 
+                            cursor: "pointer",
+                            transition: "all 0.2s"
+                          }}
+                        >
+                          {c}
+                        </button>
+                      ))}
                     </div>
-                  )}
-                  
-                  {tailles.length > 0 && (
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: "#374151" }}>Taille/Volume</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {tailles.map(t => (
-                          <button key={t} onClick={() => setTailleChoisie(t)} style={{ padding: "6px 12px", borderRadius: 8, border: `2px solid ${tailleChoisie === t ? "#2563eb" : "#e5e7eb"}`, background: tailleChoisie === t ? "#eff6ff" : "#fff", color: tailleChoisie === t ? "#2563eb" : "#6b7280", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                            {t}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div style={{ background: stockActuel === "rupture" ? "#fef2f2" : "#f9fafb", borderRadius: 12, padding: "12px", marginBottom: "1.5rem", fontWeight: 700, fontSize: 15, color: stockActuel === "rupture" ? "#ef4444" : "#2563eb" }}>
-                    {prixActuel?.toLocaleString()} FCFA {stockActuel === "rupture" && "— Rupture"}
                   </div>
+                  
+                  {/* TAILLE - FILTRÉE & OBLIGATOIRE */}
+                  {couleurChoisie && (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: "#1a1a2e" }}>📏 Taille *</div>
+                      {tailles.length > 0 ? (
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {tailles.map(t => (
+                            <button 
+                              key={t} 
+                              onClick={() => setTailleChoisie(t)} 
+                              style={{ 
+                                padding: "8px 14px", 
+                                borderRadius: 8, 
+                                border: `2px solid ${tailleChoisie === t ? "#2563eb" : "#e5e7eb"}`, 
+                                background: tailleChoisie === t ? "#eff6ff" : "#fff", 
+                                color: tailleChoisie === t ? "#2563eb" : "#6b7280", 
+                                fontSize: 13, 
+                                fontWeight: 600, 
+                                cursor: "pointer",
+                                transition: "all 0.2s"
+                              }}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 12, color: "#9ca3af" }}>Pas de tailles pour cette couleur</div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* PRIX & STOCK */}
+                  {couleurChoisie && tailleChoisie && (
+                    <div style={{ background: stockActuel === "rupture" ? "#fef2f2" : "#f0f9ff", borderRadius: 12, padding: "14px", marginBottom: "1.5rem", border: `1px solid ${stockActuel === "rupture" ? "#fecaca" : "#bfdbfe"}` }}>
+                      <div style={{ fontWeight: 700, fontSize: 16, color: stockActuel === "rupture" ? "#ef4444" : "#2563eb", marginBottom: 4 }}>
+                        {prixActuel?.toLocaleString()} FCFA
+                      </div>
+                      {stockActuel === "rupture" && (
+                        <div style={{ fontSize: 12, color: "#ef4444", fontWeight: 500 }}>🚫 Rupture de stock</div>
+                      )}
+                    </div>
+                  )}
                 </>
               );
             })()}
             
-            <button onClick={() => ajouterAuPanier(showProduit, couleurChoisie, tailleChoisie)} className="btn-primary" style={{ width: "100%", padding: "12px 0" }}>
-              {client ? "🛒 Ajouter" : "🔒 Connecte-toi"}
+            <button 
+              onClick={() => ajouterAuPanier(showProduit, couleurChoisie, tailleChoisie)} 
+              disabled={!couleurChoisie || !tailleChoisie}
+              className="btn-primary" 
+              style={{ width: "100%", padding: "12px 0", opacity: (!couleurChoisie || !tailleChoisie) ? 0.5 : 1, cursor: (!couleurChoisie || !tailleChoisie) ? "not-allowed" : "pointer" }}>
+              {!client ? "🔒 Connecte-toi" : (!couleurChoisie || !tailleChoisie) ? "Choisis couleur + taille" : "🛒 Ajouter"}
             </button>
           </div>
         </div>
