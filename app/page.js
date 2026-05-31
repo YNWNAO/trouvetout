@@ -31,6 +31,7 @@ export default function FastBuy229() {
   const [loading, setLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showInscription, setShowInscription] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showPanier, setShowPanier] = useState(false);
   const [showCommande, setShowCommande] = useState(false);
   const [showConfirm, setShowConfirm] = useState(null);
@@ -49,6 +50,8 @@ export default function FastBuy229() {
   const [showContact, setShowContact] = useState(false);
   const [messageContact, setMessageContact] = useState("");
   const [heroIndex, setHeroIndex] = useState(0);
+  const [forgotData, setForgotData] = useState({ email: "", telephone: "", date_naissance: "", nouveauMdp: "", confirmer: "" });
+  const [forgotError, setForgotError] = useState("");
   const [newProduct, setNewProduct] = useState({ title: "", description: "", etat: "Neuf", category: "Vêtements", plage_livraison: "1-2 semaines" });
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -161,6 +164,24 @@ export default function FastBuy229() {
     setLoginForm({ identifiant: "", motDePasse: "" });
   };
 
+  const reinitialiserMdp = async () => {
+    setForgotError("");
+    const { email, telephone, date_naissance, nouveauMdp, confirmer } = forgotData;
+    if (!email || !telephone || !date_naissance || !nouveauMdp) { setForgotError("Remplis tous les champs !"); return; }
+    if (nouveauMdp !== confirmer) { setForgotError("Les mots de passe ne correspondent pas !"); return; }
+    if (nouveauMdp.length < 8) { setForgotError("Minimum 8 caractères !"); return; }
+    
+    const { data } = await supabase.from("users").select("*").eq("email", email).maybeSingle();
+    if (!data) { setForgotError("Email non trouvé !"); return; }
+    if (data.telephone !== telephone) { setForgotError("Téléphone incorrect !"); return; }
+    if (data.date_naissance !== date_naissance) { setForgotError("Date de naissance incorrecte !"); return; }
+    
+    await supabase.from("users").update({ mot_de_passe: nouveauMdp }).eq("id", data.id);
+    alert("Mot de passe réinitialisé !");
+    setShowForgotPassword(false);
+    setForgotData({ email: "", telephone: "", date_naissance: "", nouveauMdp: "", confirmer: "" });
+  };
+
   const envoyerCommande = async () => {
     const { nom, email, telephone, ville, adresse } = formCmd;
     if (!nom || !email || !telephone || !ville || !adresse) { alert("Remplis tous les champs !"); return; }
@@ -244,6 +265,9 @@ export default function FastBuy229() {
                 <button type="button" onClick={() => setShowPwdAdmin(p => !p)} style={pwdButtonStyle}>{showPwdAdmin ? "Masquer" : "Afficher"}</button>
               </div>
               <button className="btn-primary" onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerMessages(); chargerClients(); } else { alert("Incorrect !"); setAdminPwd(""); } }}>Accéder</button>
+              <div style={{ textAlign: "center", marginTop: 12 }}>
+                <span style={{ cursor: "pointer", color: "#2563eb", fontSize: 12 }} onClick={() => { setShowForgotPassword(true); setAdminOk(false); }}>Mot de passe oublié ?</span>
+              </div>
             </div>
           </div>
         ) : (
@@ -466,14 +490,20 @@ export default function FastBuy229() {
 
           <div style={{ padding: "1.5rem" }}>
             <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Catégories</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
               {CATEGORIES.filter(c => c !== "Tous").map(cat => {
                 const catProduits = produits.filter(p => p.category === cat);
+                const premierProduit = catProduits[0];
                 return (
-                  <div key={cat} onClick={() => { setCatActive(cat); setPage("produits"); }} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", height: 110, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #e5e7eb" }}>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: "1.8rem", marginBottom: 4, fontWeight: 700, color: "#2563eb" }}>{catProduits.length}</div>
-                      <div style={{ fontWeight: 600, fontSize: 10 }}>{cat}</div>
+                  <div key={cat} onClick={() => { setCatActive(cat); setPage("produits"); }} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", height: 140, position: "relative" }}>
+                    {premierProduit && (premierProduit.images?.[0] || premierProduit.image) ? (
+                      <img src={getImageUrl(premierProduit.images?.[0] || premierProduit.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Pas d'image</div>
+                    )}
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)", color: "#fff", padding: "8px" }}>
+                      <div style={{ fontWeight: 600, fontSize: 12 }}>{cat}</div>
+                      <div style={{ fontSize: 10, opacity: 0.9 }}>{catProduits.length} articles</div>
                     </div>
                   </div>
                 );
@@ -701,8 +731,9 @@ export default function FastBuy229() {
             </div>
             {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{authError}</div>}
             <button className="btn-primary" onClick={connecter} style={{ marginBottom: 12 }}>Connexion</button>
-            <div style={{ textAlign: "center", fontSize: 12 }}>
+            <div style={{ textAlign: "center", fontSize: 12, display: "flex", flexDirection: "column", gap: 8 }}>
               <span style={{ cursor: "pointer", color: "#2563eb" }} onClick={() => { setShowLogin(false); setShowInscription(true); }}>S'inscrire</span>
+              <span style={{ cursor: "pointer", color: "#2563eb" }} onClick={() => { setShowLogin(false); setShowForgotPassword(true); }}>Mot de passe oublié ?</span>
             </div>
           </div>
         </div>
@@ -724,6 +755,21 @@ export default function FastBuy229() {
             <input type={showPwdInsc ? "text" : "password"} placeholder="Confirmer" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={{ marginBottom: 12 }} />
             {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{authError}</div>}
             <button className="btn-primary" onClick={inscrire}>Créer</button>
+          </div>
+        </div>
+      )}
+
+      {showForgotPassword && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForgotPassword(false)}>
+          <div className="modal">
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Mot de passe oublié</h2>
+            <input placeholder="Email" value={forgotData.email} onChange={e => setForgotData({ ...forgotData, email: e.target.value })} style={{ marginBottom: 12 }} />
+            <input placeholder="Téléphone" value={forgotData.telephone} onChange={e => setForgotData({ ...forgotData, telephone: e.target.value })} style={{ marginBottom: 12 }} />
+            <input placeholder="JJ/MM/AAAA" value={forgotData.date_naissance} onChange={e => { let v = e.target.value.replace(/\D/g, ""); if (v.length >= 3 && v.length <= 4) v = v.slice(0, 2) + "/" + v.slice(2); else if (v.length >= 5) v = v.slice(0, 2) + "/" + v.slice(2, 4) + "/" + v.slice(4, 8); setForgotData({ ...forgotData, date_naissance: v }); }} style={{ marginBottom: 12 }} maxLength={10} />
+            <input type="password" placeholder="Nouveau mot de passe" value={forgotData.nouveauMdp} onChange={e => setForgotData({ ...forgotData, nouveauMdp: e.target.value })} style={{ marginBottom: 12 }} />
+            <input type="password" placeholder="Confirmer" value={forgotData.confirmer} onChange={e => setForgotData({ ...forgotData, confirmer: e.target.value })} style={{ marginBottom: 12 }} />
+            {forgotError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{forgotError}</div>}
+            <button className="btn-primary" onClick={reinitialiserMdp}>Réinitialiser</button>
           </div>
         </div>
       )}
