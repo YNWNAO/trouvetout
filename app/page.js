@@ -264,7 +264,6 @@ export default function FastBuy229() {
         <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
         {client ? (
           <>
-            <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#06b6d4" }} onClick={() => { setShowClientMessages(true); chargerMessages(); }}>Messages {clientMessages.length > 0 && <span style={{ background: "#ef4444", color: "#fff", borderRadius: "50%", padding: "2px 6px", fontSize: 10 }}>{clientMessages.length}</span>}</span>
             <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
           </>
         ) : (
@@ -382,38 +381,18 @@ export default function FastBuy229() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowContactAdmin(false)}>
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Nous Contacter</h2>
-            <div style={{ background: "#eff6ff", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem" }}>
-              <div style={{ fontSize: 12, color: "#1a1a2e", marginBottom: 6 }}><strong>Email:</strong> {ADMIN_EMAIL}</div>
-              <div style={{ fontSize: 12, color: "#1a1a2e" }}><strong>WhatsApp:</strong> {ADMIN_WHATSAPP}</div>
+            <div style={{ background: "#eff6ff", borderRadius: 12, padding: "1.5rem", textAlign: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "1rem" }}>📧 Email</div>
+              <div style={{ fontSize: 13, color: "#1a1a2e", marginBottom: "1.5rem", wordBreak: "break-all" }}>{ADMIN_EMAIL}</div>
+              
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "1rem" }}>📱 WhatsApp</div>
+              <div style={{ fontSize: 13, color: "#1a1a2e" }}>{ADMIN_WHATSAPP}</div>
             </div>
-            <textarea placeholder="Votre message..." value={messageContact} onChange={e => setMessageContact(e.target.value)} style={{ width: "100%", padding: "12px", border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 12, resize: "vertical" }} rows={4} />
-            <button className="btn-primary" onClick={envoyerMessage} disabled={loading}>{loading ? "Envoi..." : "Envoyer"}</button>
           </div>
         </div>
       )}
 
-      {showClientMessages && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowClientMessages(false)}>
-          <div className="modal" style={{ maxWidth: "700px", maxHeight: "80vh", display: "flex", flexDirection: "column", padding: 0 }}>
-            <div style={{ background: "#2563eb", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Messages</div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "1rem", display: "flex", flexDirection: "column", gap: 8 }}>
-              {clientMessages.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#9ca3af" }}>Aucun message</div>
-              ) : (
-                clientMessages.map(msg => (
-                  <div key={msg.id} style={{ display: "flex", justifyContent: msg.sender_type === "client" ? "flex-end" : "flex-start" }}>
-                    <div style={{ maxWidth: "70%", padding: "8px 12px", borderRadius: 12, background: msg.sender_type === "client" ? "#2563eb" : "#f3f4f6", color: msg.sender_type === "client" ? "#fff" : "#1a1a2e" }}>
-                      <div style={{ fontSize: 12 }}>{msg.message}</div>
-                      <div style={{ fontSize: 10, opacity: 0.7, marginTop: 4 }}>{formatTime(msg.created_at)}</div>
-                    </div>
-                  </div>
-                ))
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {showPanier && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowPanier(false)}>
