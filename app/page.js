@@ -5,6 +5,8 @@ import { supabase } from "./supabase";
 const CATEGORIES = ["Tous", "Vêtements", "Chaussures", "Parfums", "Téléphones", "Sacs", "Bijoux", "Ordinateurs", "Accessoires"];
 const ADMIN_PWD = "N-beat3140";
 const MOMO = "+229 57577895";
+const ADMIN_EMAIL = "nahofalgbadamassi@gmail.com";
+const ADMIN_WHATSAPP = "+33775958442";
 
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -38,6 +40,7 @@ export default function FastBuy229() {
   const [showCommande, setShowCommande] = useState(false);
   const [showConfirm, setShowConfirm] = useState(null);
   const [showProduit, setShowProduit] = useState(null);
+  const [showContactAdmin, setShowContactAdmin] = useState(false);
   const [photoChoisie, setPhotoChoisie] = useState(0);
   const [couleurChoisie, setCouleurChoisie] = useState("");
   const [tailleChoisie, setTailleChoisie] = useState("");
@@ -49,8 +52,10 @@ export default function FastBuy229() {
   const [clientRecherche, setClientRecherche] = useState("");
   const [clientTrouve, setClientTrouve] = useState(null);
   const [nouveauMdpClient, setNouveauMdpClient] = useState("");
-  const [showContact, setShowContact] = useState(false);
+  const [messageAuClient, setMessageAuClient] = useState("");
   const [messageContact, setMessageContact] = useState("");
+  const [messageContactNom, setMessageContactNom] = useState("");
+  const [messageContactTel, setMessageContactTel] = useState("");
   const [heroIndex, setHeroIndex] = useState(0);
   const [forgotData, setForgotData] = useState({ email: "", telephone: "", date_naissance: "", nouveauMdp: "", confirmer: "" });
   const [forgotError, setForgotError] = useState("");
@@ -223,18 +228,35 @@ export default function FastBuy229() {
 
   const envoyerMessage = async () => {
     if (!messageContact.trim()) { alert("Message vide !"); return; }
-    if (!client) { alert("Connecte-toi d'abord !"); return; }
     setLoading(true);
     await supabase.from("messages").insert([{
-      user_id: client.id,
-      nom: client.nom,
-      telephone: client.telephone || "",
+      user_id: client?.id || null,
+      nom: messageContactNom || "Visiteur",
+      telephone: messageContactTel || "",
       message: messageContact,
       reponse: ""
     }]);
     alert("Message envoyé ! L'admin va te répondre.");
     setMessageContact("");
-    setShowContact(false);
+    setMessageContactNom("");
+    setMessageContactTel("");
+    setShowContactAdmin(false);
+    setLoading(false);
+  };
+
+  const envoyerMessageAuClient = async () => {
+    if (!messageAuClient.trim()) { alert("Message vide !"); return; }
+    setLoading(true);
+    await supabase.from("messages").insert([{
+      user_id: clientTrouve.id,
+      nom: "Admin FastBuy",
+      telephone: ADMIN_WHATSAPP,
+      message: messageAuClient,
+      reponse: "Admin",
+      type: "admin_to_client"
+    }]);
+    alert("Message envoyé au client !");
+    setMessageAuClient("");
     setLoading(false);
   };
 
@@ -349,8 +371,8 @@ export default function FastBuy229() {
                   <div key={msg.id} style={{ background: "#fff", borderRadius: 12, padding: "1rem", marginBottom: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                     <div style={{ fontWeight: 600, marginBottom: 6 }}>{msg.nom} - {msg.telephone}</div>
                     <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 6, fontSize: 13, marginBottom: 8, borderLeft: "3px solid #2563eb" }}>{msg.message}</div>
-                    {msg.reponse && <div style={{ background: "#f0f9ff", padding: "8px", borderRadius: 6, fontSize: 12, marginBottom: 8, borderLeft: "3px solid #10b981" }}>Réponse: {msg.reponse}</div>}
-                    <textarea placeholder="Répondre..." value={msg.reponse || ""} onChange={async e => { await supabase.from("messages").update({ reponse: e.target.value }).eq("id", msg.id); chargerMessages(); }} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, resize: "vertical" }} rows={2} />
+                    {msg.reponse && msg.type !== "admin_to_client" && <div style={{ background: "#f0f9ff", padding: "8px", borderRadius: 6, fontSize: 12, marginBottom: 8, borderLeft: "3px solid #10b981" }}>Réponse: {msg.reponse}</div>}
+                    {msg.type !== "admin_to_client" && <textarea placeholder="Répondre..." value={msg.reponse || ""} onChange={async e => { await supabase.from("messages").update({ reponse: e.target.value }).eq("id", msg.id); chargerMessages(); }} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, resize: "vertical" }} rows={2} />}
                   </div>
                 ))
               )}
@@ -415,7 +437,7 @@ export default function FastBuy229() {
 
         {showGererClients && (
           <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowGererClients(false)}>
-            <div className="modal">
+            <div className="modal" style={{ maxWidth: "600px" }}>
               <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Gérer Clients ({clients.length})</h2>
               <input placeholder="Rechercher par email..." value={clientRecherche} onChange={e => setClientRecherche(e.target.value)} style={{ marginBottom: 12 }} />
               <button className="btn-primary" style={{ marginBottom: 16 }} onClick={async () => {
@@ -427,6 +449,15 @@ export default function FastBuy229() {
                 <div style={{ background: "#f9fafb", borderRadius: 12, padding: "1rem", border: "1px solid #e5e7eb", marginBottom: 16 }}>
                   <div style={{ fontWeight: 600, marginBottom: 12 }}>{clientTrouve.nom}</div>
                   <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>{clientTrouve.email} - {clientTrouve.telephone}</div>
+                  
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8 }}>Envoyer un message</div>
+                    <textarea placeholder="Message au client..." value={messageAuClient} onChange={e => setMessageAuClient(e.target.value)} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, marginBottom: 8, resize: "vertical" }} rows={2} />
+                    <button className="btn-primary" style={{ marginBottom: 12, background: "#8b5cf6" }} onClick={envoyerMessageAuClient} disabled={loading}>
+                      {loading ? "Envoi..." : "Envoyer Message"}
+                    </button>
+                  </div>
+
                   <input type="password" placeholder="Nouveau mot de passe" value={nouveauMdpClient} onChange={e => setNouveauMdpClient(e.target.value)} style={{ marginBottom: 10 }} />
                   <div style={{ display: "flex", gap: 10 }}>
                     <button className="btn-primary" style={{ background: "#10b981" }} onClick={async () => {
@@ -539,7 +570,10 @@ export default function FastBuy229() {
           )}
 
           <div style={{ padding: "1.5rem" }}>
-            <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Catégories</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h2 style={{ fontSize: "1rem", fontWeight: 700 }}>Catégories</h2>
+              <button onClick={() => setShowContactAdmin(true)} style={{ padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 8, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Nous Contacter</button>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
               {CATEGORIES.filter(c => c !== "Tous").map(cat => {
                 const catProduits = produits.filter(p => p.category === cat && (!genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi));
@@ -675,20 +709,34 @@ export default function FastBuy229() {
               );
             })()}
             
-            <button onClick={() => ajouterAuPanier(showProduit, couleurChoisie, tailleChoisie)} disabled={!couleurChoisie || !tailleChoisie} className="btn-primary" style={{ opacity: (!couleurChoisie || !tailleChoisie) ? 0.5 : 1, marginBottom: 8 }}>
+            <button onClick={() => ajouterAuPanier(showProduit, couleurChoisie, tailleChoisie)} disabled={!couleurChoisie || !tailleChoisie} className="btn-primary" style={{ opacity: (!couleurChoisie || !tailleChoisie) ? 0.5 : 1 }}>
               {!client ? "Connecte-toi" : (!couleurChoisie || !tailleChoisie) ? "Choisis" : "Ajouter"}
             </button>
-
-            {client && <button onClick={() => { setShowProduit(null); setShowContact(true); }} style={{ width: "100%", padding: "10px 0", background: "#fff3cd", border: "1px solid #ffc107", color: "#856404", borderRadius: 10, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>Vous avez un problème ?</button>}
           </div>
         </div>
       )}
 
-      {showContact && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowContact(false)}>
+      {showContactAdmin && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowContactAdmin(false)}>
           <div className="modal">
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Nous contacter</h2>
-            <textarea placeholder="Décrivez votre problème..." value={messageContact} onChange={e => setMessageContact(e.target.value)} style={{ width: "100%", padding: "12px", border: "1.5px solid #e5e7eb", borderRadius: 10, fontSize: 14, marginBottom: 12, resize: "vertical" }} rows={4} />
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Nous Contacter</h2>
+            <div style={{ background: "#eff6ff", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "#1e40af" }}>Contactez-nous via:</div>
+              <div style={{ fontSize: 12, color: "#1a1a2e", marginBottom: 6 }}>
+                <strong>Email:</strong> {ADMIN_EMAIL}
+              </div>
+              <div style={{ fontSize: 12, color: "#1a1a2e" }}>
+                <strong>WhatsApp:</strong> {ADMIN_WHATSAPP}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Ou envoyez-nous un message:</div>
+              <input placeholder="Votre nom" value={messageContactNom} onChange={e => setMessageContactNom(e.target.value)} style={{ marginBottom: 10 }} />
+              <input placeholder="Votre téléphone" value={messageContactTel} onChange={e => setMessageContactTel(e.target.value)} style={{ marginBottom: 10 }} />
+              <textarea placeholder="Votre message..." value={messageContact} onChange={e => setMessageContact(e.target.value)} style={{ width: "100%", padding: "12px", border: "1.5px solid #e5e7eb", borderRadius: 10, fontSize: 14, marginBottom: 12, resize: "vertical" }} rows={4} />
+            </div>
+
             <button className="btn-primary" onClick={envoyerMessage} disabled={loading}>
               {loading ? "Envoi..." : "Envoyer"}
             </button>
