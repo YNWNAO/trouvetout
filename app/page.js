@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 
 const CATEGORIES = ["Tous", "Vêtements", "Chaussures", "Parfums", "Téléphones", "Sacs", "Bijoux", "Ordinateurs", "Accessoires"];
@@ -41,8 +41,7 @@ export default function FastBuy229() {
   const [showConfirm, setShowConfirm] = useState(null);
   const [showProduit, setShowProduit] = useState(null);
   const [showContactAdmin, setShowContactAdmin] = useState(false);
-  const [showMessages, setShowMessages] = useState(false);
-  const [selectedClientChat, setSelectedClientChat] = useState(null);
+  const [showClientMessages, setShowClientMessages] = useState(false);
   const [photoChoisie, setPhotoChoisie] = useState(0);
   const [couleurChoisie, setCouleurChoisie] = useState("");
   const [tailleChoisie, setTailleChoisie] = useState("");
@@ -50,11 +49,11 @@ export default function FastBuy229() {
   const [adminPwd, setAdminPwd] = useState("");
   const [showPwdAdmin, setShowPwdAdmin] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
-  const [showGererClients, setShowGererClients] = useState(false);
+  const [showMessenger, setShowMessenger] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState(null);
   const [clientRecherche, setClientRecherche] = useState("");
   const [clientTrouve, setClientTrouve] = useState(null);
   const [nouveauMdpClient, setNouveauMdpClient] = useState("");
-  const [messageAuClient, setMessageAuClient] = useState("");
   const [messageContact, setMessageContact] = useState("");
   const [messageContactNom, setMessageContactNom] = useState("");
   const [messageContactTel, setMessageContactTel] = useState("");
@@ -77,6 +76,8 @@ export default function FastBuy229() {
   const [reduction, setReduction] = useState(0);
   const [reponseMessage, setReponseMessage] = useState({});
   const [chatMessage, setChatMessage] = useState("");
+  const [messengerMessage, setMessengerMessage] = useState("");
+  const messagesEndRef = useRef(null);
 
   const pwdButtonStyle = { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#374151", padding: "4px 8px", zIndex: 10 };
 
@@ -106,12 +107,16 @@ export default function FastBuy229() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (showMessages || showGererClients || page === "admin") {
+      if (showClientMessages || showMessenger || page === "admin") {
         chargerMessages();
       }
     }, 2000);
     return () => clearInterval(interval);
-  }, [showMessages, showGererClients, page]);
+  }, [showClientMessages, showMessenger, page]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, selectedClientId]);
 
   const chargerProduits = async () => {
     const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false });
@@ -124,7 +129,7 @@ export default function FastBuy229() {
   };
 
   const chargerMessages = async () => {
-    const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: true });
     if (data) setMessages(data);
   };
 
@@ -137,6 +142,12 @@ export default function FastBuy229() {
     if (!path) return null;
     if (path.startsWith("http")) return path;
     return `https://nuhpdqioggxznceqvpvx.supabase.co/storage/v1/object/public/produits/${path}`;
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
   const produitsFiltres = produits.filter(p => {
@@ -243,61 +254,78 @@ export default function FastBuy229() {
   const envoyerMessage = async () => {
     if (!messageContact.trim()) { alert("Message vide !"); return; }
     setLoading(true);
-    await supabase.from("messages").insert([{
-      user_id: client?.id || null,
-      nom: messageContactNom || "Client",
-      telephone: messageContactTel || "",
-      message: messageContact,
-      reponse: "",
-      sender_type: "client"
-    }]);
-    alert("Message envoyé !");
-    setMessageContact("");
-    setMessageContactNom("");
-    setMessageContactTel("");
-    setShowContactAdmin(false);
-    chargerMessages();
+    try {
+      await supabase.from("messages").insert([{
+        user_id: client?.id || null,
+        nom: messageContactNom || "Visiteur",
+        telephone: messageContactTel || "",
+        message: messageContact,
+        reponse: "",
+        sender_type: "client",
+        conversation_id: client?.id || Math.random()
+      }]);
+      alert("Message envoyé !");
+      setMessageContact("");
+      setMessageContactNom("");
+      setMessageContactTel("");
+      setShowContactAdmin(false);
+      chargerMessages();
+    } catch (e) {
+      alert("Erreur: " + e.message);
+    }
     setLoading(false);
   };
 
   const repondreAuMessage = async (msgId, reponse) => {
     if (!reponse.trim()) { alert("Message vide !"); return; }
     setLoading(true);
-    await supabase.from("messages").update({ reponse }).eq("id", msgId);
-    setReponseMessage({ ...reponseMessage, [msgId]: "" });
-    chargerMessages();
+    try {
+      await supabase.from("messages").update({ reponse }).eq("id", msgId);
+      setReponseMessage({ ...reponseMessage, [msgId]: "" });
+      chargerMessages();
+    } catch (e) {
+      alert("Erreur: " + e.message);
+    }
     setLoading(false);
   };
 
-  const envoyerMessageAuClient = async (clientId) => {
-    if (!messageAuClient.trim()) { alert("Message vide !"); return; }
+  const envoyerMessengerMessage = async () => {
+    if (!messengerMessage.trim() || !selectedClientId) { alert("Message vide !"); return; }
     setLoading(true);
-    await supabase.from("messages").insert([{
-      user_id: clientId,
-      nom: "Admin FastBuy",
-      telephone: ADMIN_WHATSAPP,
-      message: messageAuClient,
-      reponse: "Admin",
-      sender_type: "admin"
-    }]);
-    alert("Message envoyé !");
-    setMessageAuClient("");
+    try {
+      await supabase.from("messages").insert([{
+        user_id: selectedClientId,
+        nom: "Admin FastBuy",
+        telephone: ADMIN_WHATSAPP,
+        message: messengerMessage,
+        sender_type: "admin",
+        conversation_id: selectedClientId
+      }]);
+      setMessengerMessage("");
+      chargerMessages();
+    } catch (e) {
+      alert("Erreur: " + e.message);
+    }
     setLoading(false);
   };
 
   const envoyerChatMessage = async () => {
     if (!chatMessage.trim()) { alert("Message vide !"); return; }
     setLoading(true);
-    await supabase.from("messages").insert([{
-      user_id: client?.id,
-      nom: client?.nom,
-      telephone: client?.telephone,
-      message: chatMessage,
-      sender_type: "client",
-      conversation_id: client?.id
-    }]);
-    setChatMessage("");
-    chargerMessages();
+    try {
+      await supabase.from("messages").insert([{
+        user_id: client?.id,
+        nom: client?.nom,
+        telephone: client?.telephone,
+        message: chatMessage,
+        sender_type: "client",
+        conversation_id: client?.id
+      }]);
+      setChatMessage("");
+      chargerMessages();
+    } catch (e) {
+      alert("Erreur: " + e.message);
+    }
     setLoading(false);
   };
 
@@ -334,6 +362,18 @@ export default function FastBuy229() {
 
   const clientMessages = messages.filter(m => m.user_id === client?.id || m.conversation_id === client?.id);
   const unreadCount = clientMessages.length;
+  
+  // Grouper les messages par conversation pour l'admin
+  const conversationMap = {};
+  messages.forEach(msg => {
+    const convId = msg.conversation_id || msg.user_id;
+    if (!conversationMap[convId]) {
+      conversationMap[convId] = [];
+    }
+    conversationMap[convId].push(msg);
+  });
+
+  const messagesForSelectedClient = selectedClientId ? (conversationMap[selectedClientId] || []) : [];
 
   if (page === "admin") {
     return (
@@ -356,7 +396,7 @@ export default function FastBuy229() {
               <h1 style={{ fontSize: "1.8rem", fontWeight: 800 }}>Admin FastBuy</h1>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => setShowAddProduct(true)}>Ajouter Produit</button>
-                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#10b981" }} onClick={() => { setShowGererClients(true); chargerClients(); }}>Gérer Clients</button>
+                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#06b6d4" }} onClick={() => { setShowMessenger(true); chargerClients(); chargerMessages(); }}>💬 Messenger</button>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#f59e0b" }} onClick={() => { chargerCommandes(); chargerMessages(); }}>Actualiser</button>
                 <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "10px 18px", background: "#fef2f2", border: "1px solid #fecaca", color: "#ef4444", borderRadius: 10, cursor: "pointer", fontWeight: 600 }}>Déconnexion</button>
               </div>
@@ -403,27 +443,88 @@ export default function FastBuy229() {
               )}
             </div>
 
-            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>Messages ({messages.filter(m => !m.reponse).length})</h2>
+            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>Messages ({messages.filter(m => !m.reponse && m.sender_type === "client").length})</h2>
             <div style={{ marginBottom: "2rem", maxHeight: 500, overflowY: "auto" }}>
-              {messages.length === 0 ? (
+              {messages.filter(m => m.sender_type === "client" && !m.reponse).length === 0 ? (
                 <div style={{ background: "#fff", padding: "1.5rem", borderRadius: 12, textAlign: "center", color: "#9ca3af" }}>Aucun message</div>
               ) : (
-                messages.map(msg => (
+                messages.filter(m => m.sender_type === "client" && !m.reponse).map(msg => (
                   <div key={msg.id} style={{ background: "#fff", borderRadius: 12, padding: "1rem", marginBottom: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                     <div style={{ fontWeight: 600, marginBottom: 6 }}>{msg.nom} - {msg.telephone}</div>
-                    <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 6, fontSize: 13, marginBottom: 8, borderLeft: "3px solid #2563eb" }}>{msg.message}</div>
-                    {msg.reponse && <div style={{ background: "#f0f9ff", padding: "8px", borderRadius: 6, fontSize: 12, marginBottom: 8, borderLeft: "3px solid #10b981" }}>Réponse: {msg.reponse}</div>}
-                    {!msg.reponse && (
-                      <div>
-                        <textarea placeholder="Répondre..." value={reponseMessage[msg.id] || ""} onChange={e => setReponseMessage({ ...reponseMessage, [msg.id]: e.target.value })} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, resize: "vertical", marginBottom: 8 }} rows={2} />
-                        <button className="btn-primary" style={{ fontSize: 12, padding: "8px" }} onClick={() => repondreAuMessage(msg.id, reponseMessage[msg.id])} disabled={loading}>
-                          {loading ? "Envoi..." : "Envoyer Réponse"}
-                        </button>
-                      </div>
-                    )}
+                    <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 6, fontSize: 13, marginBottom: 8, borderLeft: "3px solid #2563eb" }}>
+                      {msg.message}
+                      <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{formatTime(msg.created_at)}</div>
+                    </div>
+                    <div>
+                      <textarea placeholder="Répondre..." value={reponseMessage[msg.id] || ""} onChange={e => setReponseMessage({ ...reponseMessage, [msg.id]: e.target.value })} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, resize: "vertical", marginBottom: 8 }} rows={2} />
+                      <button className="btn-primary" style={{ fontSize: 12, padding: "8px" }} onClick={() => repondreAuMessage(msg.id, reponseMessage[msg.id])} disabled={loading}>
+                        {loading ? "Envoi..." : "Envoyer Réponse"}
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        )}
+
+        {showMessenger && (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowMessenger(false)}>
+            <div className="modal" style={{ maxWidth: "900px", maxHeight: "85vh", padding: 0, display: "flex", flexDirection: "column" }}>
+              <div style={{ background: "#2563eb", color: "#fff", padding: "1rem", fontWeight: 700, fontSize: "1.2rem", borderRadius: "20px 20px 0 0", display: "flex", justifyContent: "space-between" }}>
+                <span>💬 Messenger</span>
+                <button onClick={() => setShowMessenger(false)} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.5rem" }}>×</button>
+              </div>
+
+              <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+                {/* Liste conversations */}
+                <div style={{ width: "300px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb" }}>
+                  {Object.keys(conversationMap).length === 0 ? (
+                    <div style={{ padding: "1rem", textAlign: "center", color: "#9ca3af", fontSize: 12 }}>Aucune conversation</div>
+                  ) : (
+                    Object.keys(conversationMap).map(convId => {
+                      const convMessages = conversationMap[convId];
+                      const lastMsg = convMessages[convMessages.length - 1];
+                      const clientName = lastMsg.nom || "Client";
+                      return (
+                        <div key={convId} onClick={() => setSelectedClientId(convId)} style={{ padding: "1rem", borderBottom: "1px solid #e5e7eb", cursor: "pointer", background: selectedClientId === convId ? "#e0e7ff" : "#fff" }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{clientName}</div>
+                          <div style={{ fontSize: 11, color: "#6b7280" }}>{lastMsg.message?.substring(0, 40)}...</div>
+                          <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{formatTime(lastMsg.created_at)}</div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Chat window */}
+                {selectedClientId ? (
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#fff" }}>
+                    <div style={{ padding: "1rem", borderBottom: "1px solid #e5e7eb", fontWeight: 600 }}>
+                      {messagesForSelectedClient[0]?.nom || "Client"}
+                    </div>
+                    <div style={{ flex: 1, overflowY: "auto", padding: "1rem", display: "flex", flexDirection: "column", gap: 8 }}>
+                      {messagesForSelectedClient.map(msg => (
+                        <div key={msg.id} style={{ display: "flex", justifyContent: msg.sender_type === "admin" ? "flex-end" : "flex-start" }}>
+                          <div style={{ maxWidth: "70%", padding: "8px 12px", borderRadius: 12, background: msg.sender_type === "admin" ? "#2563eb" : "#e5e7eb", color: msg.sender_type === "admin" ? "#fff" : "#1a1a2e" }}>
+                            <div style={{ fontSize: 12 }}>{msg.message}</div>
+                            <div style={{ fontSize: 10, opacity: 0.7, marginTop: 4 }}>{formatTime(msg.created_at)}</div>
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </div>
+                    <div style={{ padding: "1rem", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8 }}>
+                      <input value={messengerMessage} onChange={e => setMessengerMessage(e.target.value)} placeholder="Message..." style={{ flex: 1, marginBottom: 0 }} />
+                      <button onClick={envoyerMessengerMessage} disabled={loading} className="btn-primary" style={{ width: "auto", padding: "8px 20px" }}>Envoyer</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>
+                    Sélectionne une conversation
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -482,63 +583,6 @@ export default function FastBuy229() {
             </div>
           </div>
         )}
-
-        {showGererClients && (
-          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowGererClients(false)}>
-            <div className="modal" style={{ maxWidth: "650px" }}>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Gérer Clients ({clients.length})</h2>
-              <input placeholder="Rechercher par email..." value={clientRecherche} onChange={e => setClientRecherche(e.target.value)} style={{ marginBottom: 12 }} />
-              <button className="btn-primary" style={{ marginBottom: 16 }} onClick={async () => {
-                const { data } = await supabase.from("users").select("*").eq("email", clientRecherche).maybeSingle();
-                setClientTrouve(data);
-              }}>Rechercher</button>
-
-              {clientTrouve && (
-                <div style={{ background: "#f9fafb", borderRadius: 12, padding: "1rem", border: "1px solid #e5e7eb", marginBottom: 16 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 12 }}>{clientTrouve.nom}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>{clientTrouve.email} - {clientTrouve.telephone}</div>
-                  
-                  <div style={{ marginBottom: 16, borderBottom: "1px solid #e5e7eb", paddingBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8 }}>Envoyer un message</div>
-                    <textarea placeholder="Message au client..." value={messageAuClient} onChange={e => setMessageAuClient(e.target.value)} style={{ width: "100%", padding: "8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, marginBottom: 8, resize: "vertical" }} rows={2} />
-                    <button className="btn-primary" style={{ background: "#8b5cf6", marginBottom: 12 }} onClick={() => envoyerMessageAuClient(clientTrouve.id)} disabled={loading}>
-                      {loading ? "Envoi..." : "Envoyer Message"}
-                    </button>
-                  </div>
-
-                  <input type="password" placeholder="Nouveau mot de passe" value={nouveauMdpClient} onChange={e => setNouveauMdpClient(e.target.value)} style={{ marginBottom: 10 }} />
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button className="btn-primary" style={{ background: "#10b981" }} onClick={async () => {
-                      if (nouveauMdpClient.length < 8) { alert("Minimum 8 caractères !"); return; }
-                      await supabase.from("users").update({ mot_de_passe: nouveauMdpClient }).eq("id", clientTrouve.id);
-                      alert("Mot de passe changé !");
-                      setNouveauMdpClient("");
-                      setClientTrouve(null);
-                    }}>Changer MDP</button>
-                    <button className="btn-primary" style={{ background: "#ef4444" }} onClick={async () => {
-                      if (confirm("Supprimer ce client définitivement?")) {
-                        await supabase.from("users").delete().eq("id", clientTrouve.id);
-                        alert("Client supprimé !");
-                        setClientTrouve(null);
-                        await chargerClients();
-                      }
-                    }}>Supprimer</button>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ marginTop: 16, maxHeight: 300, overflowY: "auto" }}>
-                <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: 10 }}>Tous les clients</h3>
-                {clients.map(c => (
-                  <div key={c.id} onClick={() => setClientTrouve(c)} style={{ background: "#fff", borderRadius: 8, padding: "10px", marginBottom: 8, border: `2px solid ${clientTrouve?.id === c.id ? "#2563eb" : "#e5e7eb"}`, fontSize: 12, cursor: "pointer", background: clientTrouve?.id === c.id ? "#eff6ff" : "#fff" }}>
-                    <div style={{ fontWeight: 600 }}>{c.nom}</div>
-                    <div style={{ color: "#6b7280", fontSize: 11 }}>{c.email} - {c.telephone}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
@@ -569,7 +613,7 @@ export default function FastBuy229() {
         <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#1a1a2e" }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
         {client ? (
           <>
-            <span style={{ position: "relative", cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#06b6d4" }} onClick={() => { setShowMessages(true); chargerMessages(); }}>
+            <span style={{ position: "relative", cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#06b6d4" }} onClick={() => { setShowClientMessages(true); chargerMessages(); }}>
               Messages
               {unreadCount > 0 && <span style={{ position: "absolute", top: -8, right: -10, background: "#ef4444", color: "#fff", borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>{unreadCount}</span>}
             </span>
@@ -783,8 +827,8 @@ export default function FastBuy229() {
         </div>
       )}
 
-      {showMessages && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowMessages(false)}>
+      {showClientMessages && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowClientMessages(false)}>
           <div className="modal" style={{ maxWidth: "700px", maxHeight: "80vh", display: "flex", flexDirection: "column", padding: 0 }}>
             <div style={{ background: "#2563eb", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Messages ({clientMessages.length})</div>
             <div style={{ flex: 1, overflowY: "auto", padding: "1rem", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -792,12 +836,15 @@ export default function FastBuy229() {
                 <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af" }}>Aucun message</div>
               ) : (
                 clientMessages.map(msg => (
-                  <div key={msg.id} style={{ padding: "8px 12px", borderRadius: 8, background: msg.sender_type === "admin" ? "#eff6ff" : "#f3f4f6", alignSelf: msg.sender_type === "admin" ? "flex-start" : "flex-end", maxWidth: "80%" }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: msg.sender_type === "admin" ? "#1e40af" : "#6b7280" }}>{msg.nom}</div>
-                    <div style={{ fontSize: 12 }}>{msg.message}</div>
+                  <div key={msg.id} style={{ display: "flex", justifyContent: msg.sender_type === "admin" ? "flex-start" : "flex-end" }}>
+                    <div style={{ maxWidth: "70%", padding: "8px 12px", borderRadius: 12, background: msg.sender_type === "admin" ? "#e5e7eb" : "#2563eb", color: msg.sender_type === "admin" ? "#1a1a2e" : "#fff" }}>
+                      <div style={{ fontSize: 12 }}>{msg.message}</div>
+                      <div style={{ fontSize: 10, opacity: 0.7, marginTop: 4 }}>{formatTime(msg.created_at)}</div>
+                    </div>
                   </div>
                 ))
               )}
+              <div ref={messagesEndRef} />
             </div>
             <div style={{ padding: "1rem", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8 }}>
               <input value={chatMessage} onChange={e => setChatMessage(e.target.value)} placeholder="Message..." style={{ flex: 1, marginBottom: 0 }} />
