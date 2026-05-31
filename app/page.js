@@ -86,6 +86,10 @@ export default function FastBuy229() {
   const [inscForm, setInscForm] = useState({ prenom: "", nom: "", email: "", telephone: "", date_naissance: "", mot_de_passe: "", confirmer: "" });
   const [mdpForm, setMdpForm] = useState({ email: "", telephone: "", date_naissance: "", nouveau: "", confirmer: "" });
   const [authError, setAuthError] = useState("");
+  const [showPwdLogin, setShowPwdLogin] = useState(false);
+  const [showPwdInsc, setShowPwdInsc] = useState(false);
+  const [showPwdForgot, setShowPwdForgot] = useState(false);
+  const [showPwdAdmin, setShowPwdAdmin] = useState(false);
 
   useEffect(() => {
     const savedPwd = localStorage.getItem("fastbuy_admin_pwd");
@@ -300,7 +304,8 @@ export default function FastBuy229() {
                   {adminTentatives > 0 && <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#ef4444", marginBottom: 12 }}>⚠️ Tentative {adminTentatives}/3</div>}
                   {!showAdminForgot ? (
                     <>
-                      <input type="password" value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" style={inp} onKeyDown={e => e.key === "Enter" && (() => {
+                      <div style={{ position: "relative", marginBottom: 12 }}>
+                      <input type={showPwdAdmin ? "text" : "password"} value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" style={{ ...inp, marginBottom: 0, paddingRight: 40 }} onKeyDown={e => e.key === "Enter" && (() => {
                         if (adminPwd === adminMotDePasse) { setAdminOk(true); setAdminTentatives(0); chargerCommandes(); chargerMessages(); }
                         else {
                           const n = adminTentatives + 1; setAdminTentatives(n); setAdminPwd("");
@@ -952,7 +957,10 @@ export default function FastBuy229() {
               <span onClick={() => setShowLogin(false)} style={{ cursor: "pointer", fontSize: 22, color: "#9ca3af" }}>×</span>
             </div>
             <input placeholder="Email ou téléphone" value={loginForm.identifiant} onChange={e => setLoginForm({ ...loginForm, identifiant: e.target.value })} style={inp} />
-            <input type="password" placeholder="Mot de passe" value={loginForm.motDePasse} onChange={e => setLoginForm({ ...loginForm, motDePasse: e.target.value })} style={inp} />
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <input type={showPwdLogin ? "text" : "password"} placeholder="Mot de passe" value={loginForm.motDePasse} onChange={e => setLoginForm({ ...loginForm, motDePasse: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
+              <span onClick={() => setShowPwdLogin(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdLogin ? "🙈" : "👁️"}</span>
+            </div>
             {authError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{authError}</div>}
             <button className="btn-primary" style={{ width: "100%", marginBottom: 12 }} onClick={connecter}>Se connecter</button>
             <div style={{ textAlign: "center", fontSize: 13, color: "#6b7280" }}>
@@ -979,9 +987,15 @@ export default function FastBuy229() {
             <input placeholder="Email *" type="email" value={inscForm.email} onChange={e => setInscForm({ ...inscForm, email: e.target.value })} style={inp} />
             <input placeholder="Téléphone *" value={inscForm.telephone} onChange={e => setInscForm({ ...inscForm, telephone: e.target.value })} style={inp} />
             <input placeholder="Date de naissance JJ/MM/AAAA *" value={inscForm.date_naissance} onChange={e => formatDate(e.target.value, setInscForm, "date_naissance")} style={inp} maxLength={10} />
-            <input type="password" placeholder="Mot de passe *" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={inp} />
-            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: -8, marginBottom: 12 }}>Minimum 8 caractères avec lettres et chiffres</div>
-            <input type="password" placeholder="Confirmer le mot de passe *" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={inp} />
+            <div style={{ position: "relative", marginBottom: 4 }}>
+              <input type={showPwdInsc ? "text" : "password"} placeholder="Mot de passe *" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
+              <span onClick={() => setShowPwdInsc(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdInsc ? "🙈" : "👁️"}</span>
+            </div>
+            <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 12 }}>Minimum 8 caractères avec lettres et chiffres</div>
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <input type={showPwdInsc ? "text" : "password"} placeholder="Confirmer le mot de passe *" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
+              <span onClick={() => setShowPwdInsc(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdInsc ? "🙈" : "👁️"}</span>
+            </div>
             {authError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{authError}</div>}
             <button className="btn-primary" style={{ width: "100%", marginBottom: 12 }} onClick={inscrire}>Créer mon compte</button>
             <div style={{ textAlign: "center", fontSize: 13, color: "#6b7280" }}>
@@ -1003,8 +1017,14 @@ export default function FastBuy229() {
             <input placeholder="Email *" value={mdpForm.email} onChange={e => setMdpForm({ ...mdpForm, email: e.target.value })} style={inp} />
             <input placeholder="Téléphone *" value={mdpForm.telephone} onChange={e => setMdpForm({ ...mdpForm, telephone: e.target.value })} style={inp} />
             <input placeholder="Date de naissance JJ/MM/AAAA *" value={mdpForm.date_naissance} onChange={e => formatDate(e.target.value, setMdpForm, "date_naissance")} style={inp} maxLength={10} />
-            <input type="password" placeholder="Nouveau mot de passe *" value={mdpForm.nouveau} onChange={e => setMdpForm({ ...mdpForm, nouveau: e.target.value })} style={inp} />
-            <input type="password" placeholder="Confirmer le nouveau mot de passe *" value={mdpForm.confirmer} onChange={e => setMdpForm({ ...mdpForm, confirmer: e.target.value })} style={inp} />
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <input type={showPwdForgot ? "text" : "password"} placeholder="Nouveau mot de passe *" value={mdpForm.nouveau} onChange={e => setMdpForm({ ...mdpForm, nouveau: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
+              <span onClick={() => setShowPwdForgot(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdForgot ? "🙈" : "👁️"}</span>
+            </div>
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <input type={showPwdForgot ? "text" : "password"} placeholder="Confirmer le nouveau mot de passe *" value={mdpForm.confirmer} onChange={e => setMdpForm({ ...mdpForm, confirmer: e.target.value })} style={{ ...inp, marginBottom: 0, paddingRight: 40 }} />
+              <span onClick={() => setShowPwdForgot(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", fontSize: 16, color: "#9ca3af" }}>{showPwdForgot ? "🙈" : "👁️"}</span>
+            </div>
             {authError && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{authError}</div>}
             <button className="btn-primary" style={{ width: "100%", marginBottom: 16 }} onClick={reinitMdp}>Réinitialiser</button>
             <div style={{ textAlign: "center" }}>
