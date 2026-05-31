@@ -8,7 +8,7 @@ const MOMO = "+229 57577895";
 const ADMIN_EMAIL = "nahofalgbadamassi@gmail.com";
 const ADMIN_WHATSAPP = "+33775958442";
 
-const globalStyles = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1a1a2e}input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;background:#fff;outline:none}input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);overflow-y:auto}.modal{background:#fff;border-radius:20px;padding:2rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}.btn-primary{background:#2563eb;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;width:100%}.btn-primary:hover{background:#1d4ed8}`;
+const globalStyles = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1a1a2e}input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;background:#fff;outline:none}input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);overflow-y:auto}.modal{background:#fff;border-radius:20px;padding:2rem;width:100%;max-width:600px;max-height:90vh;overflow-y:auto}.btn-primary{background:#2563eb;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;width:100%}.btn-primary:hover{background:#1d4ed8}`;
 
 export default function FastBuy229() {
   const [page, setPage] = useState("accueil");
@@ -16,7 +16,6 @@ export default function FastBuy229() {
   const [showGenreModal, setShowGenreModal] = useState(true);
   const [produits, setProduits] = useState([]);
   const [commandes, setCommandes] = useState([]);
-  const [messages, setMessages] = useState([]);
   const [clients, setClients] = useState([]);
   const [catActive, setCatActive] = useState("Tous");
   const [search, setSearch] = useState("");
@@ -30,14 +29,12 @@ export default function FastBuy229() {
   const [showConfirm, setShowConfirm] = useState(null);
   const [showProduit, setShowProduit] = useState(null);
   const [showContactAdmin, setShowContactAdmin] = useState(false);
-  const [photoChoisie, setPhotoChoisie] = useState(0);
   const [adminOk, setAdminOk] = useState(false);
   const [adminPwd, setAdminPwd] = useState("");
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showGererClients, setShowGererClients] = useState(false);
   const [clientTrouve, setClientTrouve] = useState(null);
   const [selectedClientId, setSelectedClientId] = useState(null);
-  const [messageAuClient, setMessageAuClient] = useState("");
   const [heroIndex, setHeroIndex] = useState(0);
   const [loginForm, setLoginForm] = useState({ identifiant: "", motDePasse: "" });
   const [inscForm, setInscForm] = useState({ prenom: "", nom: "", email: "", telephone: "", date_naissance: "", mot_de_passe: "", confirmer: "" });
@@ -47,7 +44,11 @@ export default function FastBuy229() {
   const [newProduct, setNewProduct] = useState({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
-  const messagesEndRef = useRef(null);
+  const [variantes, setVariantes] = useState([]);
+  const [newVariante, setNewVariante] = useState({ couleur: "", taille: "", prix: "" });
+  const [newMdpClient, setNewMdpClient] = useState("");
+  const [commandesClient, setCommandesClient] = useState([]);
+  const [messageAuClient, setMessageAuClient] = useState("");
 
   useEffect(() => {
     const savedGenre = localStorage.getItem("fastbuy_genre");
@@ -57,7 +58,6 @@ export default function FastBuy229() {
     if (savedClient) setClient(JSON.parse(savedClient));
     if (savedPanier) setPanier(JSON.parse(savedPanier));
     chargerProduits();
-    chargerMessages();
     if (typeof window !== "undefined" && window.location.search.includes("page=admin")) {
       setPage("admin");
       setShowGenreModal(false);
@@ -65,21 +65,12 @@ export default function FastBuy229() {
   }, []);
 
   useEffect(() => { localStorage.setItem("fastbuy_panier", JSON.stringify(panier)); }, [panier]);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (showGererClients || page === "admin") chargerMessages();
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [showGererClients, page]);
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, selectedClientId]);
 
   const chargerProduits = async () => { const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false }); if (data) setProduits(data); };
   const chargerCommandes = async () => { const { data } = await supabase.from("commandes").select("*").order("created_at", { ascending: false }); if (data) setCommandes(data); };
-  const chargerMessages = async () => { try { const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: true }); if (data) setMessages(data); } catch (e) { console.error("Erreur:", e); } };
   const chargerClients = async () => { const { data } = await supabase.from("users").select("*").order("created_at", { ascending: false }); if (data) setClients(data); };
 
   const getImageUrl = (path) => { if (!path) return null; if (path.startsWith("http")) return path; return `https://nuhpdqioggxznceqvpvx.supabase.co/storage/v1/object/public/produits/${path}`; };
-  const formatTime = (dateString) => { if (!dateString) return ""; const date = new Date(dateString); return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); };
 
   const produitsFiltres = produits.filter(p => {
     const matchCat = catActive === "Tous" || p.category === catActive;
@@ -96,10 +87,10 @@ export default function FastBuy229() {
 
   const inscrire = async () => {
     setAuthError("");
-    if (!inscForm.prenom || !inscForm.nom || !inscForm.email || !inscForm.telephone || !inscForm.date_naissance || !inscForm.mot_de_passe) { setAuthError("Remplis tous les champs!"); return; }
-    if (inscForm.mot_de_passe !== inscForm.confirmer) { setAuthError("Les mots de passe ne correspondent pas!"); return; }
+    if (!inscForm.prenom || !inscForm.nom || !inscForm.email || !inscForm.telephone || !inscForm.date_naissance || !inscForm.mot_de_passe) { setAuthError("Remplis tous!"); return; }
+    if (inscForm.mot_de_passe !== inscForm.confirmer) { setAuthError("MDP ≠"); return; }
     const { data, error } = await supabase.from("users").insert([{ nom: `${inscForm.prenom} ${inscForm.nom}`, email: inscForm.email, telephone: inscForm.telephone, date_naissance: inscForm.date_naissance, mot_de_passe: inscForm.mot_de_passe }]).select().single();
-    if (error) { setAuthError("Erreur!"); return; }
+    if (error) { setAuthError("Erreur"); return; }
     const user = { id: data.id, nom: data.nom, email: data.email, telephone: data.telephone };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
@@ -109,9 +100,9 @@ export default function FastBuy229() {
   const connecter = async () => {
     setAuthError("");
     let { data } = await supabase.from("users").select("*").eq("email", loginForm.identifiant).maybeSingle();
-    if (!data) { ({ data } = await supabase.from("users").select("*").eq("telephone", loginForm.identifiant).maybeSingle()); }
-    if (!data) { setAuthError("Compte non trouvé!"); return; }
-    if (data.mot_de_passe !== loginForm.motDePasse) { setAuthError("Mot de passe incorrect!"); return; }
+    if (!data) ({ data } = await supabase.from("users").select("*").eq("telephone", loginForm.identifiant).maybeSingle());
+    if (!data) { setAuthError("Pas trouvé"); return; }
+    if (data.mot_de_passe !== loginForm.motDePasse) { setAuthError("MDP faux"); return; }
     const user = { id: data.id, nom: data.nom, email: data.email, telephone: data.telephone };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
@@ -130,14 +121,20 @@ export default function FastBuy229() {
     if (!error) capturePath = fn;
     const num = "CMD-" + Math.random().toString(36).substr(2, 6).toUpperCase();
     await supabase.from("commandes").insert([{ numero: num, nom: formCmd.nom, email: formCmd.email, telephone: formCmd.telephone, ville: formCmd.ville, adresse: formCmd.adresse, articles: JSON.stringify(panier), total: totalPanier, totalFinal, statut: "En attente", paiement: "En attente", capture: capturePath, user_id: client?.id }]);
-    setShowConfirm({ numero: num, nom: formCmd.nom, totalFinal });
+    setShowConfirm({ numero: num });
     setPanier([]);
     setShowCommande(false);
     setLoading(false);
   };
 
+  const ajouterVariante = () => {
+    if (!newVariante.couleur || !newVariante.taille || !newVariante.prix) { alert("Remplis tous!"); return; }
+    setVariantes([...variantes, { ...newVariante, prix: parseInt(newVariante.prix) }]);
+    setNewVariante({ couleur: "", taille: "", prix: "" });
+  };
+
   const ajouterProduit = async () => {
-    if (!newProduct.title || !newProduct.price) { alert("Titre et prix requis!"); return; }
+    if (!newProduct.title || !newProduct.price) { alert("Titre + prix requis!"); return; }
     setLoading(true);
     try {
       let imagePath = null;
@@ -147,12 +144,14 @@ export default function FastBuy229() {
         if (uploadError) { alert("Erreur upload"); setLoading(false); return; }
         imagePath = fn;
       }
-      await supabase.from("produits").insert([{ ...newProduct, price: parseInt(newProduct.price), image: imagePath }]);
+      const prodData = { ...newProduct, price: parseInt(newProduct.price), image: imagePath, variantes: variantes.length > 0 ? JSON.stringify(variantes) : null };
+      await supabase.from("produits").insert([prodData]);
       alert("Produit créé!");
       await chargerProduits();
       setShowAddProduct(false);
       setNewProduct({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
       setImageFiles([]); setImagePreviews([]);
+      setVariantes([]);
       setLoading(false);
     } catch (e) {
       alert("Erreur: " + e.message);
@@ -160,22 +159,32 @@ export default function FastBuy229() {
     }
   };
 
-  const conversationMap = {};
-  messages.forEach(msg => {
-    const convId = msg.conversation_id || msg.user_id;
-    if (!conversationMap[convId]) conversationMap[convId] = [];
-    conversationMap[convId].push(msg);
-  });
+  const chargerCommandesClient = async (clientId) => {
+    const { data } = await supabase.from("commandes").select("*").eq("user_id", clientId);
+    if (data) setCommandesClient(data);
+  };
 
-  const messagesForClient = selectedClientId ? (conversationMap[selectedClientId] || []) : [];
-
-  const envoyerMessageAuClient = async () => {
-    if (!messageAuClient.trim() || !selectedClientId) return;
+  const supprimerClient = async (clientId) => {
+    if (!confirm("Confirmer?")) return;
     setLoading(true);
     try {
-      await supabase.from("messages").insert([{ user_id: selectedClientId, nom: "Admin", message: messageAuClient, sender_type: "admin", conversation_id: selectedClientId }]);
-      setMessageAuClient("");
-      chargerMessages();
+      await supabase.from("users").delete().eq("id", clientId);
+      alert("Supprimé!");
+      await chargerClients();
+      setClientTrouve(null);
+    } catch (e) {
+      alert("Erreur: " + e.message);
+    }
+    setLoading(false);
+  };
+
+  const changerMdpClient = async (clientId) => {
+    if (!newMdpClient || newMdpClient.length < 8) { alert("Min 8 chars!"); return; }
+    setLoading(true);
+    try {
+      await supabase.from("users").update({ mot_de_passe: newMdpClient }).eq("id", clientId);
+      alert("OK!");
+      setNewMdpClient("");
     } catch (e) {
       alert("Erreur: " + e.message);
     }
@@ -190,8 +199,8 @@ export default function FastBuy229() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
             <div style={{ background: "#fff", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 400 }}>
               <h1 style={{ fontSize: "1.6rem", fontWeight: 800, textAlign: "center", marginBottom: "2rem" }}>Admin</h1>
-              <input type="password" value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" style={{ marginBottom: 12 }} />
-              <button className="btn-primary" onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerMessages(); chargerClients(); } else { alert("Incorrect!"); setAdminPwd(""); } }}>Accéder</button>
+              <input type="password" value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" />
+              <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerClients(); } else { alert("Faux!"); setAdminPwd(""); } }}>Accéder</button>
             </div>
           </div>
         ) : (
@@ -199,9 +208,8 @@ export default function FastBuy229() {
             <div style={{ display: "flex", gap: 10, justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap" }}>
               <h1 style={{ fontSize: "1.8rem", fontWeight: 800 }}>Admin</h1>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => setShowAddProduct(true)}>Ajouter Produit</button>
-                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#10b981" }} onClick={() => { setShowGererClients(true); chargerClients(); chargerMessages(); }}>Gérer Clients</button>
-                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#f59e0b" }} onClick={() => { chargerCommandes(); chargerMessages(); }}>Actualiser</button>
+                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => { setShowAddProduct(true); setVariantes([]); }}>Ajouter Produit</button>
+                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#10b981" }} onClick={() => { setShowGererClients(true); chargerClients(); }}>Gérer Clients</button>
                 <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "10px 18px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 10, cursor: "pointer", fontWeight: 600 }}>Déco</button>
               </div>
             </div>
@@ -210,9 +218,10 @@ export default function FastBuy229() {
 
         {showAddProduct && (
           <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddProduct(false)}>
-            <div className="modal">
+            <div className="modal" style={{ maxWidth: "600px" }}>
               <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Ajouter Produit</h2>
               <input value={newProduct.title} onChange={e => setNewProduct({ ...newProduct, title: e.target.value })} placeholder="Titre" style={{ marginBottom: 12 }} />
+              <textarea value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} placeholder="Description" style={{ marginBottom: 12, resize: "vertical" }} rows={3} />
               <input type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} placeholder="Prix" style={{ marginBottom: 12 }} />
               <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} style={{ marginBottom: 12 }}>
                 {CATEGORIES.filter(c => c !== "Tous").map(c => <option key={c}>{c}</option>)}
@@ -222,14 +231,44 @@ export default function FastBuy229() {
                 <option>Femme</option>
                 <option>Unisexe</option>
               </select>
-              <div onClick={() => document.getElementById("photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginBottom: 12, background: "#fafafa" }}>
-                {imagePreviews.length > 0 ? (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-                    {imagePreviews.map((p, i) => <img key={i} src={p} alt="" style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 4 }} />)}
-                  </div>
-                ) : <div style={{ fontSize: 12, color: "#9ca3af" }}>Cliquez pour ajouter photo</div>}
-                <input id="photo-input" type="file" accept="image/*" onChange={e => { const files = Array.from(e.target.files); setImageFiles(files); setImagePreviews(files.map(f => URL.createObjectURL(f))); }} style={{ display: "none" }} />
+              <select value={newProduct.etat} onChange={e => setNewProduct({ ...newProduct, etat: e.target.value })} style={{ marginBottom: 12 }}>
+                <option>Neuf</option>
+                <option>Bon état</option>
+                <option>Occasion</option>
+              </select>
+
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Photos</label>
+                <div onClick={() => document.getElementById("photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", background: "#fafafa", marginTop: 6 }}>
+                  {imagePreviews.length > 0 ? (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                      {imagePreviews.map((p, i) => <img key={i} src={p} alt="" style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 4 }} />)}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: "#9ca3af" }}>Cliquez pour ajouter</div>
+                  )}
+                  <input id="photo-input" type="file" accept="image/*" multiple onChange={e => { const files = Array.from(e.target.files); setImageFiles(files); setImagePreviews(files.map(f => URL.createObjectURL(f))); }} style={{ display: "none" }} />
+                </div>
               </div>
+
+              <div style={{ marginBottom: 12, background: "#f9fafb", borderRadius: 10, padding: "1rem" }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Variantes (couleur, taille, prix)</label>
+                <div style={{ marginTop: 8, display: "flex", gap: 6, marginBottom: 8 }}>
+                  <input value={newVariante.couleur} onChange={e => setNewVariante({ ...newVariante, couleur: e.target.value })} placeholder="Couleur" style={{ marginBottom: 0 }} />
+                  <input value={newVariante.taille} onChange={e => setNewVariante({ ...newVariante, taille: e.target.value })} placeholder="Taille" style={{ marginBottom: 0 }} />
+                  <input type="number" value={newVariante.prix} onChange={e => setNewVariante({ ...newVariante, prix: e.target.value })} placeholder="Prix" style={{ marginBottom: 0 }} />
+                  <button onClick={ajouterVariante} style={{ padding: "8px 12px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, width: "auto" }}>+</button>
+                </div>
+                <div style={{ maxHeight: 100, overflowY: "auto" }}>
+                  {variantes.map((v, i) => (
+                    <div key={i} style={{ background: "#fff", padding: "6px", borderRadius: 4, marginBottom: 4, fontSize: 11, display: "flex", justifyContent: "space-between" }}>
+                      <span>{v.couleur} - {v.taille} - {v.prix} FCFA</span>
+                      <button onClick={() => setVariantes(variantes.filter((_, idx) => idx !== i))} style={{ background: "#fef2f2", color: "#ef4444", border: "none", borderRadius: 3, padding: "2px 6px", cursor: "pointer", fontSize: 10 }}>X</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <button onClick={ajouterProduit} disabled={loading} className="btn-primary">{loading ? "Création..." : "Publier"}</button>
             </div>
           </div>
@@ -237,34 +276,44 @@ export default function FastBuy229() {
 
         {showGererClients && (
           <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowGererClients(false)}>
-            <div className="modal" style={{ maxWidth: "800px", maxHeight: "85vh", display: "flex", flexDirection: "column", padding: 0 }}>
+            <div className="modal" style={{ maxWidth: "900px", maxHeight: "85vh", display: "flex", flexDirection: "column", padding: 0 }}>
               <div style={{ background: "#10b981", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Gérer Clients</div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                <div style={{ width: "250px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
+                <div style={{ width: "220px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
                   {clients.map(c => (
-                    <div key={c.id} onClick={() => { setClientTrouve(c); setSelectedClientId(c.id); }} style={{ padding: "10px", borderRadius: 8, marginBottom: 8, fontSize: 12, cursor: "pointer", background: clientTrouve?.id === c.id ? "#10b981" : "#fff", color: clientTrouve?.id === c.id ? "#fff" : "#1a1a2e", border: "1px solid #e5e7eb" }}>
-                      <div style={{ fontWeight: 600 }}>{c.nom}</div>
-                      <div style={{ fontSize: 10, opacity: 0.8 }}>{c.telephone}</div>
+                    <div key={c.id} onClick={() => { setClientTrouve(c); setSelectedClientId(c.id); chargerCommandesClient(c.id); }} style={{ padding: "10px", borderRadius: 8, marginBottom: 8, fontSize: 12, cursor: "pointer", background: clientTrouve?.id === c.id ? "#10b981" : "#fff", color: clientTrouve?.id === c.id ? "#fff" : "#1a1a2e", border: "1px solid #e5e7eb" }}>
+                      <div style={{ fontWeight: 600, fontSize: 11 }}>{c.nom}</div>
+                      <div style={{ fontSize: 9, opacity: 0.8 }}>{c.telephone}</div>
                     </div>
                   ))}
                 </div>
                 {clientTrouve ? (
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "1rem" }}>
-                    <div style={{ fontWeight: 600, marginBottom: "1rem" }}>{clientTrouve.nom}</div>
-                    <div style={{ flex: 1, overflowY: "auto", marginBottom: "1rem", display: "flex", flexDirection: "column", gap: 8 }}>
-                      {messagesForClient.map(msg => (
-                        <div key={msg.id} style={{ display: "flex", justifyContent: msg.sender_type === "admin" ? "flex-end" : "flex-start" }}>
-                          <div style={{ maxWidth: "70%", padding: "8px 12px", borderRadius: 12, background: msg.sender_type === "client" ? "#2563eb" : "#f3f4f6", color: msg.sender_type === "client" ? "#fff" : "#1a1a2e" }}>
-                            <div style={{ fontSize: 12 }}>{msg.message}</div>
-                            <div style={{ fontSize: 10, opacity: 0.7, marginTop: 4 }}>{formatTime(msg.created_at)}</div>
-                          </div>
-                        </div>
-                      ))}
-                      <div ref={messagesEndRef} />
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "1rem", overflowY: "auto" }}>
+                    <div style={{ fontWeight: 600, marginBottom: "0.5rem" }}>{clientTrouve.nom}</div>
+                    <div style={{ fontSize: 11, color: "#6b7280", marginBottom: "1.5rem" }}>{clientTrouve.email} | {clientTrouve.telephone}</div>
+
+                    <div style={{ marginBottom: "1.5rem" }}>
+                      <h3 style={{ fontSize: "0.85rem", fontWeight: 700, marginBottom: "0.5rem" }}>Commandes ({commandesClient.length})</h3>
+                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: "8px", maxHeight: 150, overflowY: "auto" }}>
+                        {commandesClient.length === 0 ? (
+                          <div style={{ fontSize: 11, color: "#9ca3af" }}>Aucune</div>
+                        ) : (
+                          commandesClient.map(cmd => (
+                            <div key={cmd.id} style={{ background: "#fff", padding: "6px", borderRadius: 4, marginBottom: 6, border: "1px solid #e5e7eb", fontSize: 10 }}>
+                              <div style={{ fontWeight: 600 }}>{cmd.numero}</div>
+                              <div style={{ color: "#2563eb", marginTop: 2 }}>{cmd.totalFinal?.toLocaleString()} FCFA</div>
+                              <div style={{ color: "#6b7280", fontSize: 9, marginTop: 2 }}>Statut: {cmd.statut}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <input value={messageAuClient} onChange={e => setMessageAuClient(e.target.value)} placeholder="Message..." style={{ flex: 1, marginBottom: 0 }} />
-                      <button onClick={envoyerMessageAuClient} disabled={loading} className="btn-primary" style={{ width: "auto", padding: "8px 16px" }}>Envoyer</button>
+
+                    <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1rem" }}>
+                      <h3 style={{ fontSize: "0.85rem", fontWeight: 700, marginBottom: "0.5rem" }}>Actions</h3>
+                      <input type="password" value={newMdpClient} onChange={e => setNewMdpClient(e.target.value)} placeholder="Nouveau MDP" style={{ marginBottom: 8, fontSize: 12 }} />
+                      <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8, fontSize: 11, padding: "8px" }} onClick={() => changerMdpClient(clientTrouve.id)} disabled={loading}>Changer MDP</button>
+                      <button className="btn-primary" style={{ background: "#ef4444", fontSize: 11, padding: "8px" }} onClick={() => supprimerClient(clientTrouve.id)} disabled={loading}>Supprimer Compte</button>
                     </div>
                   </div>
                 ) : (
@@ -287,25 +336,24 @@ export default function FastBuy229() {
       {showGenreModal && (
         <div className="modal-overlay">
           <div className="modal" style={{ textAlign: "center" }}>
-            <h1 style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: "1rem" }}>FastBuy</h1>
-            <p style={{ fontSize: 14, color: "#6b7280", marginBottom: "2rem" }}>Qu'est-ce que tu cherches?</p>
-            <button className="btn-primary" style={{ marginBottom: 12 }} onClick={() => choisirGenre("Homme")}>Pour Homme</button>
-            <button className="btn-primary" style={{ marginBottom: 12, background: "#ec4899" }} onClick={() => choisirGenre("Femme")}>Pour Femme</button>
+            <h1 style={{ fontSize: "1.6rem", fontWeight: 800, marginBottom: "1rem" }}>FastBuy</h1>
+            <button className="btn-primary" style={{ marginBottom: 12 }} onClick={() => choisirGenre("Homme")}>Homme</button>
+            <button className="btn-primary" style={{ marginBottom: 12, background: "#ec4899" }} onClick={() => choisirGenre("Femme")}>Femme</button>
             <button className="btn-primary" style={{ background: "#8b5cf6" }} onClick={() => choisirGenre("Tous")}>Voir Tout</button>
           </div>
         </div>
       )}
 
       <div style={{ position: "sticky", top: 0, background: "#fff", padding: "12px 1.5rem", display: "flex", alignItems: "center", gap: 12, zIndex: 100, boxShadow: "0 2px 10px rgba(0,0,0,0.1)", borderBottom: "2px solid #2563eb" }}>
-        <div onClick={() => { setPage("accueil"); setCatActive("Tous"); }} style={{ cursor: "pointer", fontWeight: 800, fontSize: "1.3rem", color: "#2563eb" }}>FastBuy</div>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }} />
+        <div onClick={() => { setPage("accueil"); setCatActive("Tous"); }} style={{ cursor: "pointer", fontWeight: 800, fontSize: "1.2rem", color: "#2563eb" }}>FastBuy</div>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }} />
         <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
         {client ? (
           <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
         ) : (
           <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#2563eb" }} onClick={() => setShowLogin(true)}>Connexion</span>
         )}
-        <span style={{ cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, color: "#6b7280", padding: "4px 8px", background: "#f3f4f6", borderRadius: 6 }} onClick={() => setShowGenreModal(true)}>{genreChoisi}</span>
+        <span style={{ cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, padding: "4px 8px", background: "#f3f4f6", borderRadius: 6 }} onClick={() => setShowGenreModal(true)}>{genreChoisi}</span>
       </div>
 
       <div style={{ background: "#fff", padding: "10px 1.5rem", display: "flex", gap: 8, overflowX: "auto", borderBottom: "1px solid #e5e7eb" }}>
@@ -319,10 +367,10 @@ export default function FastBuy229() {
       {page === "accueil" && (
         <>
           {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).length > 0 && (
-            <div style={{ position: "relative", height: 250, background: "#000", overflow: "hidden", marginBottom: 20 }}>
+            <div style={{ position: "relative", height: 250, background: "#000", marginBottom: 20 }}>
               <div style={{ display: "flex", transition: "transform 0.3s ease", transform: `translateX(-${heroIndex * 100}%)` }}>
                 {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).slice(0, 5).map((item, i) => (
-                  <div key={i} style={{ minWidth: "100%", height: 250, position: "relative" }}>
+                  <div key={i} style={{ minWidth: "100%", height: 250 }}>
                     {item.image && <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                   </div>
                 ))}
@@ -343,55 +391,33 @@ export default function FastBuy229() {
                 const premierProduit = catProduits[0];
                 return (
                   <div key={cat} onClick={() => { setCatActive(cat); setPage("produits"); }} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", cursor: "pointer", height: 140, position: "relative" }}>
-                    {premierProduit && premierProduit.image ? (
+                    {premierProduit?.image ? (
                       <img src={getImageUrl(premierProduit.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
-                      <div style={{ width: "100%", height: "100%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Pas d'image</div>
+                      <div style={{ width: "100%", height: "100%", background: "#f3f4f6" }} />
                     )}
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)", color: "#fff", padding: "8px" }}>
-                      <div style={{ fontWeight: 600, fontSize: 12 }}>{cat}</div>
-                      <div style={{ fontSize: 10 }}>{catProduits.length} articles</div>
-                    </div>
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)", color: "#fff", padding: "8px", fontSize: 12, fontWeight: 600 }}>{cat}</div>
                   </div>
                 );
               })}
             </div>
           </div>
-
-          {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).length > 0 && (
-            <div style={{ padding: "0 1.5rem 2rem" }}>
-              <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>Nouveautés</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
-                {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).slice(0, 8).map(item => (
-                  <div key={item.id} onClick={() => { setShowProduit(item); setPhotoChoisie(0); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.06)", cursor: "pointer" }}>
-                    <div style={{ height: 130, background: "#f3f4f6", overflow: "hidden" }}>
-                      {item.image ? <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
-                    </div>
-                    <div style={{ padding: "8px" }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, marginBottom: 4, color: "#6b7280" }}>{item.title?.slice(0, 18)}</div>
-                      <div style={{ fontWeight: 700, fontSize: 11, color: "#2563eb" }}>{item.price?.toLocaleString()} FCFA</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </>
       )}
 
       {page === "produits" && (
         <div style={{ padding: "1.5rem" }}>
           {produitsFiltres.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af" }}>Aucun produit</div>
+            <div style={{ textAlign: "center", color: "#9ca3af" }}>Aucun</div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
               {produitsFiltres.map(item => (
-                <div key={item.id} onClick={() => { setShowProduit(item); setPhotoChoisie(0); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", cursor: "pointer" }}>
+                <div key={item.id} onClick={() => setShowProduit(item)} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", cursor: "pointer" }}>
                   <div style={{ height: 130, background: "#f3f4f6" }}>
                     {item.image ? <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
                   </div>
                   <div style={{ padding: "8px" }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, marginBottom: 4, color: "#6b7280" }}>{item.title}</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "#6b7280" }}>{item.title}</div>
                     <div style={{ fontWeight: 700, fontSize: 11, color: "#2563eb" }}>{item.price?.toLocaleString()} FCFA</div>
                   </div>
                 </div>
@@ -404,12 +430,21 @@ export default function FastBuy229() {
       {showProduit && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowProduit(null)}>
           <div className="modal">
-            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>{showProduit.title}</h2>
-            <div style={{ height: 200, background: "#f3f4f6", borderRadius: 12, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>{showProduit.title}</h2>
+            <div style={{ height: 200, background: "#f3f4f6", borderRadius: 12, marginBottom: 12, display: "flex", alignItems: "center" }}>
               {showProduit.image ? <img src={getImageUrl(showProduit.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
             </div>
+            {showProduit.description && <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>{showProduit.description}</div>}
+            {showProduit.variantes && JSON.parse(showProduit.variantes).length > 0 && (
+              <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 8, marginBottom: 12, fontSize: 11 }}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>Options</div>
+                {JSON.parse(showProduit.variantes).map((v, i) => (
+                  <div key={i} style={{ color: "#6b7280" }}>• {v.couleur} / {v.taille} - {v.prix} FCFA</div>
+                ))}
+              </div>
+            )}
             <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px", marginBottom: "1rem", fontWeight: 700, color: "#2563eb" }}>{showProduit.price?.toLocaleString()} FCFA</div>
-            <button onClick={() => ajouterAuPanier(showProduit)} className="btn-primary">{!client ? "Connecte-toi" : "Ajouter"}</button>
+            <button onClick={() => ajouterAuPanier(showProduit)} className="btn-primary">{!client ? "Connexion" : "Ajouter"}</button>
           </div>
         </div>
       )}
@@ -420,7 +455,7 @@ export default function FastBuy229() {
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Nous Contacter</h2>
             <div style={{ background: "#eff6ff", borderRadius: 12, padding: "1.5rem", textAlign: "center" }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "1rem" }}>📧 Email</div>
-              <div style={{ fontSize: 13, color: "#1a1a2e", marginBottom: "1.5rem", wordBreak: "break-all" }}>{ADMIN_EMAIL}</div>
+              <div style={{ fontSize: 13, color: "#1a1a2e", marginBottom: "1.5rem" }}>{ADMIN_EMAIL}</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "1rem" }}>📱 WhatsApp</div>
               <div style={{ fontSize: 13, color: "#1a1a2e" }}>{ADMIN_WHATSAPP}</div>
             </div>
@@ -433,7 +468,7 @@ export default function FastBuy229() {
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1rem" }}>Panier</h2>
             {panier.length === 0 ? (
-              <div style={{ textAlign: "center", color: "#9ca3af", padding: "1rem" }}>Vide</div>
+              <div style={{ textAlign: "center", color: "#9ca3af" }}>Vide</div>
             ) : (
               <>
                 {panier.map(item => (
@@ -452,7 +487,7 @@ export default function FastBuy229() {
                 <div style={{ padding: "1rem 0", borderTop: "2px solid #f3f4f6", marginTop: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontWeight: 700 }}>
                     <span>Total</span>
-                    <span style={{ fontSize: 15, color: "#2563eb" }}>{totalFinal.toLocaleString()} FCFA</span>
+                    <span style={{ color: "#2563eb" }}>{totalFinal.toLocaleString()} FCFA</span>
                   </div>
                   <button className="btn-primary" onClick={() => { setShowPanier(false); setShowCommande(true); }}>Procéder</button>
                 </div>
@@ -471,12 +506,12 @@ export default function FastBuy229() {
             <input placeholder="Téléphone" value={formCmd.telephone} onChange={e => setFormCmd({ ...formCmd, telephone: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Ville" value={formCmd.ville} onChange={e => setFormCmd({ ...formCmd, ville: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Adresse" value={formCmd.adresse} onChange={e => setFormCmd({ ...formCmd, adresse: e.target.value })} style={{ marginBottom: 12 }} />
-            <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px", marginBottom: 12, fontSize: 12 }}>Envoyer {totalFinal.toLocaleString()} FCFA au {MOMO}</div>
+            <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px", marginBottom: 12, fontSize: 12 }}>Envoyer {totalFinal.toLocaleString()} FCFA à {MOMO}</div>
             <div onClick={() => document.getElementById("capture-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginBottom: 12, background: "#fafafa", fontSize: 12 }}>
-              {captureFile ? <span style={{ color: "#16a34a" }}>OK</span> : <span>Cliquez pour capture</span>}
+              {captureFile ? <span style={{ color: "#16a34a" }}>✅ OK</span> : <span>📸 Capture</span>}
               <input id="capture-input" type="file" accept="image/*" onChange={e => setCaptureFile(e.target.files[0])} style={{ display: "none" }} />
             </div>
-            <button onClick={envoyerCommande} disabled={loading} className="btn-primary">{loading ? "Envoi..." : "Confirmer"}</button>
+            <button onClick={envoyerCommande} disabled={loading} className="btn-primary">{loading ? "..." : "Confirmer"}</button>
           </div>
         </div>
       )}
@@ -484,8 +519,9 @@ export default function FastBuy229() {
       {showConfirm && (
         <div className="modal-overlay">
           <div className="modal" style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>OK</div>
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 6 }}>Confirmé!</h2>
+            <div style={{ fontSize: "2rem", marginBottom: 12 }}>✅</div>
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 12 }}>Confirmé!</h2>
+            <div style={{ background: "#eff6ff", borderRadius: 10, padding: "1rem", marginBottom: 12, fontWeight: 700, color: "#2563eb" }}>{showConfirm.numero}</div>
             <button className="btn-primary" onClick={() => setShowConfirm(null)}>Fermer</button>
           </div>
         </div>
@@ -496,10 +532,10 @@ export default function FastBuy229() {
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Connexion</h2>
             <input placeholder="Email ou tel" value={loginForm.identifiant} onChange={e => setLoginForm({ ...loginForm, identifiant: e.target.value })} style={{ marginBottom: 12 }} />
-            <input type="password" placeholder="Mot de passe" value={loginForm.motDePasse} onChange={e => setLoginForm({ ...loginForm, motDePasse: e.target.value })} style={{ marginBottom: 12 }} />
+            <input type="password" placeholder="MDP" value={loginForm.motDePasse} onChange={e => setLoginForm({ ...loginForm, motDePasse: e.target.value })} style={{ marginBottom: 12 }} />
             {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{authError}</div>}
             <button className="btn-primary" onClick={connecter} style={{ marginBottom: 12 }}>Connexion</button>
-            <div style={{ textAlign: "center", fontSize: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ textAlign: "center", fontSize: 12 }}>
               <span style={{ cursor: "pointer", color: "#2563eb" }} onClick={() => { setShowLogin(false); setShowInscription(true); }}>S'inscrire</span>
             </div>
           </div>
@@ -515,7 +551,7 @@ export default function FastBuy229() {
             <input placeholder="Email" value={inscForm.email} onChange={e => setInscForm({ ...inscForm, email: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Tel" value={inscForm.telephone} onChange={e => setInscForm({ ...inscForm, telephone: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="JJ/MM/AAAA" value={inscForm.date_naissance} onChange={e => setInscForm({ ...inscForm, date_naissance: e.target.value })} style={{ marginBottom: 12 }} maxLength={10} />
-            <input type="password" placeholder="Mot de passe" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={{ marginBottom: 12 }} />
+            <input type="password" placeholder="MDP" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={{ marginBottom: 12 }} />
             <input type="password" placeholder="Confirmer" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={{ marginBottom: 12 }} />
             {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{authError}</div>}
             <button className="btn-primary" onClick={inscrire}>Créer</button>
