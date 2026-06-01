@@ -378,7 +378,7 @@ export default function FastBuy229() {
         )}
 
         {showAddProduct && (
-          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddProduct(false)}>
+          <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowAddProduct(false); }}>
             <div className="modal" style={{ maxWidth: "600px" }}>
               <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Ajouter Produit</h2>
               <input value={newProduct.title} onChange={e => setNewProduct({ ...newProduct, title: e.target.value })} placeholder="Titre" style={{ marginBottom: 12 }} />
@@ -442,7 +442,7 @@ export default function FastBuy229() {
         )}
 
         {showGererProduits && (
-          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowGererProduits(false)}>
+          <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowGererProduits(false); }}>
             <div className="modal" style={{ maxWidth: "900px", maxHeight: "85vh", display: "flex", flexDirection: "column", padding: 0 }}>
               <div style={{ background: "#f59e0b", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Gérer Produits</div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -486,7 +486,7 @@ export default function FastBuy229() {
         )}
 
         {showGererClients && (
-          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowGererClients(false)}>
+          <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowGererClients(false); }}>
             <div className="modal" style={{ maxWidth: "1000px", maxHeight: "90vh", display: "flex", flexDirection: "column", padding: 0 }}>
               <div style={{ background: "#10b981", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Gérer Clients</div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -675,7 +675,12 @@ export default function FastBuy229() {
       )}
 
       {showProduit && (
-        <div className="modal-overlay" onClick={e => { e.target === e.currentTarget && setShowProduit(null); setSelectedVariante(null); }}>
+        <div className="modal-overlay" onClick={e => { 
+          if (e.target === e.currentTarget) {
+            setShowProduit(null);
+            setSelectedVariante(null);
+          }
+        }}>
           <div className="modal">
             <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>{showProduit.title}</h2>
             <div style={{ height: 200, background: "#f3f4f6", borderRadius: 12, marginBottom: 12, display: "flex", alignItems: "center" }}>
@@ -720,7 +725,9 @@ export default function FastBuy229() {
       )}
 
       {showContactAdmin && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowContactAdmin(false)}>
+        <div className="modal-overlay" onClick={e => { 
+          if (e.target === e.currentTarget) setShowContactAdmin(false);
+        }}>
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Nous Contacter</h2>
             <div style={{ background: "#eff6ff", borderRadius: 12, padding: "1.5rem" }}>
@@ -742,7 +749,9 @@ export default function FastBuy229() {
       )}
 
       {showPanier && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowPanier(false)}>
+        <div className="modal-overlay" onClick={e => { 
+          if (e.target === e.currentTarget) setShowPanier(false);
+        }}>
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1rem" }}>Panier</h2>
             {panier.length === 0 ? (
@@ -778,7 +787,9 @@ export default function FastBuy229() {
       )}
 
       {showCommande && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowCommande(false)}>
+        <div className="modal-overlay" onClick={e => { 
+          if (e.target === e.currentTarget) setShowCommande(false);
+        }}>
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1rem" }}>Commande</h2>
             <input placeholder="Nom" value={formCmd.nom} onChange={e => setFormCmd({ ...formCmd, nom: e.target.value })} style={{ marginBottom: 12 }} />
@@ -844,7 +855,9 @@ export default function FastBuy229() {
       )}
 
       {showLogin && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowLogin(false)}>
+        <div className="modal-overlay" onClick={e => { 
+          if (e.target === e.currentTarget) setShowLogin(false);
+        }}>
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Connexion</h2>
             <input placeholder="Email ou tel" value={loginForm.identifiant} onChange={e => setLoginForm({ ...loginForm, identifiant: e.target.value })} style={{ marginBottom: 12 }} />
@@ -864,7 +877,9 @@ export default function FastBuy229() {
       )}
 
       {showInscription && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowInscription(false)}>
+        <div className="modal-overlay" onClick={e => { 
+          if (e.target === e.currentTarget) setShowInscription(false);
+        }}>
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>S'inscrire</h2>
             <input placeholder="Prénom" value={inscForm.prenom} onChange={e => setInscForm({ ...inscForm, prenom: e.target.value })} style={{ marginBottom: 12 }} />
