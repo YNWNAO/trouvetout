@@ -680,7 +680,7 @@ export default function FastBuy229() {
       )}
 
       {showProduit && (
-        <div className="modal-overlay" onClick={e => { e.target === e.currentTarget && setShowProduit(null); setSelectedVariante(null); }}>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowProduit(null); setSelectedVariante(null); } }}>
           <div className="modal">
             <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>{showProduit.title}</h2>
             <div style={{ height: 200, background: "#f3f4f6", borderRadius: 12, marginBottom: 12, display: "flex", alignItems: "center" }}>
