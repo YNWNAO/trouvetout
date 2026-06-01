@@ -124,12 +124,11 @@ export default function FastBuy229() {
     try {
       let capturePath = null;
       if (captureFile) {
-        const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const filePath = `captures/${fileName}`;
+        const fileName = `cap-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
         const { data, error: uploadError } = await supabase.storage
           .from("PRODUITS")
-          .upload(filePath, captureFile, { upsert: true });
+          .upload(fileName, captureFile, { upsert: true });
         
         if (uploadError) {
           console.error("Upload capture error:", uploadError);
@@ -137,7 +136,7 @@ export default function FastBuy229() {
           setLoading(false);
           return;
         }
-        capturePath = filePath;
+        capturePath = fileName;
       }
       
       const num = "CMD-" + Math.random().toString(36).substr(2, 6).toUpperCase();
@@ -187,12 +186,11 @@ export default function FastBuy229() {
       let imagePath = null;
       if (imageFiles.length > 0) {
         const file = imageFiles[0];
-        const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const filePath = `produits/${fileName}`;
+        const fileName = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
         const { data, error: uploadError } = await supabase.storage
           .from("PRODUITS")
-          .upload(filePath, file, { upsert: true });
+          .upload(fileName, file, { upsert: true });
         
         if (uploadError) {
           console.error("Upload error:", uploadError);
@@ -200,7 +198,7 @@ export default function FastBuy229() {
           setLoading(false);
           return;
         }
-        imagePath = filePath;
+        imagePath = fileName;
       }
       
       const prodData = { 
