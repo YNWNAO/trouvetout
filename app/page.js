@@ -210,7 +210,7 @@ export default function FastBuy229() {
         ...newProduct, 
         price: parseInt(newProduct.price), 
         image: imagePaths[0], 
-        images: JSON.stringify(imagePaths),
+        images: imagePaths,
         variantes: variantes.length > 0 ? JSON.stringify(variantes) : null 
       };
       
