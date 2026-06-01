@@ -97,8 +97,8 @@ export default function FastBuy229() {
   const calculerTotalFinal = (ville, codePromo) => {
     let total = totalPanier;
     
-    // Réduction 10% si code promo correct
-    if (codePromo && client?.prenom) {
+    // Réduction 10% si code promo correct ET première commande seulement
+    if (codePromo && client?.prenom && client?.premiereCommande) {
       if (codePromo.toLowerCase() === (client.prenom + "10").toLowerCase()) {
         total = total * 0.9;
       }
@@ -119,17 +119,32 @@ export default function FastBuy229() {
 
   const inscrire = async () => {
     setAuthError("");
-    if (!inscForm.prenom || !inscForm.nom || !inscForm.email || !inscForm.telephone || !inscForm.date_naissance || !inscForm.mot_de_passe) { setAuthError("Remplis tous!"); return; }
-    if (inscForm.mot_de_passe !== inscForm.confirmer) { setAuthError("MDP ≠"); return; }
+    if (!inscForm.prenom || !inscForm.nom || !inscForm.email || !inscForm.telephone || !inscForm.date_naissance || !inscForm.mot_de_passe) { 
+      setAuthError("❌ Remplis tous les champs!"); 
+      return; 
+    }
+    if (inscForm.mot_de_passe !== inscForm.confirmer) { 
+      setAuthError("❌ Les mots de passe ne correspondent pas!"); 
+      return; 
+    }
     
     let { data: emailExist } = await supabase.from("users").select("id").eq("email", inscForm.email).maybeSingle();
-    if (emailExist) { setAuthError("📧 Email existe!"); return; }
+    if (emailExist) { 
+      setAuthError("📧 Cet email est déjà utilisé!"); 
+      return; 
+    }
     
     let { data: telExist } = await supabase.from("users").select("id").eq("telephone", inscForm.telephone).maybeSingle();
-    if (telExist) { setAuthError("📱 Tel existe!"); return; }
+    if (telExist) { 
+      setAuthError("📱 Ce numéro de téléphone est déjà utilisé!"); 
+      return; 
+    }
     
     const { data, error } = await supabase.from("users").insert([{ prenom: inscForm.prenom, nom: `${inscForm.prenom} ${inscForm.nom}`, email: inscForm.email, telephone: inscForm.telephone, date_naissance: inscForm.date_naissance, mot_de_passe: inscForm.mot_de_passe }]).select().single();
-    if (error) { setAuthError("Erreur"); return; }
+    if (error) { 
+      setAuthError("❌ Erreur lors de l'inscription. Réessaie!"); 
+      return; 
+    }
     const user = { id: data.id, prenom: inscForm.prenom, nom: data.nom, email: data.email, telephone: data.telephone, premiereCommande: true };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
@@ -141,10 +156,16 @@ export default function FastBuy229() {
     setAuthError("");
     let { data } = await supabase.from("users").select("*").eq("email", loginForm.identifiant).maybeSingle();
     if (!data) ({ data } = await supabase.from("users").select("*").eq("telephone", loginForm.identifiant).maybeSingle());
-    if (!data) { setAuthError("Pas trouvé"); return; }
-    if (data.mot_de_passe !== loginForm.motDePasse) { setAuthError("MDP faux"); return; }
+    if (!data) { 
+      setAuthError("❌ Email ou téléphone non trouvé!"); 
+      return; 
+    }
+    if (data.mot_de_passe !== loginForm.motDePasse) { 
+      setAuthError("❌ Mot de passe incorrect!"); 
+      return; 
+    }
     const prenom = data.nom.split(" ")[0];
-    const user = { id: data.id, prenom, nom: data.nom, email: data.email, telephone: data.telephone };
+    const user = { id: data.id, prenom, nom: data.nom, email: data.email, telephone: data.telephone, premiereCommande: data.premiereCommande };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
     setShowLogin(false);
@@ -152,9 +173,9 @@ export default function FastBuy229() {
   };
 
   const envoyerCommande = async () => {
-    if (!formCmd.nom || !formCmd.email || !formCmd.telephone || !formCmd.ville || !formCmd.quartier) { alert("Remplis tous!"); return; }
-    if (panier.length === 0) { alert("Panier vide!"); return; }
-    if (!captureFile) { alert("Capture requise!"); return; }
+    if (!formCmd.nom || !formCmd.email || !formCmd.telephone || !formCmd.ville || !formCmd.quartier) { alert("❌ Remplis tous les champs!"); return; }
+    if (panier.length === 0) { alert("❌ Panier vide!"); return; }
+    if (!captureFile) { alert("❌ Capture requise!"); return; }
     setLoading(true);
     
     try {
@@ -168,7 +189,7 @@ export default function FastBuy229() {
         
         if (uploadError) {
           console.error("Upload capture error:", uploadError);
-          alert("Erreur capture: " + uploadError.message);
+          alert("❌ Erreur capture: " + uploadError.message);
           setLoading(false);
           return;
         }
@@ -194,10 +215,18 @@ export default function FastBuy229() {
       }]);
       
       if (insertError) {
-        alert("Erreur commande: " + insertError.message);
+        alert("❌ Erreur commande: " + insertError.message);
         setLoading(false);
         return;
       }
+      
+      // Mettre premiereCommande à false après 1ère commande réussie
+      await supabase.from("users").update({ premiereCommande: false }).eq("id", client.id);
+      
+      // Mettre à jour le client local aussi
+      const updatedClient = { ...client, premiereCommande: false };
+      setClient(updatedClient);
+      localStorage.setItem("fastbuy_client", JSON.stringify(updatedClient));
       
       setShowConfirm({ numero: num, totalFinal, ville: formCmd.ville });
       setPanier([]);
@@ -205,21 +234,21 @@ export default function FastBuy229() {
       setLoading(false);
     } catch (e) {
       console.error("Exception:", e);
-      alert("Erreur: " + e.message);
+      alert("❌ Erreur: " + e.message);
       setLoading(false);
     }
   };
 
   const ajouterVariante = () => {
-    if (!newVariante.couleur || !newVariante.taille || !newVariante.nbrPieces || !newVariante.prix) { alert("Remplis tous!"); return; }
+    if (!newVariante.couleur || !newVariante.taille || !newVariante.nbrPieces || !newVariante.prix) { alert("❌ Remplis tous les champs!"); return; }
     setVariantes([...variantes, { ...newVariante, prix: parseInt(newVariante.prix), nbrPieces: parseInt(newVariante.nbrPieces) }]);
     setNewVariante({ couleur: "", taille: "", nbrPieces: "", prix: "" });
   };
 
   const ajouterProduit = async () => {
-    if (!newProduct.title) { alert("Titre requis!"); return; }
-    if (variantes.length === 0) { alert("Ajoute au moins une variante!"); return; }
-    if (imageFiles.length === 0) { alert("Ajoute au moins une image!"); return; }
+    if (!newProduct.title) { alert("❌ Titre requis!"); return; }
+    if (variantes.length === 0) { alert("❌ Ajoute au moins une variante!"); return; }
+    if (imageFiles.length === 0) { alert("❌ Ajoute au moins une image!"); return; }
     setLoading(true);
     try {
       let imagePaths = [];
@@ -234,7 +263,7 @@ export default function FastBuy229() {
         
         if (uploadError) {
           console.error("Upload error:", uploadError);
-          alert("Erreur upload: " + uploadError.message);
+          alert("❌ Erreur upload: " + uploadError.message);
           setLoading(false);
           return;
         }
@@ -251,12 +280,12 @@ export default function FastBuy229() {
       
       const { error: insertError } = await supabase.from("produits").insert([prodData]);
       if (insertError) {
-        alert("Erreur création: " + insertError.message);
+        alert("❌ Erreur création: " + insertError.message);
         setLoading(false);
         return;
       }
       
-      alert("Produit créé!");
+      alert("✅ Produit créé!");
       await chargerProduits();
       setShowAddProduct(false);
       setNewProduct({ title: "", description: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
@@ -265,36 +294,36 @@ export default function FastBuy229() {
       setLoading(false);
     } catch (e) {
       console.error("Exception:", e);
-      alert("Erreur: " + e.message);
+      alert("❌ Erreur: " + e.message);
       setLoading(false);
     }
   };
 
   const supprimerProduit = async (produitId) => {
-    if (!confirm("Confirmer la suppression?")) return;
+    if (!confirm("❌ Confirmer la suppression?")) return;
     setLoading(true);
     try {
       await supabase.from("produits").delete().eq("id", produitId);
-      alert("Produit supprimé!");
+      alert("✅ Produit supprimé!");
       await chargerProduits();
       setProduitEdit(null);
     } catch (e) {
-      alert("Erreur: " + e.message);
+      alert("❌ Erreur: " + e.message);
     }
     setLoading(false);
   };
 
   const modifierProduit = async (produitId) => {
-    if (!editForm.price || !editForm.etat) { alert("Remplis tous!"); return; }
+    if (!editForm.price || !editForm.etat) { alert("❌ Remplis tous les champs!"); return; }
     setLoading(true);
     try {
       await supabase.from("produits").update({ price: parseInt(editForm.price), etat: editForm.etat }).eq("id", produitId);
-      alert("Produit modifié!");
+      alert("✅ Produit modifié!");
       await chargerProduits();
       setProduitEdit(null);
       setEditForm({ price: "", etat: "" });
     } catch (e) {
-      alert("Erreur: " + e.message);
+      alert("❌ Erreur: " + e.message);
     }
     setLoading(false);
   };
@@ -309,28 +338,28 @@ export default function FastBuy229() {
   };
 
   const supprimerClient = async (clientId) => {
-    if (!confirm("Confirmer?")) return;
+    if (!confirm("❌ Confirmer la suppression du compte?")) return;
     setLoading(true);
     try {
       await supabase.from("users").delete().eq("id", clientId);
-      alert("Supprimé!");
+      alert("✅ Compte supprimé!");
       await chargerClients();
       setClientTrouve(null);
     } catch (e) {
-      alert("Erreur: " + e.message);
+      alert("❌ Erreur: " + e.message);
     }
     setLoading(false);
   };
 
   const changerMdpClient = async (clientId) => {
-    if (!newMdpClient || newMdpClient.length < 8) { alert("Min 8 chars!"); return; }
+    if (!newMdpClient || newMdpClient.length < 8) { alert("❌ Minimum 8 caractères!"); return; }
     setLoading(true);
     try {
       await supabase.from("users").update({ mot_de_passe: newMdpClient }).eq("id", clientId);
-      alert("OK!");
+      alert("✅ Mot de passe changé!");
       setNewMdpClient("");
     } catch (e) {
-      alert("Erreur: " + e.message);
+      alert("❌ Erreur: " + e.message);
     }
     setLoading(false);
   };
@@ -349,7 +378,7 @@ export default function FastBuy229() {
                   {showPassword.adminPwd ? "👁️" : "👁️‍🗨️"}
                 </button>
               </div>
-              <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerClients(); } else { alert("Faux!"); setAdminPwd(""); } }}>Accéder</button>
+              <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerClients(); } else { alert("❌ Mot de passe incorrect!"); setAdminPwd(""); } }}>Accéder</button>
             </div>
           </div>
         ) : (
@@ -639,7 +668,7 @@ export default function FastBuy229() {
       {page === "produits" && (
         <div style={{ padding: "1.5rem" }}>
           {produitsFiltres.length === 0 ? (
-            <div style={{ textAlign: "center", color: "#9ca3af" }}>Aucun</div>
+            <div style={{ textAlign: "center", color: "#9ca3af" }}>❌ Aucun produit trouvé</div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
               {produitsFiltres.map(item => (
@@ -706,7 +735,7 @@ export default function FastBuy229() {
                 </div>
               </div>
             )}
-            <button onClick={() => { if (selectedVariante === null && showProduit.variantes && JSON.parse(showProduit.variantes).length > 0) { alert("Sélectionne une variante!"); return; } ajouterAuPanier({...showProduit, price: selectedVariante !== null && showProduit.variantes ? JSON.parse(showProduit.variantes)[selectedVariante].prix : showProduit.price}); }} className="btn-primary">{!client ? "Connexion" : "Ajouter au panier"}</button>
+            <button onClick={() => { if (selectedVariante === null && showProduit.variantes && JSON.parse(showProduit.variantes).length > 0) { alert("❌ Sélectionne une variante!"); return; } ajouterAuPanier({...showProduit, price: selectedVariante !== null && showProduit.variantes ? JSON.parse(showProduit.variantes)[selectedVariante].prix : showProduit.price}); }} className="btn-primary">{!client ? "Connexion" : "Ajouter au panier"}</button>
           </div>
         </div>
       )}
@@ -738,7 +767,7 @@ export default function FastBuy229() {
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1rem" }}>Panier</h2>
             {panier.length === 0 ? (
-              <div style={{ textAlign: "center", color: "#9ca3af" }}>Vide</div>
+              <div style={{ textAlign: "center", color: "#9ca3af" }}>❌ Panier vide</div>
             ) : (
               <>
                 {panier.map(item => (
@@ -780,7 +809,7 @@ export default function FastBuy229() {
             <input placeholder="Quartier" value={formCmd.quartier} onChange={e => setFormCmd({ ...formCmd, quartier: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Code promo" value={formCmd.codePromo} onChange={e => setFormCmd({ ...formCmd, codePromo: e.target.value })} style={{ marginBottom: 12 }} />
             
-            {client?.prenom && <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, fontWeight: 600, color: "#1e40af" }}>🎁 Code promo 1ère commande: <strong>{client.prenom}10</strong> (-10%)</div>}
+            {client?.prenom && client?.premiereCommande && <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, fontWeight: 600, color: "#1e40af" }}>🎁 Code promo 1ère commande: <strong>{client.prenom}10</strong> (-10%)</div>}
             
             {formCmd.ville && FRAIS_LIVRAISON[formCmd.ville] && totalPanier < 20000 && <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, color: "#92400e" }}>🚚 Frais livraison ({formCmd.ville}): +{FRAIS_LIVRAISON[formCmd.ville].toLocaleString()} FCFA</div>}
             
@@ -842,7 +871,7 @@ export default function FastBuy229() {
                 {showPassword.login ? "👁️" : "👁️‍🗨️"}
               </button>
             </div>
-            {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{authError}</div>}
+            {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12, padding: "8px", background: "#fef2f2", borderRadius: 6, fontWeight: 600 }}>⚠️ {authError}</div>}
             <button className="btn-primary" onClick={connecter} style={{ marginBottom: 12 }}>Connexion</button>
             <div style={{ textAlign: "center", fontSize: 12 }}>
               <span style={{ cursor: "pointer", color: "#2563eb" }} onClick={() => { setShowLogin(false); setShowInscription(true); }}>S'inscrire</span>
@@ -872,7 +901,7 @@ export default function FastBuy229() {
                 {showPassword.inscConf ? "👁️" : "👁️‍🗨️"}
               </button>
             </div>
-            {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{authError}</div>}
+            {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12, padding: "8px", background: "#fef2f2", borderRadius: 6, fontWeight: 600 }}>⚠️ {authError}</div>}
             <button className="btn-primary" onClick={inscrire}>Créer</button>
           </div>
         </div>
