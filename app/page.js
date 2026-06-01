@@ -688,6 +688,7 @@ export default function FastBuy229() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
                   {JSON.parse(showProduit.variantes).map((v, i) => (
                       <button
+                      type="button"
                       key={i}
                       onClick={() => setSelectedVariante(i)}
                       style={{
@@ -719,7 +720,7 @@ export default function FastBuy229() {
                 </div>
               </div>
             )}
-            <button onClick={() => { if (selectedVariante === null && showProduit.variantes && JSON.parse(showProduit.variantes).length > 0) { alert("Sélectionne une variante!"); return; } const variante = selectedVariante !== null && showProduit.variantes ? JSON.parse(showProduit.variantes)[selectedVariante] : null; ajouterAuPanier({...showProduit, price: variante ? variante.prix : showProduit.price}, variante); }} className="btn-primary">{!client ? "Connexion" : "Ajouter au panier"}</button>
+            <button type="button" onClick={() => { if (selectedVariante === null && showProduit.variantes && JSON.parse(showProduit.variantes).length > 0) { alert("Sélectionne une variante!"); return; } const variante = selectedVariante !== null && showProduit.variantes ? JSON.parse(showProduit.variantes)[selectedVariante] : null; ajouterAuPanier({...showProduit, price: variante ? variante.prix : showProduit.price}, variante); }} className="btn-primary">{!client ? "Connexion" : "Ajouter au panier"}</button>
           </div>
         </div>
       )}
