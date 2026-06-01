@@ -4,9 +4,14 @@ import { supabase } from "./supabase";
 
 const CATEGORIES = ["Tous", "Vêtements", "Chaussures", "Parfums", "Téléphones", "Sacs", "Bijoux", "Ordinateurs", "Accessoires"];
 const ADMIN_PWD = "N-beat3140";
-const MOMO = "+229 57577895";
+const MOMO = "+2290157577895";
 const ADMIN_EMAIL = "nahofalgbadamassi@gmail.com";
 const ADMIN_WHATSAPP = "+33775958442";
+const FRAIS_LIVRAISON = {
+  "Porto": 1000,
+  "Cotonou": 2000,
+  "Calavi": 3000
+};
 
 const globalStyles = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1a1a2e}input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;background:#fff;outline:none}input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);overflow-y:auto}.modal{background:#fff;border-radius:20px;padding:2rem;width:100%;max-width:600px;max-height:90vh;overflow-y:auto}.btn-primary{background:#2563eb;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;width:100%}.btn-primary:hover{background:#1d4ed8}`;
 
@@ -28,6 +33,7 @@ export default function FastBuy229() {
   const [showCommande, setShowCommande] = useState(false);
   const [showConfirm, setShowConfirm] = useState(null);
   const [showProduit, setShowProduit] = useState(null);
+  const [selectedVariante, setSelectedVariante] = useState(null);
   const [showContactAdmin, setShowContactAdmin] = useState(false);
   const [adminOk, setAdminOk] = useState(false);
   const [adminPwd, setAdminPwd] = useState("");
@@ -42,7 +48,7 @@ export default function FastBuy229() {
   const [loginForm, setLoginForm] = useState({ identifiant: "", motDePasse: "" });
   const [inscForm, setInscForm] = useState({ prenom: "", nom: "", email: "", telephone: "", date_naissance: "", mot_de_passe: "", confirmer: "" });
   const [authError, setAuthError] = useState("");
-  const [formCmd, setFormCmd] = useState({ nom: "", email: "", telephone: "", ville: "", adresse: "" });
+  const [formCmd, setFormCmd] = useState({ nom: "", email: "", telephone: "", numeroAppel: "", ville: "", adresse: "", codePromo: "" });
   const [captureFile, setCaptureFile] = useState(null);
   const [newProduct, setNewProduct] = useState({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
   const [imageFiles, setImageFiles] = useState([]);
@@ -88,10 +94,27 @@ export default function FastBuy229() {
   });
 
   const totalPanier = panier.reduce((s, i) => s + i.price * i.qty, 0);
-  const totalFinal = Math.round(totalPanier);
+  const calculerTotalFinal = (ville, codePromo) => {
+    let total = totalPanier;
+    
+    // Appliquer code promo si c'est le code automatique (prénom10)
+    if (codePromo && client?.prenom && codePromo.toLowerCase() === (client.prenom + "10").toLowerCase()) {
+      total = total * 0.9; // 10% de réduction
+    }
+    
+    // Ajouter frais de livraison si total < 20000
+    if (total < 20000) {
+      const frais = FRAIS_LIVRAISON[ville] || 0;
+      total += frais;
+    }
+    
+    return Math.round(total);
+  };
+  
+  const totalFinal = calculerTotalFinal(formCmd.ville, formCmd.codePromo);
 
   const choisirGenre = (genre) => { setGenreChoisi(genre); localStorage.setItem("fastbuy_genre", genre); setShowGenreModal(false); };
-  const ajouterAuPanier = (prod) => { if (!client) { setShowLogin(true); return; } const key = `${prod.id}`; setPanier(prev => { const ex = prev.find(i => i.key === key); if (ex) return prev.map(i => i.key === key ? { ...i, qty: i.qty + 1 } : i); return [...prev, { ...prod, key, qty: 1 }]; }); setShowProduit(null); };
+  const ajouterAuPanier = (prod) => { if (!client) { setShowLogin(true); return; } const key = `${prod.id}`; setPanier(prev => { const ex = prev.find(i => i.key === key); if (ex) return prev.map(i => i.key === key ? { ...i, qty: i.qty + 1 } : i); return [...prev, { ...prod, key, qty: 1 }]; }); setShowProduit(null); setSelectedVariante(null); };
 
   const inscrire = async () => {
     setAuthError("");
@@ -99,9 +122,10 @@ export default function FastBuy229() {
     if (inscForm.mot_de_passe !== inscForm.confirmer) { setAuthError("MDP ≠"); return; }
     const { data, error } = await supabase.from("users").insert([{ nom: `${inscForm.prenom} ${inscForm.nom}`, email: inscForm.email, telephone: inscForm.telephone, date_naissance: inscForm.date_naissance, mot_de_passe: inscForm.mot_de_passe }]).select().single();
     if (error) { setAuthError("Erreur"); return; }
-    const user = { id: data.id, nom: data.nom, email: data.email, telephone: data.telephone };
+    const user = { id: data.id, prenom: inscForm.prenom, nom: data.nom, email: data.email, telephone: data.telephone };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
+    alert(`🎉 Bienvenue ${inscForm.prenom}!\n\n🎁 Code promo 1ère commande:\n${inscForm.prenom}10\n(-10% sur votre commande)`);
     setShowInscription(false);
   };
 
@@ -111,7 +135,8 @@ export default function FastBuy229() {
     if (!data) ({ data } = await supabase.from("users").select("*").eq("telephone", loginForm.identifiant).maybeSingle());
     if (!data) { setAuthError("Pas trouvé"); return; }
     if (data.mot_de_passe !== loginForm.motDePasse) { setAuthError("MDP faux"); return; }
-    const user = { id: data.id, nom: data.nom, email: data.email, telephone: data.telephone };
+    const prenom = data.nom.split(" ")[0];
+    const user = { id: data.id, prenom, nom: data.nom, email: data.email, telephone: data.telephone };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
     setShowLogin(false);
@@ -148,6 +173,7 @@ export default function FastBuy229() {
         nom: formCmd.nom,
         email: formCmd.email,
         telephone: formCmd.telephone,
+        numeroAppel: formCmd.numeroAppel,
         ville: formCmd.ville,
         adresse: formCmd.adresse,
         articles: JSON.stringify(panier),
@@ -165,7 +191,7 @@ export default function FastBuy229() {
         return;
       }
       
-      setShowConfirm({ numero: num });
+      setShowConfirm({ numero: num, totalFinal, ville: formCmd.ville });
       setPanier([]);
       setShowCommande(false);
       setLoading(false);
@@ -473,6 +499,8 @@ export default function FastBuy229() {
                           commandesClient.map(cmd => (
                             <div key={cmd.id} style={{ background: "#fff", padding: "0.75rem", borderRadius: 6, marginBottom: 8, border: "1px solid #e5e7eb" }}>
                               <div style={{ fontWeight: 600, fontSize: 11, marginBottom: 4, color: "#2563eb" }}>{cmd.numero}</div>
+                              <div style={{ fontSize: 9, color: "#666", marginBottom: 3 }}>📧 {cmd.email}</div>
+                              {cmd.numeroAppel && <div style={{ fontSize: 9, color: "#f59e0b", marginBottom: 3, fontWeight: 600 }}>📞 Appel: {cmd.numeroAppel}</div>}
                               <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>💰 Total: <strong>{cmd.totalFinal?.toLocaleString()} FCFA</strong></div>
                               <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>📊 Statut: <strong>{cmd.statut}</strong></div>
                               <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>💳 Paiement: <strong>{cmd.paiement}</strong></div>
@@ -605,7 +633,7 @@ export default function FastBuy229() {
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
               {produitsFiltres.map(item => (
-                <div key={item.id} onClick={() => setShowProduit(item)} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", cursor: "pointer" }}>
+                <div key={item.id} onClick={() => { setShowProduit(item); setSelectedVariante(null); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", cursor: "pointer" }}>
                   <div style={{ height: 130, background: "#f3f4f6" }}>
                     {item.image ? <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
                   </div>
@@ -621,7 +649,7 @@ export default function FastBuy229() {
       )}
 
       {showProduit && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowProduit(null)}>
+        <div className="modal-overlay" onClick={e => { e.target === e.currentTarget && setShowProduit(null); setSelectedVariante(null); }}>
           <div className="modal">
             <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>{showProduit.title}</h2>
             <div style={{ height: 200, background: "#f3f4f6", borderRadius: 12, marginBottom: 12, display: "flex", alignItems: "center" }}>
@@ -629,15 +657,38 @@ export default function FastBuy229() {
             </div>
             {showProduit.description && <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>{showProduit.description}</div>}
             {showProduit.variantes && JSON.parse(showProduit.variantes).length > 0 && (
-              <div style={{ background: "#f9fafb", padding: "8px", borderRadius: 8, marginBottom: 12, fontSize: 11 }}>
-                <div style={{ fontWeight: 600, marginBottom: 6 }}>Options</div>
-                {JSON.parse(showProduit.variantes).map((v, i) => (
-                  <div key={i} style={{ color: "#6b7280" }}>• {v.couleur} / {v.taille} - {v.prix} FCFA</div>
-                ))}
+              <div style={{ background: "#f9fafb", padding: "12px", borderRadius: 8, marginBottom: 12 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 12 }}>Options Disponibles</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {JSON.parse(showProduit.variantes).map((v, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setSelectedVariante(i)}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: 6,
+                        border: selectedVariante === i ? "2px solid #2563eb" : "1px solid #d1d5db",
+                        background: selectedVariante === i ? "#eff6ff" : "#fff",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: selectedVariante === i ? 600 : 400,
+                        color: selectedVariante === i ? "#2563eb" : "#6b7280",
+                        textAlign: "left"
+                      }}
+                    >
+                      {v.couleur} / {v.nbrPieces} pcs - <strong>{v.prix.toLocaleString()} FCFA</strong>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-            <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px", marginBottom: "1rem", fontWeight: 700, color: "#2563eb" }}>{showProduit.price?.toLocaleString()} FCFA</div>
-            <button onClick={() => ajouterAuPanier(showProduit)} className="btn-primary">{!client ? "Connexion" : "Ajouter"}</button>
+            <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px", marginBottom: "1rem", fontWeight: 700, color: "#2563eb", fontSize: "1.1rem" }}>
+              {selectedVariante !== null && showProduit.variantes 
+                ? JSON.parse(showProduit.variantes)[selectedVariante].prix.toLocaleString() 
+                : showProduit.price?.toLocaleString()
+              } FCFA
+            </div>
+            <button onClick={() => { if (selectedVariante === null && showProduit.variantes && JSON.parse(showProduit.variantes).length > 0) { alert("Sélectionne une option!"); return; } ajouterAuPanier({...showProduit, price: selectedVariante !== null && showProduit.variantes ? JSON.parse(showProduit.variantes)[selectedVariante].prix : showProduit.price}); }} className="btn-primary">{!client ? "Connexion" : "Ajouter"}</button>
           </div>
         </div>
       )}
@@ -705,8 +756,17 @@ export default function FastBuy229() {
             <input placeholder="Nom" value={formCmd.nom} onChange={e => setFormCmd({ ...formCmd, nom: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Email" value={formCmd.email} onChange={e => setFormCmd({ ...formCmd, email: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Téléphone" value={formCmd.telephone} onChange={e => setFormCmd({ ...formCmd, telephone: e.target.value })} style={{ marginBottom: 12 }} />
+            <input placeholder="Numéro pour appel paiement" value={formCmd.numeroAppel} onChange={e => setFormCmd({ ...formCmd, numeroAppel: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Ville" value={formCmd.ville} onChange={e => setFormCmd({ ...formCmd, ville: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Adresse" value={formCmd.adresse} onChange={e => setFormCmd({ ...formCmd, adresse: e.target.value })} style={{ marginBottom: 12 }} />
+            <input placeholder="Code promo" value={formCmd.codePromo} onChange={e => setFormCmd({ ...formCmd, codePromo: e.target.value })} style={{ marginBottom: 12 }} />
+            
+            {client?.prenom && <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, fontWeight: 600, color: "#1e40af" }}>🎁 Code promo 1ère commande: <strong>{client.prenom}10</strong> (-10%)</div>}
+            
+            {formCmd.ville && FRAIS_LIVRAISON[formCmd.ville] && totalPanier < 20000 && <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, color: "#92400e" }}>🚚 Frais livraison ({formCmd.ville}): +{FRAIS_LIVRAISON[formCmd.ville].toLocaleString()} FCFA</div>}
+            
+            {totalPanier >= 20000 && <div style={{ background: "#dcfce7", border: "1px solid #86efac", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, color: "#166534" }}>🎉 Livraison GRATUITE (commande >= 20000)</div>}
+            
             <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px", marginBottom: 12, fontSize: 12 }}>Envoyer {totalFinal.toLocaleString()} FCFA à {MOMO}</div>
             <div onClick={() => document.getElementById("capture-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginBottom: 12, background: "#fafafa", fontSize: 12 }}>
               {captureFile ? <span style={{ color: "#16a34a" }}>✅ OK</span> : <span>📸 Capture</span>}
@@ -719,11 +779,35 @@ export default function FastBuy229() {
 
       {showConfirm && (
         <div className="modal-overlay">
-          <div className="modal" style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "2rem", marginBottom: 12 }}>✅</div>
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 12 }}>Confirmé!</h2>
-            <div style={{ background: "#eff6ff", borderRadius: 10, padding: "1rem", marginBottom: 12, fontWeight: 700, color: "#2563eb" }}>{showConfirm.numero}</div>
-            <button className="btn-primary" onClick={() => setShowConfirm(null)}>Fermer</button>
+          <div className="modal" style={{ textAlign: "center", maxWidth: "500px", maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>✅</div>
+            <h2 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: 12 }}>Commande Confirmée!</h2>
+            <div style={{ background: "#eff6ff", borderRadius: 10, padding: "1rem", marginBottom: 12 }}>
+              <div style={{ fontWeight: 700, color: "#2563eb", fontSize: "1.1rem", marginBottom: 4 }}>Numéro: {showConfirm.numero}</div>
+              <div style={{ fontSize: 12, color: "#1e40af" }}>Vous recevrez un email de confirmation</div>
+            </div>
+            
+            <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1rem", marginBottom: 12, textAlign: "left", fontSize: 12 }}>
+              <div style={{ fontWeight: 600, marginBottom: 8, color: "#1a1a2e" }}>📦 Facture:</div>
+              {panier.map((item, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, color: "#6b7280" }}>
+                  <span>{item.title} x{item.qty}</span>
+                  <strong>{(item.price * item.qty).toLocaleString()} FCFA</strong>
+                </div>
+              ))}
+              <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 8, marginTop: 8, display: "flex", justifyContent: "space-between", fontWeight: 700, color: "#2563eb" }}>
+                <span>Total:</span>
+                <span>{showConfirm.totalFinal?.toLocaleString()} FCFA</span>
+              </div>
+            </div>
+            
+            <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "1rem", marginBottom: 12, fontSize: 12 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6, color: "#92400e" }}>💳 Envoyer à:</div>
+              <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#f59e0b", marginBottom: 4 }}>{MOMO}</div>
+              <div style={{ fontSize: 11, color: "#b45309" }}>Montant: {showConfirm.totalFinal?.toLocaleString()} FCFA</div>
+            </div>
+            
+            <button className="btn-primary" onClick={() => { setShowConfirm(null); setFormCmd({ nom: "", email: "", telephone: "", numeroAppel: "", ville: "", adresse: "", codePromo: "" }); }}>Fermer</button>
           </div>
         </div>
       )}
