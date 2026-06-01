@@ -96,24 +96,18 @@ export default function FastBuy229() {
   const totalPanier = panier.reduce((s, i) => s + i.price * i.qty, 0);
   const calculerTotalFinal = (ville, codePromo) => {
     let total = totalPanier;
-    let reduction = 0;
-    let frais = 0;
     
-    // 1️⃣ Appliquer réduction 10% SI code promo correct (prénom + "10")
+    // Réduction 10% si code promo correct
     if (codePromo && client?.prenom) {
-      const codeAttendu = client.prenom + "10";
-      if (codePromo.toLowerCase() === codeAttendu.toLowerCase()) {
-        reduction = total * 0.1; // 10% de réduction
-        total = total - reduction;
+      if (codePromo.toLowerCase() === (client.prenom + "10").toLowerCase()) {
+        total = total * 0.9;
       }
     }
     
-    // 2️⃣ Ajouter frais de livraison SI total < 20000
+    // Frais livraison si total < 20000
     if (total < 20000 && ville) {
-      frais = FRAIS_LIVRAISON[ville] || 0;
-      total = total + frais;
+      total += FRAIS_LIVRAISON[ville] || 0;
     }
-    // Sinon: Si total >= 20000 → Livraison GRATUIT! ✅
     
     return Math.round(total);
   };
