@@ -127,7 +127,7 @@ export default function FastBuy229() {
         const fileName = `cap-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
         const { data, error: uploadError } = await supabase.storage
-          .from("PRODUITS")
+          .from("produits")
           .upload(fileName, captureFile, { upsert: true });
         
         if (uploadError) {
@@ -189,7 +189,7 @@ export default function FastBuy229() {
         const fileName = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
         const { data, error: uploadError } = await supabase.storage
-          .from("PRODUITS")
+          .from("produits")
           .upload(fileName, file, { upsert: true });
         
         if (uploadError) {
