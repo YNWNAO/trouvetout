@@ -796,7 +796,7 @@ export default function FastBuy229() {
             
             {formCmd.ville && FRAIS_LIVRAISON[formCmd.ville] && totalPanier < 20000 && <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, color: "#92400e" }}>🚚 Frais livraison ({formCmd.ville}): +{FRAIS_LIVRAISON[formCmd.ville].toLocaleString()} FCFA</div>}
             
-            {totalPanier >= 20000 && <div style={{ background: "#dcfce7", border: "1px solid #86efac", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, color: "#166534" }}>🎉 Livraison GRATUITE (commande >= 20000)</div>}
+            {totalPanier > 19999 && <div style={{ background: "#dcfce7", border: "1px solid #86efac", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, color: "#166534" }}>🎉 Livraison GRATUITE</div>}
             
             <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px", marginBottom: 12, fontSize: 12 }}>Envoyer {totalFinal.toLocaleString()} FCFA à {MOMO}</div>
             <div onClick={() => document.getElementById("capture-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginBottom: 12, background: "#fafafa", fontSize: 12 }}>
