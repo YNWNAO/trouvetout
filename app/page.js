@@ -684,31 +684,34 @@ export default function FastBuy229() {
             {showProduit.description && <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>{showProduit.description}</div>}
             {showProduit.variantes && JSON.parse(showProduit.variantes).length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontWeight: 700, marginBottom: 8, fontSize: 13, color: "#1a1a2e", display: "block" }}>🎯 Sélectionner une variante</label>
-                <select 
-                  value={selectedVariante ?? ""} 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "") {
-                      setSelectedVariante(null);
-                    } else {
-                      setSelectedVariante(Number(val));
-                    }
-                  }} 
-                  style={{ width: "100%", padding: "10px", marginBottom: 12, fontSize: 14, borderRadius: 8, border: "2px solid #2563eb" }}
-                >
-                  <option value="">-- Choisir une variante --</option>
+                <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13, color: "#1a1a2e" }}>🎯 Sélectionner une variante</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
                   {JSON.parse(showProduit.variantes).map((v, i) => (
-                    <option key={i} value={i}>
+                    <button 
+                      type="button"
+                      key={i}
+                      onClick={() => {
+                        console.log("Cliqué variante:", i);
+                        setSelectedVariante(i);
+                      }}
+                      style={{
+                        padding: "12px",
+                        borderRadius: 8,
+                        border: selectedVariante === i ? "3px solid #2563eb" : "2px solid #d1d5db",
+                        background: selectedVariante === i ? "#eff6ff" : "#fff",
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#1a1a2e",
+                        textAlign: "left",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      {selectedVariante === i && "✅ "}
                       {v.couleur} • {v.taille} • {v.nbrPieces} pcs - {v.prix.toLocaleString()} FCFA
-                    </option>
+                    </button>
                   ))}
-                </select>
-                {selectedVariante !== null && selectedVariante !== undefined && (
-                  <div style={{ fontSize: 12, color: "#059669", fontWeight: 600, padding: "8px", background: "#dcfce7", borderRadius: 6 }}>
-                    ✅ {JSON.parse(showProduit.variantes)[selectedVariante].couleur} sélectionnée
-                  </div>
-                )}
+                </div>
               </div>
             )}
             <button type="button" onClick={() => { if (selectedVariante === null && showProduit.variantes && JSON.parse(showProduit.variantes).length > 0) { alert("Sélectionne une variante!"); return; } const variante = selectedVariante !== null && showProduit.variantes ? JSON.parse(showProduit.variantes)[selectedVariante] : null; ajouterAuPanier({...showProduit, price: variante ? variante.prix : showProduit.price}, variante); }} className="btn-primary">{!client ? "Connexion" : "Ajouter au panier"}</button>
