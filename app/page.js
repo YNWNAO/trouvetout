@@ -45,11 +45,10 @@ export default function FastBuy229() {
   const [formCmd, setFormCmd] = useState({ nom: "", email: "", telephone: "", ville: "", adresse: "" });
   const [captureFile, setCaptureFile] = useState(null);
   const [newProduct, setNewProduct] = useState({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
-  const [nbrPieces, setNbrPieces] = useState("");
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [variantes, setVariantes] = useState([]);
-  const [newVariante, setNewVariante] = useState({ couleur: "", taille: "", prix: "" });
+  const [newVariante, setNewVariante] = useState({ couleur: "", taille: "", nbrPieces: "", prix: "" });
   const [newMdpClient, setNewMdpClient] = useState("");
   const [commandesClient, setCommandesClient] = useState([]);
   const [messageAuClient, setMessageAuClient] = useState("");
@@ -178,9 +177,9 @@ export default function FastBuy229() {
   };
 
   const ajouterVariante = () => {
-    if (!newVariante.couleur || !newVariante.taille || !newVariante.prix) { alert("Remplis tous!"); return; }
-    setVariantes([...variantes, { ...newVariante, prix: parseInt(newVariante.prix) }]);
-    setNewVariante({ couleur: "", taille: "", prix: "" });
+    if (!newVariante.couleur || !newVariante.taille || !newVariante.nbrPieces || !newVariante.prix) { alert("Remplis tous!"); return; }
+    setVariantes([...variantes, { ...newVariante, prix: parseInt(newVariante.prix), nbrPieces: parseInt(newVariante.nbrPieces) }]);
+    setNewVariante({ couleur: "", taille: "", nbrPieces: "", prix: "" });
   };
 
   const ajouterProduit = async () => {
@@ -228,7 +227,6 @@ export default function FastBuy229() {
       setNewProduct({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
       setImageFiles([]); setImagePreviews([]);
       setVariantes([]);
-      setNbrPieces("");
       setLoading(false);
     } catch (e) {
       console.error("Exception:", e);
@@ -354,10 +352,6 @@ export default function FastBuy229() {
                 <option>Occasion</option>
               </select>
 
-              {newProduct.category === "Accessoires" && (
-                <input type="number" placeholder="Nombre de pièces" value={nbrPieces} onChange={e => setNbrPieces(e.target.value)} style={{ marginBottom: 12 }} />
-              )}
-
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Photos (min 1, max 5)</label>
                 <div onClick={() => document.getElementById("photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", background: "#fafafa", marginTop: 6 }}>
@@ -378,17 +372,18 @@ export default function FastBuy229() {
               </div>
 
               <div style={{ marginBottom: 12, background: "#f9fafb", borderRadius: 10, padding: "1rem" }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Variantes (couleur, taille, prix)</label>
-                <div style={{ marginTop: 8, display: "flex", gap: 6, marginBottom: 8 }}>
-                  <input value={newVariante.couleur} onChange={e => setNewVariante({ ...newVariante, couleur: e.target.value })} placeholder="Couleur" style={{ marginBottom: 0 }} />
-                  <input value={newVariante.taille} onChange={e => setNewVariante({ ...newVariante, taille: e.target.value })} placeholder="Taille" style={{ marginBottom: 0 }} />
-                  <input type="number" value={newVariante.prix} onChange={e => setNewVariante({ ...newVariante, prix: e.target.value })} placeholder="Prix" style={{ marginBottom: 0 }} />
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Variantes (couleur, taille, pièces, prix)</label>
+                <div style={{ marginTop: 8, display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                  <input value={newVariante.couleur} onChange={e => setNewVariante({ ...newVariante, couleur: e.target.value })} placeholder="Couleur" style={{ marginBottom: 0, flex: 1, minWidth: 80 }} />
+                  <input value={newVariante.taille} onChange={e => setNewVariante({ ...newVariante, taille: e.target.value })} placeholder="Taille" style={{ marginBottom: 0, flex: 1, minWidth: 60 }} />
+                  <input type="number" value={newVariante.nbrPieces} onChange={e => setNewVariante({ ...newVariante, nbrPieces: e.target.value })} placeholder="Pièces" style={{ marginBottom: 0, flex: 1, minWidth: 60 }} />
+                  <input type="number" value={newVariante.prix} onChange={e => setNewVariante({ ...newVariante, prix: e.target.value })} placeholder="Prix" style={{ marginBottom: 0, flex: 1, minWidth: 70 }} />
                   <button onClick={ajouterVariante} style={{ padding: "8px 12px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, width: "auto" }}>+</button>
                 </div>
                 <div style={{ maxHeight: 100, overflowY: "auto" }}>
                   {variantes.map((v, i) => (
                     <div key={i} style={{ background: "#fff", padding: "6px", borderRadius: 4, marginBottom: 4, fontSize: 11, display: "flex", justifyContent: "space-between" }}>
-                      <span>{v.couleur} - {v.taille} - {v.prix} FCFA</span>
+                      <span>{v.couleur} - {v.taille} - {v.nbrPieces} pcs - {v.prix} FCFA</span>
                       <button onClick={() => setVariantes(variantes.filter((_, idx) => idx !== i))} style={{ background: "#fef2f2", color: "#ef4444", border: "none", borderRadius: 3, padding: "2px 6px", cursor: "pointer", fontSize: 10 }}>X</button>
                     </div>
                   ))}
