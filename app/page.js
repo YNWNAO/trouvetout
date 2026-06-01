@@ -96,23 +96,19 @@ export default function FastBuy229() {
   const totalPanier = panier.reduce((s, i) => s + i.price * i.qty, 0);
   const calculerTotalFinal = (ville, codePromo) => {
     let total = totalPanier;
-    
-    // Réduction 10% si code promo correct ET première commande seulement
     if (codePromo && client?.prenom && client?.premiereCommande) {
       if (codePromo.toLowerCase() === (client.prenom + "10").toLowerCase()) {
         total = total * 0.9;
       }
     }
-    
-    // Frais livraison si total < 20000
     if (total < 20000 && ville) {
       total += FRAIS_LIVRAISON[ville] || 0;
     }
-    
     return Math.round(total);
   };
   
   const totalFinal = calculerTotalFinal(formCmd.ville, formCmd.codePromo);
+  const isLivraisonGratuite = totalPanier > 19999;
 
   const choisirGenre = (genre) => { setGenreChoisi(genre); localStorage.setItem("fastbuy_genre", genre); setShowGenreModal(false); };
   const ajouterAuPanier = (prod) => { if (!client) { setShowLogin(true); return; } const key = `${prod.id}`; setPanier(prev => { const ex = prev.find(i => i.key === key); if (ex) return prev.map(i => i.key === key ? { ...i, qty: i.qty + 1 } : i); return [...prev, { ...prod, key, qty: 1 }]; }); setShowProduit(null); setSelectedVariante(null); };
@@ -220,10 +216,7 @@ export default function FastBuy229() {
         return;
       }
       
-      // Mettre premiereCommande à false après 1ère commande réussie
       await supabase.from("users").update({ premiereCommande: false }).eq("id", client.id);
-      
-      // Mettre à jour le client local aussi
       const updatedClient = { ...client, premiereCommande: false };
       setClient(updatedClient);
       localStorage.setItem("fastbuy_client", JSON.stringify(updatedClient));
@@ -253,7 +246,6 @@ export default function FastBuy229() {
     try {
       let imagePaths = [];
       
-      // Upload toutes les images
       for (const file of imageFiles) {
         const fileName = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
@@ -424,7 +416,7 @@ export default function FastBuy229() {
                       {imagePreviews.map((p, i) => (
                         <div key={i} style={{ position: "relative", paddingBottom: "100%", background: "#f3f4f6", borderRadius: 6, overflow: "hidden" }}>
                           <img src={p} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-                          <button onClick={e => { e.stopPropagation(); setImageFiles(imageFiles.filter((_, idx) => idx !== i)); setImagePreviews(imagePreviews.filter((_, idx) => idx !== i)); }} style={{ position: "absolute", top: 2, right: 2, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                          <button onClick={e => { e.stopPropagation(); setImageFiles(imageFiles.filter((_, idx) => idx !== i)); setImagePreviews(imagePreviews.filter((_, idx) => idx !== i)); }} style={{ position: "absolute", top: 2, right: 2, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>X</button>
                         </div>
                       ))}
                     </div>
@@ -491,8 +483,8 @@ export default function FastBuy229() {
                     </div>
 
                     <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: "1rem" }}>
-                      <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8 }} onClick={() => modifierProduit(produitEdit.id)} disabled={loading}>✏️ Modifier</button>
-                      <button className="btn-primary" style={{ background: "#ef4444" }} onClick={() => supprimerProduit(produitEdit.id)} disabled={loading}>🗑️ Supprimer</button>
+                      <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8 }} onClick={() => modifierProduit(produitEdit.id)} disabled={loading}>Modifier</button>
+                      <button className="btn-primary" style={{ background: "#ef4444" }} onClick={() => supprimerProduit(produitEdit.id)} disabled={loading}>Supprimer</button>
                     </div>
                   </div>
                 ) : (
@@ -508,7 +500,6 @@ export default function FastBuy229() {
             <div className="modal" style={{ maxWidth: "1000px", maxHeight: "90vh", display: "flex", flexDirection: "column", padding: 0 }}>
               <div style={{ background: "#10b981", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Gérer Clients</div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                {/* LISTE CLIENTS */}
                 <div style={{ width: "200px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
                   {clients.map(c => (
                     <div key={c.id} onClick={() => { setClientTrouve(c); chargerCommandesClient(c.id); }} style={{ padding: "10px", borderRadius: 8, marginBottom: 8, fontSize: 11, cursor: "pointer", background: clientTrouve?.id === c.id ? "#10b981" : "#fff", color: clientTrouve?.id === c.id ? "#fff" : "#1a1a2e", border: "1px solid #e5e7eb", fontWeight: 600 }}>
@@ -518,17 +509,14 @@ export default function FastBuy229() {
                   ))}
                 </div>
 
-                {/* INFOS CLIENT */}
                 {clientTrouve ? (
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "1rem", overflowY: "auto" }}>
-                    {/* HEADER */}
                     <div style={{ marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "2px solid #e5e7eb" }}>
                       <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 4 }}>{clientTrouve.nom}</h2>
                       <div style={{ fontSize: 11, color: "#6b7280" }}>📧 {clientTrouve.email}</div>
                       <div style={{ fontSize: 11, color: "#6b7280" }}>📱 {clientTrouve.telephone}</div>
                     </div>
 
-                    {/* COMMANDES */}
                     <div style={{ marginBottom: "1.5rem" }}>
                       <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.5rem", color: "#1a1a2e" }}>📦 Commandes ({commandesClient.length})</h3>
                       <div style={{ background: "#f9fafb", borderRadius: 8, padding: "0.5rem", maxHeight: 180, overflowY: "auto", border: "1px solid #e5e7eb" }}>
@@ -542,7 +530,7 @@ export default function FastBuy229() {
                               {cmd.numeroAppel && <div style={{ fontSize: 9, color: "#f59e0b", marginBottom: 3, fontWeight: 600 }}>📞 Appel: {cmd.numeroAppel}</div>}
                               <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>💰 Total: <strong>{cmd.totalFinal?.toLocaleString()} FCFA</strong></div>
                               <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>📊 Statut: <strong>{cmd.statut}</strong></div>
-                              <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>💳 Paiement: <strong>{cmd.paiement}</strong></div>
+                              <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>Paiement: <strong>{cmd.paiement}</strong></div>
                               {cmd.capture && <div style={{ fontSize: 10, color: "#16a34a", marginBottom: 3 }}>✅ Capture reçue</div>}
                               <details style={{ fontSize: 9, marginTop: 4 }}>
                                 <summary style={{ cursor: "pointer", color: "#2563eb", fontWeight: 600 }}>Articles ({cmd.articles ? JSON.parse(cmd.articles).length : 0})</summary>
@@ -558,17 +546,16 @@ export default function FastBuy229() {
                       </div>
                     </div>
 
-                    {/* ACTIONS */}
                     <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: "1rem" }}>
-                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.75rem", color: "#1a1a2e" }}>⚙️ Actions</h3>
+                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.75rem", color: "#1a1a2e" }}>Actions</h3>
                       <div style={{ position: "relative", marginBottom: 8 }}>
                         <input type={showPassword.gererClientMdp ? "text" : "password"} value={newMdpClient} onChange={e => setNewMdpClient(e.target.value)} placeholder="Nouveau mot de passe" style={{ fontSize: 12, paddingRight: 40 }} />
                         <button onClick={() => togglePassword("gererClientMdp")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>
                           {showPassword.gererClientMdp ? "👁️" : "👁️‍🗨️"}
                         </button>
                       </div>
-                      <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8, fontSize: 12, padding: "10px" }} onClick={() => changerMdpClient(clientTrouve.id)} disabled={loading}>🔐 Changer MDP</button>
-                      <button className="btn-primary" style={{ background: "#ef4444", fontSize: 12, padding: "10px" }} onClick={() => supprimerClient(clientTrouve.id)} disabled={loading}>🗑️ Supprimer Compte</button>
+                      <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8, fontSize: 12, padding: "10px" }} onClick={() => changerMdpClient(clientTrouve.id)} disabled={loading}>Changer MDP</button>
+                      <button className="btn-primary" style={{ background: "#ef4444", fontSize: 12, padding: "10px" }} onClick={() => supprimerClient(clientTrouve.id)} disabled={loading}>Supprimer Compte</button>
                     </div>
                   </div>
                 ) : (
@@ -591,7 +578,7 @@ export default function FastBuy229() {
     <div style={{ minHeight: "100vh", background: "#f8f9fa", paddingBottom: 80 }}>
       <style>{globalStyles}</style>
 
-      <div style={{ background: "#1a1a2e", color: "#fff", padding: "8px 1.5rem", fontSize: 12, textAlign: "center", fontWeight: 600 }}>Livraison gratuite à partir de 20000 FCFA | 10% réduction 1ère commande</div>
+      <div style={{ background: "#1a1a2e", color: "#fff", padding: "8px 1.5rem", fontSize: 12, textAlign: "center", fontWeight: 600 }}>Livraison gratuite a partir de 20000 FCFA | 10% reduction 1ere commande</div>
 
       {showGenreModal && (
         <div className="modal-overlay">
@@ -609,7 +596,7 @@ export default function FastBuy229() {
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }} />
         <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
         {client ? (
-          <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
+          <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Deco</span>
         ) : (
           <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#2563eb" }} onClick={() => setShowLogin(true)}>Connexion</span>
         )}
@@ -635,14 +622,14 @@ export default function FastBuy229() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => setHeroIndex(heroIndex > 0 ? heroIndex - 1 : 4)} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer" }}>{'<'}</button>
-              <button onClick={() => setHeroIndex(heroIndex < 4 ? heroIndex + 1 : 0)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer" }}>{'>'}</button>
+              <button onClick={() => setHeroIndex(heroIndex > 0 ? heroIndex - 1 : 4)} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer", fontSize: 20, fontWeight: "bold" }}>PREV</button>
+              <button onClick={() => setHeroIndex(heroIndex < 4 ? heroIndex + 1 : 0)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer", fontSize: 20, fontWeight: "bold" }}>NEXT</button>
             </div>
           )}
 
           <div style={{ padding: "1.5rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <h2 style={{ fontSize: "1rem", fontWeight: 700 }}>Catégories</h2>
+              <h2 style={{ fontSize: "1rem", fontWeight: 700 }}>Categories</h2>
               <button onClick={() => setShowContactAdmin(true)} style={{ padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 8, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Nous Contacter</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
@@ -668,7 +655,7 @@ export default function FastBuy229() {
       {page === "produits" && (
         <div style={{ padding: "1.5rem" }}>
           {produitsFiltres.length === 0 ? (
-            <div style={{ textAlign: "center", color: "#9ca3af" }}>❌ Aucun produit trouvé</div>
+            <div style={{ textAlign: "center", color: "#9ca3af" }}>Aucun produit trouve</div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
               {produitsFiltres.map(item => (
@@ -702,7 +689,7 @@ export default function FastBuy229() {
             {showProduit.description && <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>{showProduit.description}</div>}
             {showProduit.variantes && JSON.parse(showProduit.variantes).length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 13, color: "#1a1a2e" }}>🎯 Sélectionner une variante</div>
+                <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 13, color: "#1a1a2e" }}>Selectionner une variante</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
                   {JSON.parse(showProduit.variantes).map((v, i) => (
                       <button
@@ -735,7 +722,7 @@ export default function FastBuy229() {
                 </div>
               </div>
             )}
-            <button onClick={() => { if (selectedVariante === null && showProduit.variantes && JSON.parse(showProduit.variantes).length > 0) { alert("❌ Sélectionne une variante!"); return; } ajouterAuPanier({...showProduit, price: selectedVariante !== null && showProduit.variantes ? JSON.parse(showProduit.variantes)[selectedVariante].prix : showProduit.price}); }} className="btn-primary">{!client ? "Connexion" : "Ajouter au panier"}</button>
+            <button onClick={() => { if (selectedVariante === null && showProduit.variantes && JSON.parse(showProduit.variantes).length > 0) { alert("Selectione une variante!"); return; } ajouterAuPanier({...showProduit, price: selectedVariante !== null && showProduit.variantes ? JSON.parse(showProduit.variantes)[selectedVariante].prix : showProduit.price}); }} className="btn-primary">{!client ? "Connexion" : "Ajouter au panier"}</button>
           </div>
         </div>
       )}
@@ -746,13 +733,13 @@ export default function FastBuy229() {
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Nous Contacter</h2>
             <div style={{ background: "#eff6ff", borderRadius: 12, padding: "1.5rem" }}>
               <div style={{ marginBottom: "1.5rem" }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "0.75rem" }}>📧 Email</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "0.75rem" }}>Email</div>
                 <a href={`mailto:${ADMIN_EMAIL}`} style={{ fontSize: 13, color: "#2563eb", textDecoration: "none", fontWeight: 600, display: "inline-block", padding: "8px 12px", background: "#fff", borderRadius: 8 }}>
                   {ADMIN_EMAIL}
                 </a>
               </div>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "0.75rem" }}>📱 WhatsApp</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "0.75rem" }}>WhatsApp</div>
                 <a href={`https://wa.me/${ADMIN_WHATSAPP.replace(/\s/g, "").replace("+", "")}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "#25D366", textDecoration: "none", fontWeight: 600, display: "inline-block", padding: "8px 12px", background: "#fff", borderRadius: 8 }}>
                   {ADMIN_WHATSAPP}
                 </a>
@@ -767,7 +754,7 @@ export default function FastBuy229() {
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1rem" }}>Panier</h2>
             {panier.length === 0 ? (
-              <div style={{ textAlign: "center", color: "#9ca3af" }}>❌ Panier vide</div>
+              <div style={{ textAlign: "center", color: "#9ca3af" }}>Panier vide</div>
             ) : (
               <>
                 {panier.map(item => (
@@ -780,7 +767,7 @@ export default function FastBuy229() {
                       <button onClick={() => setPanier(prev => prev.map(i => i.key === item.key ? { ...i, qty: Math.max(1, i.qty - 1) } : i))} style={{ width: 20, height: 20, border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", borderRadius: "50%" }}>-</button>
                       <span style={{ width: 14, textAlign: "center", fontWeight: 600 }}>{item.qty}</span>
                       <button onClick={() => setPanier(prev => prev.map(i => i.key === item.key ? { ...i, qty: i.qty + 1 } : i))} style={{ width: 20, height: 20, border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", borderRadius: "50%" }}>+</button>
-                      <button onClick={() => setPanier(prev => prev.filter(i => i.key !== item.key))} style={{ width: 20, height: 20, border: "1px solid #ef4444", background: "#fef2f2", cursor: "pointer", borderRadius: "50%", color: "#ef4444", fontWeight: 600, fontSize: 12 }}>✕</button>
+                      <button onClick={() => setPanier(prev => prev.filter(i => i.key !== item.key))} style={{ width: 20, height: 20, border: "1px solid #ef4444", background: "#fef2f2", cursor: "pointer", borderRadius: "50%", color: "#ef4444", fontWeight: 600, fontSize: 12 }}>X</button>
                     </div>
                   </div>
                 ))}
@@ -789,7 +776,7 @@ export default function FastBuy229() {
                     <span>Total</span>
                     <span style={{ color: "#2563eb" }}>{totalFinal.toLocaleString()} FCFA</span>
                   </div>
-                  <button className="btn-primary" onClick={() => { setShowPanier(false); setShowCommande(true); }}>Procéder</button>
+                  <button className="btn-primary" onClick={() => { setShowPanier(false); setShowCommande(true); }}>Proceder</button>
                 </div>
               </>
             )}
@@ -803,21 +790,21 @@ export default function FastBuy229() {
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1rem" }}>Commande</h2>
             <input placeholder="Nom" value={formCmd.nom} onChange={e => setFormCmd({ ...formCmd, nom: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Email" value={formCmd.email} onChange={e => setFormCmd({ ...formCmd, email: e.target.value })} style={{ marginBottom: 12 }} />
-            <input placeholder="Téléphone" value={formCmd.telephone} onChange={e => setFormCmd({ ...formCmd, telephone: e.target.value })} style={{ marginBottom: 12 }} />
-            <input placeholder="Numéro pour appel paiement" value={formCmd.numeroAppel} onChange={e => setFormCmd({ ...formCmd, numeroAppel: e.target.value })} style={{ marginBottom: 12 }} />
+            <input placeholder="Telephone" value={formCmd.telephone} onChange={e => setFormCmd({ ...formCmd, telephone: e.target.value })} style={{ marginBottom: 12 }} />
+            <input placeholder="Numero pour appel paiement" value={formCmd.numeroAppel} onChange={e => setFormCmd({ ...formCmd, numeroAppel: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Ville" value={formCmd.ville} onChange={e => setFormCmd({ ...formCmd, ville: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Quartier" value={formCmd.quartier} onChange={e => setFormCmd({ ...formCmd, quartier: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Code promo" value={formCmd.codePromo} onChange={e => setFormCmd({ ...formCmd, codePromo: e.target.value })} style={{ marginBottom: 12 }} />
             
-            {client?.prenom && client?.premiereCommande && <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, fontWeight: 600, color: "#1e40af" }}>🎁 Code promo 1ère commande: <strong>{client.prenom}10</strong> (-10%)</div>}
+            {client?.prenom && client?.premiereCommande && <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, fontWeight: 600, color: "#1e40af" }}>Code promo 1ere commande: <strong>{client.prenom}10</strong> (-10%)</div>}
             
-            {formCmd.ville && FRAIS_LIVRAISON[formCmd.ville] && totalPanier < 20000 && <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, color: "#92400e" }}>🚚 Frais livraison ({formCmd.ville}): +{FRAIS_LIVRAISON[formCmd.ville].toLocaleString()} FCFA</div>}
+            {formCmd.ville && FRAIS_LIVRAISON[formCmd.ville] && totalPanier < 20000 && <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, color: "#92400e" }}>Frais livraison ({formCmd.ville}): +{FRAIS_LIVRAISON[formCmd.ville].toLocaleString()} FCFA</div>}
             
-            {totalPanier >= 20000 && <div style={{ background: "#dcfce7", border: "1px solid #86efac", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, color: "#166534" }}>🎉 Livraison GRATUITE (commande >= 20000)</div>}
+            {isLivraisonGratuite && <div style={{ background: "#dcfce7", border: "1px solid #86efac", borderRadius: 8, padding: "8px", marginBottom: 12, fontSize: 11, color: "#166534" }}>Livraison GRATUITE</div>}
             
-            <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px", marginBottom: 12, fontSize: 12 }}>Envoyer {totalFinal.toLocaleString()} FCFA à {MOMO}</div>
+            <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px", marginBottom: 12, fontSize: 12 }}>Envoyer {totalFinal.toLocaleString()} FCFA a {MOMO}</div>
             <div onClick={() => document.getElementById("capture-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginBottom: 12, background: "#fafafa", fontSize: 12 }}>
-              {captureFile ? <span style={{ color: "#16a34a" }}>✅ OK</span> : <span>📸 Capture</span>}
+              {captureFile ? <span style={{ color: "#16a34a" }}>OK</span> : <span>Capture</span>}
               <input id="capture-input" type="file" accept="image/*" onChange={e => setCaptureFile(e.target.files[0])} style={{ display: "none" }} />
             </div>
             <button onClick={envoyerCommande} disabled={loading} className="btn-primary">{loading ? "..." : "Confirmer"}</button>
@@ -828,15 +815,15 @@ export default function FastBuy229() {
       {showConfirm && (
         <div className="modal-overlay">
           <div className="modal" style={{ textAlign: "center", maxWidth: "500px", maxHeight: "80vh", overflowY: "auto" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>✅</div>
-            <h2 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: 12 }}>Commande Confirmée!</h2>
+            <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>OK</div>
+            <h2 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: 12 }}>Commande Confirmee!</h2>
             <div style={{ background: "#eff6ff", borderRadius: 10, padding: "1rem", marginBottom: 12 }}>
-              <div style={{ fontWeight: 700, color: "#2563eb", fontSize: "1.1rem", marginBottom: 4 }}>Numéro: {showConfirm.numero}</div>
+              <div style={{ fontWeight: 700, color: "#2563eb", fontSize: "1.1rem", marginBottom: 4 }}>Numero: {showConfirm.numero}</div>
               <div style={{ fontSize: 12, color: "#1e40af" }}>Vous recevrez un email de confirmation</div>
             </div>
             
             <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1rem", marginBottom: 12, textAlign: "left", fontSize: 12 }}>
-              <div style={{ fontWeight: 600, marginBottom: 8, color: "#1a1a2e" }}>📦 Facture:</div>
+              <div style={{ fontWeight: 600, marginBottom: 8, color: "#1a1a2e" }}>Facture:</div>
               {panier.map((item, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, color: "#6b7280" }}>
                   <span>{item.title} x{item.qty}</span>
@@ -850,7 +837,7 @@ export default function FastBuy229() {
             </div>
             
             <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "1rem", marginBottom: 12, fontSize: 12 }}>
-              <div style={{ fontWeight: 600, marginBottom: 6, color: "#92400e" }}>💳 Envoyer à:</div>
+              <div style={{ fontWeight: 600, marginBottom: 6, color: "#92400e" }}>Envoyer a:</div>
               <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#f59e0b", marginBottom: 4 }}>{MOMO}</div>
               <div style={{ fontSize: 11, color: "#b45309" }}>Montant: {showConfirm.totalFinal?.toLocaleString()} FCFA</div>
             </div>
@@ -871,10 +858,10 @@ export default function FastBuy229() {
                 {showPassword.login ? "👁️" : "👁️‍🗨️"}
               </button>
             </div>
-            {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12, padding: "8px", background: "#fef2f2", borderRadius: 6, fontWeight: 600 }}>⚠️ {authError}</div>}
+            {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12, padding: "8px", background: "#fef2f2", borderRadius: 6, fontWeight: 600 }}>{authError}</div>}
             <button className="btn-primary" onClick={connecter} style={{ marginBottom: 12 }}>Connexion</button>
             <div style={{ textAlign: "center", fontSize: 12 }}>
-              <span style={{ cursor: "pointer", color: "#2563eb" }} onClick={() => { setShowLogin(false); setShowInscription(true); }}>S'inscrire</span>
+              <span style={{ cursor: "pointer", color: "#2563eb" }} onClick={() => { setShowLogin(false); setShowInscription(true); }}>Sinscrire</span>
             </div>
           </div>
         </div>
@@ -883,8 +870,8 @@ export default function FastBuy229() {
       {showInscription && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowInscription(false)}>
           <div className="modal">
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>S'inscrire</h2>
-            <input placeholder="Prénom" value={inscForm.prenom} onChange={e => setInscForm({ ...inscForm, prenom: e.target.value })} style={{ marginBottom: 12 }} />
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Sinscrire</h2>
+            <input placeholder="Prenom" value={inscForm.prenom} onChange={e => setInscForm({ ...inscForm, prenom: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Nom" value={inscForm.nom} onChange={e => setInscForm({ ...inscForm, nom: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Email" value={inscForm.email} onChange={e => setInscForm({ ...inscForm, email: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Tel" value={inscForm.telephone} onChange={e => setInscForm({ ...inscForm, telephone: e.target.value })} style={{ marginBottom: 12 }} />
@@ -901,8 +888,8 @@ export default function FastBuy229() {
                 {showPassword.inscConf ? "👁️" : "👁️‍🗨️"}
               </button>
             </div>
-            {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12, padding: "8px", background: "#fef2f2", borderRadius: 6, fontWeight: 600 }}>⚠️ {authError}</div>}
-            <button className="btn-primary" onClick={inscrire}>Créer</button>
+            {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12, padding: "8px", background: "#fef2f2", borderRadius: 6, fontWeight: 600 }}>{authError}</div>}
+            <button className="btn-primary" onClick={inscrire}>Creer</button>
           </div>
         </div>
       )}
