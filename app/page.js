@@ -36,6 +36,9 @@ export default function FastBuy229() {
   const [clientTrouve, setClientTrouve] = useState(null);
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [showGererProduits, setShowGererProduits] = useState(false);
+  const [produitEdit, setProduitEdit] = useState(null);
+  const [editForm, setEditForm] = useState({ price: "", etat: "" });
   const [loginForm, setLoginForm] = useState({ identifiant: "", motDePasse: "" });
   const [inscForm, setInscForm] = useState({ prenom: "", nom: "", email: "", telephone: "", date_naissance: "", mot_de_passe: "", confirmer: "" });
   const [authError, setAuthError] = useState("");
@@ -229,7 +232,34 @@ export default function FastBuy229() {
     }
   };
 
-  const chargerCommandesClient = async (clientId) => {
+  const supprimerProduit = async (produitId) => {
+    if (!confirm("Confirmer la suppression?")) return;
+    setLoading(true);
+    try {
+      await supabase.from("produits").delete().eq("id", produitId);
+      alert("Produit supprimé!");
+      await chargerProduits();
+      setProduitEdit(null);
+    } catch (e) {
+      alert("Erreur: " + e.message);
+    }
+    setLoading(false);
+  };
+
+  const modifierProduit = async (produitId) => {
+    if (!editForm.price || !editForm.etat) { alert("Remplis tous!"); return; }
+    setLoading(true);
+    try {
+      await supabase.from("produits").update({ price: parseInt(editForm.price), etat: editForm.etat }).eq("id", produitId);
+      alert("Produit modifié!");
+      await chargerProduits();
+      setProduitEdit(null);
+      setEditForm({ price: "", etat: "" });
+    } catch (e) {
+      alert("Erreur: " + e.message);
+    }
+    setLoading(false);
+  };
     const { data } = await supabase.from("commandes").select("*").eq("user_id", clientId);
     if (data) setCommandesClient(data);
   };
@@ -284,6 +314,7 @@ export default function FastBuy229() {
               <h1 style={{ fontSize: "1.8rem", fontWeight: 800 }}>Admin</h1>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => { setShowAddProduct(true); setVariantes([]); }}>Ajouter Produit</button>
+                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#f59e0b" }} onClick={() => { setShowGererProduits(true); }}>Gérer Produits</button>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#10b981" }} onClick={() => { setShowGererClients(true); chargerClients(); }}>Gérer Clients</button>
                 <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "10px 18px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 10, cursor: "pointer", fontWeight: 600 }}>Déco</button>
               </div>
@@ -345,6 +376,50 @@ export default function FastBuy229() {
               </div>
 
               <button onClick={ajouterProduit} disabled={loading} className="btn-primary">{loading ? "Création..." : "Publier"}</button>
+            </div>
+          </div>
+        )}
+
+        {showGererProduits && (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowGererProduits(false)}>
+            <div className="modal" style={{ maxWidth: "900px", maxHeight: "85vh", display: "flex", flexDirection: "column", padding: 0 }}>
+              <div style={{ background: "#f59e0b", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Gérer Produits</div>
+              <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+                <div style={{ width: "220px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
+                  {produits.map(p => (
+                    <div key={p.id} onClick={() => { setProduitEdit(p); setEditForm({ price: p.price, etat: p.etat }); }} style={{ padding: "10px", borderRadius: 8, marginBottom: 8, fontSize: 11, cursor: "pointer", background: produitEdit?.id === p.id ? "#f59e0b" : "#fff", color: produitEdit?.id === p.id ? "#fff" : "#1a1a2e", border: "1px solid #e5e7eb", fontWeight: 600 }}>
+                      <div>{p.title}</div>
+                      <div style={{ fontSize: 9, opacity: 0.7, marginTop: 3 }}>{p.price?.toLocaleString()} FCFA</div>
+                    </div>
+                  ))}
+                </div>
+                {produitEdit ? (
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "1rem", overflowY: "auto" }}>
+                    <div style={{ marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "2px solid #e5e7eb" }}>
+                      <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 4 }}>{produitEdit.title}</h2>
+                      <div style={{ fontSize: 11, color: "#6b7280" }}>Cat: {produitEdit.category}</div>
+                      <div style={{ fontSize: 11, color: "#6b7280" }}>Genre: {produitEdit.genre}</div>
+                    </div>
+
+                    <div style={{ marginBottom: "1.5rem" }}>
+                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.75rem" }}>Modifier</h3>
+                      <input type="number" value={editForm.price} onChange={e => setEditForm({ ...editForm, price: e.target.value })} placeholder="Prix" style={{ marginBottom: 12 }} />
+                      <select value={editForm.etat} onChange={e => setEditForm({ ...editForm, etat: e.target.value })} style={{ marginBottom: 12 }}>
+                        <option>Neuf</option>
+                        <option>Bon état</option>
+                        <option>Occasion</option>
+                      </select>
+                    </div>
+
+                    <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: "1rem" }}>
+                      <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8 }} onClick={() => modifierProduit(produitEdit.id)} disabled={loading}>✏️ Modifier</button>
+                      <button className="btn-primary" style={{ background: "#ef4444" }} onClick={() => supprimerProduit(produitEdit.id)} disabled={loading}>🗑️ Supprimer</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Sélectionne un produit</div>
+                )}
+              </div>
             </div>
           </div>
         )}
