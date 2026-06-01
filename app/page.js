@@ -260,8 +260,14 @@ export default function FastBuy229() {
     }
     setLoading(false);
   };
-    const { data } = await supabase.from("commandes").select("*").eq("user_id", clientId);
-    if (data) setCommandesClient(data);
+
+  const chargerCommandesClient = async (clientId) => {
+    try {
+      const { data } = await supabase.from("commandes").select("*").eq("user_id", clientId);
+      if (data) setCommandesClient(data);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const supprimerClient = async (clientId) => {
