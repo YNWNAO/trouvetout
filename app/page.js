@@ -693,16 +693,18 @@ export default function FastBuy229() {
                       style={{
                         padding: "14px 12px",
                         borderRadius: 10,
-                        border: selectedVariante === i ? "2.5px solid #2563eb" : "1.5px solid #d1d5db",
+                        border: selectedVariante === i ? "3px solid #2563eb" : "2px solid #d1d5db",
                         background: selectedVariante === i ? "#eff6ff" : "#fff",
                         cursor: "pointer",
                         fontSize: 12,
                         fontWeight: 600,
                         color: selectedVariante === i ? "#1a1a2e" : "#6b7280",
                         textAlign: "center",
-                        boxShadow: selectedVariante === i ? "0 2px 8px rgba(37,99,235,0.1)" : "none"
+                        boxShadow: selectedVariante === i ? "0 4px 12px rgba(37,99,235,0.2)" : "none",
+                        position: "relative"
                       }}
                     >
+                      {selectedVariante === i && <div style={{ position: "absolute", top: 6, right: 6, background: "#2563eb", color: "#fff", width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>✓</div>}
                       <div style={{ marginBottom: 6, fontSize: 11, color: selectedVariante === i ? "#2563eb" : "#6b7280" }}>
                         {v.couleur} • {v.taille}
                       </div>
