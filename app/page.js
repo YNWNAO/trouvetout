@@ -45,6 +45,7 @@ export default function FastBuy229() {
   const [formCmd, setFormCmd] = useState({ nom: "", email: "", telephone: "", ville: "", adresse: "" });
   const [captureFile, setCaptureFile] = useState(null);
   const [newProduct, setNewProduct] = useState({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
+  const [nbrPieces, setNbrPieces] = useState("");
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [variantes, setVariantes] = useState([]);
@@ -184,11 +185,13 @@ export default function FastBuy229() {
 
   const ajouterProduit = async () => {
     if (!newProduct.title || !newProduct.price) { alert("Titre + prix requis!"); return; }
+    if (imageFiles.length === 0) { alert("Ajoute au moins une image!"); return; }
     setLoading(true);
     try {
-      let imagePath = null;
-      if (imageFiles.length > 0) {
-        const file = imageFiles[0];
+      let imagePaths = [];
+      
+      // Upload toutes les images
+      for (const file of imageFiles) {
         const fileName = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
         const { data, error: uploadError } = await supabase.storage
@@ -201,13 +204,14 @@ export default function FastBuy229() {
           setLoading(false);
           return;
         }
-        imagePath = fileName;
+        imagePaths.push(fileName);
       }
       
       const prodData = { 
         ...newProduct, 
         price: parseInt(newProduct.price), 
-        image: imagePath, 
+        image: imagePaths[0], 
+        images: JSON.stringify(imagePaths),
         variantes: variantes.length > 0 ? JSON.stringify(variantes) : null 
       };
       
@@ -224,6 +228,7 @@ export default function FastBuy229() {
       setNewProduct({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
       setImageFiles([]); setImagePreviews([]);
       setVariantes([]);
+      setNbrPieces("");
       setLoading(false);
     } catch (e) {
       console.error("Exception:", e);
@@ -349,17 +354,26 @@ export default function FastBuy229() {
                 <option>Occasion</option>
               </select>
 
+              {newProduct.category === "Accessoires" && (
+                <input type="number" placeholder="Nombre de pièces" value={nbrPieces} onChange={e => setNbrPieces(e.target.value)} style={{ marginBottom: 12 }} />
+              )}
+
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Photos</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Photos (min 1, max 5)</label>
                 <div onClick={() => document.getElementById("photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", background: "#fafafa", marginTop: 6 }}>
                   {imagePreviews.length > 0 ? (
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-                      {imagePreviews.map((p, i) => <img key={i} src={p} alt="" style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 4 }} />)}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+                      {imagePreviews.map((p, i) => (
+                        <div key={i} style={{ position: "relative", paddingBottom: "100%", background: "#f3f4f6", borderRadius: 6, overflow: "hidden" }}>
+                          <img src={p} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                          <button onClick={e => { e.stopPropagation(); setImageFiles(imageFiles.filter((_, idx) => idx !== i)); setImagePreviews(imagePreviews.filter((_, idx) => idx !== i)); }} style={{ position: "absolute", top: 2, right: 2, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                        </div>
+                      ))}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12, color: "#9ca3af" }}>Cliquez pour ajouter</div>
+                    <div style={{ fontSize: 12, color: "#9ca3af" }}>Cliquez pour ajouter (max 5 images)</div>
                   )}
-                  <input id="photo-input" type="file" accept="image/*" multiple onChange={e => { const files = Array.from(e.target.files); setImageFiles(files); setImagePreviews(files.map(f => URL.createObjectURL(f))); }} style={{ display: "none" }} />
+                  <input id="photo-input" type="file" accept="image/*" multiple onChange={e => { const files = Array.from(e.target.files).slice(0, 5); setImageFiles(files); setImagePreviews(files.map(f => URL.createObjectURL(f))); }} style={{ display: "none" }} />
                 </div>
               </div>
 
