@@ -209,7 +209,8 @@ export default function FastBuy229() {
   };
 
   const ajouterProduit = async () => {
-    if (!newProduct.title || !newProduct.price) { alert("Titre + prix requis!"); return; }
+    if (!newProduct.title) { alert("Titre requis!"); return; }
+    if (variantes.length === 0) { alert("Ajoute au moins une variante!"); return; }
     if (imageFiles.length === 0) { alert("Ajoute au moins une image!"); return; }
     setLoading(true);
     try {
@@ -234,9 +235,10 @@ export default function FastBuy229() {
       
       const prodData = { 
         ...newProduct, 
-        price: parseInt(newProduct.price), 
+        price: variantes[0].prix,
         image: imagePaths[0], 
-        variantes: variantes.length > 0 ? JSON.stringify(variantes) : null 
+        images: JSON.stringify(imagePaths),
+        variantes: JSON.stringify(variantes)
       };
       
       const { error: insertError } = await supabase.from("produits").insert([prodData]);
@@ -244,6 +246,21 @@ export default function FastBuy229() {
         alert("Erreur création: " + insertError.message);
         setLoading(false);
         return;
+      }
+      
+      alert("Produit créé!");
+      await chargerProduits();
+      setShowAddProduct(false);
+      setNewProduct({ title: "", description: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
+      setImageFiles([]); setImagePreviews([]);
+      setVariantes([]);
+      setLoading(false);
+    } catch (e) {
+      console.error("Exception:", e);
+      alert("Erreur: " + e.message);
+      setLoading(false);
+    }
+  };
       }
       
       alert("Produit créé!");
@@ -362,7 +379,6 @@ export default function FastBuy229() {
               <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Ajouter Produit</h2>
               <input value={newProduct.title} onChange={e => setNewProduct({ ...newProduct, title: e.target.value })} placeholder="Titre" style={{ marginBottom: 12 }} />
               <textarea value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} placeholder="Description" style={{ marginBottom: 12, resize: "vertical" }} rows={3} />
-              <input type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} placeholder="Prix" style={{ marginBottom: 12 }} />
               <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} style={{ marginBottom: 12 }}>
                 {CATEGORIES.filter(c => c !== "Tous").map(c => <option key={c}>{c}</option>)}
               </select>
@@ -639,7 +655,12 @@ export default function FastBuy229() {
                   </div>
                   <div style={{ padding: "8px" }}>
                     <div style={{ fontSize: 10, fontWeight: 600, color: "#6b7280" }}>{item.title}</div>
-                    <div style={{ fontWeight: 700, fontSize: 11, color: "#2563eb" }}>{item.price?.toLocaleString()} FCFA</div>
+                    <div style={{ fontWeight: 700, fontSize: 11, color: "#2563eb" }}>
+                      {item.variantes 
+                        ? JSON.parse(item.variantes)[0]?.prix?.toLocaleString() 
+                        : item.price?.toLocaleString()
+                      } FCFA
+                    </div>
                   </div>
                 </div>
               ))}
@@ -658,14 +679,14 @@ export default function FastBuy229() {
             {showProduit.description && <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>{showProduit.description}</div>}
             {showProduit.variantes && JSON.parse(showProduit.variantes).length > 0 && (
               <div style={{ background: "#f9fafb", padding: "12px", borderRadius: 8, marginBottom: 12 }}>
-                <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 12 }}>Options Disponibles</div>
+                <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 12 }}>🎯 Choisir une option</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {JSON.parse(showProduit.variantes).map((v, i) => (
                     <button
                       key={i}
                       onClick={() => setSelectedVariante(i)}
                       style={{
-                        padding: "8px 12px",
+                        padding: "10px 12px",
                         borderRadius: 6,
                         border: selectedVariante === i ? "2px solid #2563eb" : "1px solid #d1d5db",
                         background: selectedVariante === i ? "#eff6ff" : "#fff",
@@ -676,7 +697,7 @@ export default function FastBuy229() {
                         textAlign: "left"
                       }}
                     >
-                      {v.couleur} / {v.nbrPieces} pcs - <strong>{v.prix.toLocaleString()} FCFA</strong>
+                      {v.couleur} / {v.taille} / {v.nbrPieces} pcs - <strong style={{ color: selectedVariante === i ? "#2563eb" : "#059669" }}>{v.prix.toLocaleString()} FCFA</strong>
                     </button>
                   ))}
                 </div>
@@ -685,7 +706,7 @@ export default function FastBuy229() {
             <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px", marginBottom: "1rem", fontWeight: 700, color: "#2563eb", fontSize: "1.1rem" }}>
               {selectedVariante !== null && showProduit.variantes 
                 ? JSON.parse(showProduit.variantes)[selectedVariante].prix.toLocaleString() 
-                : showProduit.price?.toLocaleString()
+                : "Prix: Choisir une option"
               } FCFA
             </div>
             <button onClick={() => { if (selectedVariante === null && showProduit.variantes && JSON.parse(showProduit.variantes).length > 0) { alert("Sélectionne une option!"); return; } ajouterAuPanier({...showProduit, price: selectedVariante !== null && showProduit.variantes ? JSON.parse(showProduit.variantes)[selectedVariante].prix : showProduit.price}); }} className="btn-primary">{!client ? "Connexion" : "Ajouter"}</button>
