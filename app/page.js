@@ -276,48 +276,72 @@ export default function FastBuy229() {
 
         {showGererClients && (
           <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowGererClients(false)}>
-            <div className="modal" style={{ maxWidth: "900px", maxHeight: "85vh", display: "flex", flexDirection: "column", padding: 0 }}>
+            <div className="modal" style={{ maxWidth: "1000px", maxHeight: "90vh", display: "flex", flexDirection: "column", padding: 0 }}>
               <div style={{ background: "#10b981", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Gérer Clients</div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                <div style={{ width: "220px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
+                {/* LISTE CLIENTS */}
+                <div style={{ width: "200px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
                   {clients.map(c => (
-                    <div key={c.id} onClick={() => { setClientTrouve(c); setSelectedClientId(c.id); chargerCommandesClient(c.id); }} style={{ padding: "10px", borderRadius: 8, marginBottom: 8, fontSize: 12, cursor: "pointer", background: clientTrouve?.id === c.id ? "#10b981" : "#fff", color: clientTrouve?.id === c.id ? "#fff" : "#1a1a2e", border: "1px solid #e5e7eb" }}>
-                      <div style={{ fontWeight: 600, fontSize: 11 }}>{c.nom}</div>
-                      <div style={{ fontSize: 9, opacity: 0.8 }}>{c.telephone}</div>
+                    <div key={c.id} onClick={() => { setClientTrouve(c); chargerCommandesClient(c.id); }} style={{ padding: "10px", borderRadius: 8, marginBottom: 8, fontSize: 11, cursor: "pointer", background: clientTrouve?.id === c.id ? "#10b981" : "#fff", color: clientTrouve?.id === c.id ? "#fff" : "#1a1a2e", border: "1px solid #e5e7eb", fontWeight: 600 }}>
+                      <div>{c.nom}</div>
+                      <div style={{ fontSize: 9, opacity: 0.7, marginTop: 3 }}>{c.telephone}</div>
                     </div>
                   ))}
                 </div>
+
+                {/* INFOS CLIENT */}
                 {clientTrouve ? (
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "1rem", overflowY: "auto" }}>
-                    <div style={{ fontWeight: 600, marginBottom: "0.5rem" }}>{clientTrouve.nom}</div>
-                    <div style={{ fontSize: 11, color: "#6b7280", marginBottom: "1.5rem" }}>{clientTrouve.email} | {clientTrouve.telephone}</div>
+                    {/* HEADER */}
+                    <div style={{ marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "2px solid #e5e7eb" }}>
+                      <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 4 }}>{clientTrouve.nom}</h2>
+                      <div style={{ fontSize: 11, color: "#6b7280" }}>📧 {clientTrouve.email}</div>
+                      <div style={{ fontSize: 11, color: "#6b7280" }}>📱 {clientTrouve.telephone}</div>
+                    </div>
 
+                    {/* COMMANDES */}
                     <div style={{ marginBottom: "1.5rem" }}>
-                      <h3 style={{ fontSize: "0.85rem", fontWeight: 700, marginBottom: "0.5rem" }}>Commandes ({commandesClient.length})</h3>
-                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: "8px", maxHeight: 150, overflowY: "auto" }}>
+                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.5rem", color: "#1a1a2e" }}>📦 Commandes ({commandesClient.length})</h3>
+                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: "0.5rem", maxHeight: 180, overflowY: "auto", border: "1px solid #e5e7eb" }}>
                         {commandesClient.length === 0 ? (
-                          <div style={{ fontSize: 11, color: "#9ca3af" }}>Aucune</div>
+                          <div style={{ textAlign: "center", padding: "1rem", color: "#9ca3af", fontSize: 12 }}>Aucune commande</div>
                         ) : (
                           commandesClient.map(cmd => (
-                            <div key={cmd.id} style={{ background: "#fff", padding: "6px", borderRadius: 4, marginBottom: 6, border: "1px solid #e5e7eb", fontSize: 10 }}>
-                              <div style={{ fontWeight: 600 }}>{cmd.numero}</div>
-                              <div style={{ color: "#2563eb", marginTop: 2 }}>{cmd.totalFinal?.toLocaleString()} FCFA</div>
-                              <div style={{ color: "#6b7280", fontSize: 9, marginTop: 2 }}>Statut: {cmd.statut}</div>
+                            <div key={cmd.id} style={{ background: "#fff", padding: "0.75rem", borderRadius: 6, marginBottom: 8, border: "1px solid #e5e7eb" }}>
+                              <div style={{ fontWeight: 600, fontSize: 11, marginBottom: 4, color: "#2563eb" }}>{cmd.numero}</div>
+                              <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>💰 Total: <strong>{cmd.totalFinal?.toLocaleString()} FCFA</strong></div>
+                              <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>📊 Statut: <strong>{cmd.statut}</strong></div>
+                              <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>💳 Paiement: <strong>{cmd.paiement}</strong></div>
+                              {cmd.capture && <div style={{ fontSize: 10, color: "#16a34a", marginBottom: 3 }}>✅ Capture reçue</div>}
+                              <details style={{ fontSize: 9, marginTop: 4 }}>
+                                <summary style={{ cursor: "pointer", color: "#2563eb", fontWeight: 600 }}>Articles ({cmd.articles ? JSON.parse(cmd.articles).length : 0})</summary>
+                                <div style={{ marginLeft: 12, marginTop: 4 }}>
+                                  {cmd.articles && JSON.parse(cmd.articles).map((art, i) => (
+                                    <div key={i} style={{ fontSize: 9, color: "#6b7280", marginBottom: 2 }}>• {art.title} x{art.qty} = {(art.price * art.qty).toLocaleString()} FCFA</div>
+                                  ))}
+                                </div>
+                              </details>
                             </div>
                           ))
                         )}
                       </div>
                     </div>
 
-                    <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1rem" }}>
-                      <h3 style={{ fontSize: "0.85rem", fontWeight: 700, marginBottom: "0.5rem" }}>Actions</h3>
-                      <input type="password" value={newMdpClient} onChange={e => setNewMdpClient(e.target.value)} placeholder="Nouveau MDP" style={{ marginBottom: 8, fontSize: 12 }} />
-                      <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8, fontSize: 11, padding: "8px" }} onClick={() => changerMdpClient(clientTrouve.id)} disabled={loading}>Changer MDP</button>
-                      <button className="btn-primary" style={{ background: "#ef4444", fontSize: 11, padding: "8px" }} onClick={() => supprimerClient(clientTrouve.id)} disabled={loading}>Supprimer Compte</button>
+                    {/* ACTIONS */}
+                    <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: "1rem" }}>
+                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.75rem", color: "#1a1a2e" }}>⚙️ Actions</h3>
+                      <input type="password" value={newMdpClient} onChange={e => setNewMdpClient(e.target.value)} placeholder="Nouveau mot de passe" style={{ marginBottom: 8, fontSize: 12 }} />
+                      <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8, fontSize: 12, padding: "10px" }} onClick={() => changerMdpClient(clientTrouve.id)} disabled={loading}>🔐 Changer MDP</button>
+                      <button className="btn-primary" style={{ background: "#ef4444", fontSize: 12, padding: "10px" }} onClick={() => supprimerClient(clientTrouve.id)} disabled={loading}>🗑️ Supprimer Compte</button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Sélectionne un client</div>
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 14, marginBottom: 8 }}>👈</div>
+                      <div>Sélectionne un client</div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
