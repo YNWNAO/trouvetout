@@ -120,16 +120,58 @@ export default function FastBuy229() {
     if (panier.length === 0) { alert("Panier vide!"); return; }
     if (!captureFile) { alert("Capture requise!"); return; }
     setLoading(true);
-    let capturePath = null;
-    const fn = `captures/${Date.now()}-${captureFile.name}`;
-    const { error } = await supabase.storage.from("produits").upload(fn, captureFile);
-    if (!error) capturePath = fn;
-    const num = "CMD-" + Math.random().toString(36).substr(2, 6).toUpperCase();
-    await supabase.from("commandes").insert([{ numero: num, nom: formCmd.nom, email: formCmd.email, telephone: formCmd.telephone, ville: formCmd.ville, adresse: formCmd.adresse, articles: JSON.stringify(panier), total: totalPanier, totalFinal, statut: "En attente", paiement: "En attente", capture: capturePath, user_id: client?.id }]);
-    setShowConfirm({ numero: num });
-    setPanier([]);
-    setShowCommande(false);
-    setLoading(false);
+    
+    try {
+      let capturePath = null;
+      if (captureFile) {
+        const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const filePath = `captures/${fileName}`;
+        
+        const { data, error: uploadError } = await supabase.storage
+          .from("produits")
+          .upload(filePath, captureFile, { upsert: true });
+        
+        if (uploadError) {
+          console.error("Upload capture error:", uploadError);
+          alert("Erreur capture: " + uploadError.message);
+          setLoading(false);
+          return;
+        }
+        capturePath = filePath;
+      }
+      
+      const num = "CMD-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+      const { error: insertError } = await supabase.from("commandes").insert([{
+        numero: num,
+        nom: formCmd.nom,
+        email: formCmd.email,
+        telephone: formCmd.telephone,
+        ville: formCmd.ville,
+        adresse: formCmd.adresse,
+        articles: JSON.stringify(panier),
+        total: totalPanier,
+        totalFinal,
+        statut: "En attente",
+        paiement: "En attente",
+        capture: capturePath,
+        user_id: client?.id
+      }]);
+      
+      if (insertError) {
+        alert("Erreur commande: " + insertError.message);
+        setLoading(false);
+        return;
+      }
+      
+      setShowConfirm({ numero: num });
+      setPanier([]);
+      setShowCommande(false);
+      setLoading(false);
+    } catch (e) {
+      console.error("Exception:", e);
+      alert("Erreur: " + e.message);
+      setLoading(false);
+    }
   };
 
   const ajouterVariante = () => {
@@ -144,13 +186,37 @@ export default function FastBuy229() {
     try {
       let imagePath = null;
       if (imageFiles.length > 0) {
-        const fn = `${Date.now()}-${Math.random()}.jpg`;
-        const { error: uploadError } = await supabase.storage.from("produits").upload(fn, imageFiles[0]);
-        if (uploadError) { alert("Erreur upload"); setLoading(false); return; }
-        imagePath = fn;
+        const file = imageFiles[0];
+        const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const filePath = `produits/${fileName}`;
+        
+        const { data, error: uploadError } = await supabase.storage
+          .from("produits")
+          .upload(filePath, file, { upsert: true });
+        
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          alert("Erreur upload: " + uploadError.message);
+          setLoading(false);
+          return;
+        }
+        imagePath = filePath;
       }
-      const prodData = { ...newProduct, price: parseInt(newProduct.price), image: imagePath, variantes: variantes.length > 0 ? JSON.stringify(variantes) : null };
-      await supabase.from("produits").insert([prodData]);
+      
+      const prodData = { 
+        ...newProduct, 
+        price: parseInt(newProduct.price), 
+        image: imagePath, 
+        variantes: variantes.length > 0 ? JSON.stringify(variantes) : null 
+      };
+      
+      const { error: insertError } = await supabase.from("produits").insert([prodData]);
+      if (insertError) {
+        alert("Erreur création: " + insertError.message);
+        setLoading(false);
+        return;
+      }
+      
       alert("Produit créé!");
       await chargerProduits();
       setShowAddProduct(false);
@@ -159,6 +225,7 @@ export default function FastBuy229() {
       setVariantes([]);
       setLoading(false);
     } catch (e) {
+      console.error("Exception:", e);
       alert("Erreur: " + e.message);
       setLoading(false);
     }
