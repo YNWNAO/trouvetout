@@ -50,7 +50,7 @@ export default function FastBuy229() {
   const [authError, setAuthError] = useState("");
   const [formCmd, setFormCmd] = useState({ nom: "", email: "", telephone: "", numeroAppel: "", ville: "", adresse: "", codePromo: "" });
   const [captureFile, setCaptureFile] = useState(null);
-  const [newProduct, setNewProduct] = useState({ title: "", description: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
+  const [newProduct, setNewProduct] = useState({ title: "", description: "", price: 0, etat: "Neuf", category: "Vêtements", genre: "Homme" });
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [variantes, setVariantes] = useState([]);
@@ -364,6 +364,7 @@ export default function FastBuy229() {
               <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Ajouter Produit</h2>
               <input value={newProduct.title} onChange={e => setNewProduct({ ...newProduct, title: e.target.value })} placeholder="Titre" style={{ marginBottom: 12 }} />
               <textarea value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} placeholder="Description" style={{ marginBottom: 12, resize: "vertical" }} rows={3} />
+              <div style={{ fontSize: 11, color: "#666", marginBottom: 12, padding: "8px", background: "#f0f0f0", borderRadius: 6 }}>ℹ️ Le prix principal est défini par la première variante</div>
               <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} style={{ marginBottom: 12 }}>
                 {CATEGORIES.filter(c => c !== "Tous").map(c => <option key={c}>{c}</option>)}
               </select>
