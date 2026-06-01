@@ -685,39 +685,12 @@ export default function FastBuy229() {
             {showProduit.variantes && JSON.parse(showProduit.variantes).length > 0 && (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 13, color: "#1a1a2e" }}>🎯 Sélectionner une variante</div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+                <select value={selectedVariante === null ? "" : selectedVariante} onChange={e => setSelectedVariante(e.target.value === "" ? null : parseInt(e.target.value))} style={{ marginBottom: 12, padding: "12px 14px", borderRadius: 10, border: "2px solid #2563eb", fontSize: 13, fontWeight: 600, cursor: "pointer", background: "#fff", width: "100%" }}>
+                  <option value="">-- Choisir --</option>
                   {JSON.parse(showProduit.variantes).map((v, i) => (
-                      <button
-                      type="button"
-                      key={i}
-                      onClick={() => setSelectedVariante(i)}
-                      style={{
-                        padding: "14px 12px",
-                        borderRadius: 10,
-                        border: selectedVariante === i ? "3px solid #2563eb" : "2px solid #d1d5db",
-                        background: selectedVariante === i ? "#eff6ff" : "#fff",
-                        cursor: "pointer",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: selectedVariante === i ? "#1a1a2e" : "#6b7280",
-                        textAlign: "center",
-                        boxShadow: selectedVariante === i ? "0 4px 12px rgba(37,99,235,0.2)" : "none",
-                        position: "relative"
-                      }}
-                    >
-                      {selectedVariante === i && <div style={{ position: "absolute", top: 6, right: 6, background: "#2563eb", color: "#fff", width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>✓</div>}
-                      <div style={{ marginBottom: 6, fontSize: 11, color: selectedVariante === i ? "#2563eb" : "#6b7280" }}>
-                        {v.couleur} • {v.taille}
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: selectedVariante === i ? "#2563eb" : "#1a1a2e" }}>
-                        {v.nbrPieces} pcs
-                      </div>
-                      <div style={{ marginTop: 6, fontSize: 11, color: "#059669", fontWeight: 700 }}>
-                        {v.prix.toLocaleString()} FCFA
-                      </div>
-                    </button>
+                    <option key={i} value={i}>{v.couleur} • {v.taille} • {v.nbrPieces} pcs - {v.prix.toLocaleString()} FCFA</option>
                   ))}
-                </div>
+                </select>
               </div>
             )}
             <button type="button" onClick={() => { if (selectedVariante === null && showProduit.variantes && JSON.parse(showProduit.variantes).length > 0) { alert("Sélectionne une variante!"); return; } const variante = selectedVariante !== null && showProduit.variantes ? JSON.parse(showProduit.variantes)[selectedVariante] : null; ajouterAuPanier({...showProduit, price: variante ? variante.prix : showProduit.price}, variante); }} className="btn-primary">{!client ? "Connexion" : "Ajouter au panier"}</button>
