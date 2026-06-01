@@ -128,7 +128,7 @@ export default function FastBuy229() {
         const filePath = `captures/${fileName}`;
         
         const { data, error: uploadError } = await supabase.storage
-          .from("produits")
+          .from("Products")
           .upload(filePath, captureFile, { upsert: true });
         
         if (uploadError) {
@@ -191,7 +191,7 @@ export default function FastBuy229() {
         const filePath = `produits/${fileName}`;
         
         const { data, error: uploadError } = await supabase.storage
-          .from("produits")
+          .from("Products")
           .upload(filePath, file, { upsert: true });
         
         if (uploadError) {
