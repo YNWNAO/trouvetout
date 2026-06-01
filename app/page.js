@@ -50,7 +50,7 @@ export default function FastBuy229() {
   const [authError, setAuthError] = useState("");
   const [formCmd, setFormCmd] = useState({ nom: "", email: "", telephone: "", numeroAppel: "", ville: "", adresse: "", codePromo: "" });
   const [captureFile, setCaptureFile] = useState(null);
-  const [newProduct, setNewProduct] = useState({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
+  const [newProduct, setNewProduct] = useState({ title: "", description: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [variantes, setVariantes] = useState([]);
