@@ -261,21 +261,6 @@ export default function FastBuy229() {
       setLoading(false);
     }
   };
-      }
-      
-      alert("Produit créé!");
-      await chargerProduits();
-      setShowAddProduct(false);
-      setNewProduct({ title: "", description: "", price: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
-      setImageFiles([]); setImagePreviews([]);
-      setVariantes([]);
-      setLoading(false);
-    } catch (e) {
-      console.error("Exception:", e);
-      alert("Erreur: " + e.message);
-      setLoading(false);
-    }
-  };
 
   const supprimerProduit = async (produitId) => {
     if (!confirm("Confirmer la suppression?")) return;
