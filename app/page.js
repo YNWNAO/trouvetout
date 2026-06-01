@@ -49,6 +49,11 @@ export default function FastBuy229() {
   const [newMdpClient, setNewMdpClient] = useState("");
   const [commandesClient, setCommandesClient] = useState([]);
   const [messageAuClient, setMessageAuClient] = useState("");
+  const [showPassword, setShowPassword] = useState({});
+
+  const togglePassword = (field) => {
+    setShowPassword(prev => ({ ...prev, [field]: !prev[field] }));
+  };
 
   useEffect(() => {
     const savedGenre = localStorage.getItem("fastbuy_genre");
@@ -199,7 +204,12 @@ export default function FastBuy229() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
             <div style={{ background: "#fff", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 400 }}>
               <h1 style={{ fontSize: "1.6rem", fontWeight: 800, textAlign: "center", marginBottom: "2rem" }}>Admin</h1>
-              <input type="password" value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" />
+              <div style={{ position: "relative", marginBottom: 12 }}>
+                <input type={showPassword.adminPwd ? "text" : "password"} value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="Mot de passe" style={{ paddingRight: 40 }} />
+                <button onClick={() => togglePassword("adminPwd")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
+                  {showPassword.adminPwd ? "👁️" : "👁️‍🗨️"}
+                </button>
+              </div>
               <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => { if (adminPwd === ADMIN_PWD) { setAdminOk(true); chargerCommandes(); chargerClients(); } else { alert("Faux!"); setAdminPwd(""); } }}>Accéder</button>
             </div>
           </div>
@@ -330,7 +340,12 @@ export default function FastBuy229() {
                     {/* ACTIONS */}
                     <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: "1rem" }}>
                       <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.75rem", color: "#1a1a2e" }}>⚙️ Actions</h3>
-                      <input type="password" value={newMdpClient} onChange={e => setNewMdpClient(e.target.value)} placeholder="Nouveau mot de passe" style={{ marginBottom: 8, fontSize: 12 }} />
+                      <div style={{ position: "relative", marginBottom: 8 }}>
+                        <input type={showPassword.gererClientMdp ? "text" : "password"} value={newMdpClient} onChange={e => setNewMdpClient(e.target.value)} placeholder="Nouveau mot de passe" style={{ fontSize: 12, paddingRight: 40 }} />
+                        <button onClick={() => togglePassword("gererClientMdp")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>
+                          {showPassword.gererClientMdp ? "👁️" : "👁️‍🗨️"}
+                        </button>
+                      </div>
                       <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8, fontSize: 12, padding: "10px" }} onClick={() => changerMdpClient(clientTrouve.id)} disabled={loading}>🔐 Changer MDP</button>
                       <button className="btn-primary" style={{ background: "#ef4444", fontSize: 12, padding: "10px" }} onClick={() => supprimerClient(clientTrouve.id)} disabled={loading}>🗑️ Supprimer Compte</button>
                     </div>
@@ -477,11 +492,19 @@ export default function FastBuy229() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowContactAdmin(false)}>
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Nous Contacter</h2>
-            <div style={{ background: "#eff6ff", borderRadius: 12, padding: "1.5rem", textAlign: "center" }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "1rem" }}>📧 Email</div>
-              <div style={{ fontSize: 13, color: "#1a1a2e", marginBottom: "1.5rem" }}>{ADMIN_EMAIL}</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "1rem" }}>📱 WhatsApp</div>
-              <div style={{ fontSize: 13, color: "#1a1a2e" }}>{ADMIN_WHATSAPP}</div>
+            <div style={{ background: "#eff6ff", borderRadius: 12, padding: "1.5rem" }}>
+              <div style={{ marginBottom: "1.5rem" }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "0.75rem" }}>📧 Email</div>
+                <a href={`mailto:${ADMIN_EMAIL}`} style={{ fontSize: 13, color: "#2563eb", textDecoration: "none", fontWeight: 600, display: "inline-block", padding: "8px 12px", background: "#fff", borderRadius: 8 }}>
+                  {ADMIN_EMAIL}
+                </a>
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1e40af", marginBottom: "0.75rem" }}>📱 WhatsApp</div>
+                <a href={`https://wa.me/${ADMIN_WHATSAPP.replace(/\s/g, "").replace("+", "")}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "#25D366", textDecoration: "none", fontWeight: 600, display: "inline-block", padding: "8px 12px", background: "#fff", borderRadius: 8 }}>
+                  {ADMIN_WHATSAPP}
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -556,7 +579,12 @@ export default function FastBuy229() {
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Connexion</h2>
             <input placeholder="Email ou tel" value={loginForm.identifiant} onChange={e => setLoginForm({ ...loginForm, identifiant: e.target.value })} style={{ marginBottom: 12 }} />
-            <input type="password" placeholder="MDP" value={loginForm.motDePasse} onChange={e => setLoginForm({ ...loginForm, motDePasse: e.target.value })} style={{ marginBottom: 12 }} />
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <input type={showPassword.login ? "text" : "password"} placeholder="MDP" value={loginForm.motDePasse} onChange={e => setLoginForm({ ...loginForm, motDePasse: e.target.value })} style={{ paddingRight: 40 }} />
+              <button onClick={() => togglePassword("login")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
+                {showPassword.login ? "👁️" : "👁️‍🗨️"}
+              </button>
+            </div>
             {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{authError}</div>}
             <button className="btn-primary" onClick={connecter} style={{ marginBottom: 12 }}>Connexion</button>
             <div style={{ textAlign: "center", fontSize: 12 }}>
@@ -575,8 +603,18 @@ export default function FastBuy229() {
             <input placeholder="Email" value={inscForm.email} onChange={e => setInscForm({ ...inscForm, email: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="Tel" value={inscForm.telephone} onChange={e => setInscForm({ ...inscForm, telephone: e.target.value })} style={{ marginBottom: 12 }} />
             <input placeholder="JJ/MM/AAAA" value={inscForm.date_naissance} onChange={e => setInscForm({ ...inscForm, date_naissance: e.target.value })} style={{ marginBottom: 12 }} maxLength={10} />
-            <input type="password" placeholder="MDP" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={{ marginBottom: 12 }} />
-            <input type="password" placeholder="Confirmer" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={{ marginBottom: 12 }} />
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <input type={showPassword.inscMdp ? "text" : "password"} placeholder="MDP" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={{ paddingRight: 40 }} />
+              <button onClick={() => togglePassword("inscMdp")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
+                {showPassword.inscMdp ? "👁️" : "👁️‍🗨️"}
+              </button>
+            </div>
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <input type={showPassword.inscConf ? "text" : "password"} placeholder="Confirmer" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={{ paddingRight: 40 }} />
+              <button onClick={() => togglePassword("inscConf")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
+                {showPassword.inscConf ? "👁️" : "👁️‍🗨️"}
+              </button>
+            </div>
             {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{authError}</div>}
             <button className="btn-primary" onClick={inscrire}>Créer</button>
           </div>
