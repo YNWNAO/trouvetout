@@ -485,11 +485,26 @@ export default function FastBuy229() {
 
   // ✅ FONCTION CORRIGÉE POUR SUPPRIMER UN CLIENT
   const supprimerClient = async (clientId) => {
-    if (!confirm("Confirmer? Ses commandes seront aussi supprimées!")) return;
+    if (!confirm("Confirmer? Ses messages, commandes et données seront aussi supprimés!")) return;
     setLoading(true);
     
     try {
-      // 1️⃣ D'abord supprimer les commandes du client
+      // 1️⃣ D'abord supprimer les messages du client
+      const { error: errMsg } = await supabase
+        .from("messages")
+        .delete()
+        .eq("user_id", clientId);
+      
+      if (errMsg) {
+        console.error("❌ Erreur suppression messages:", errMsg);
+        alert("❌ Erreur suppression messages: " + errMsg.message);
+        setLoading(false);
+        return;
+      }
+      
+      console.log("✅ Messages supprimés");
+
+      // 2️⃣ Ensuite supprimer les commandes du client
       const { error: errCmd } = await supabase
         .from("commandes")
         .delete()
@@ -504,7 +519,7 @@ export default function FastBuy229() {
       
       console.log("✅ Commandes supprimées");
 
-      // 2️⃣ Ensuite supprimer le client
+      // 3️⃣ Finalement supprimer le client
       const { error: errUser } = await supabase
         .from("users")
         .delete()
@@ -518,9 +533,9 @@ export default function FastBuy229() {
       }
 
       console.log("✅ Client supprimé");
-      alert("✅ Client et ses commandes supprimés!");
+      alert("✅ Client, messages et commandes supprimés!");
       
-      // 3️⃣ Recharger la liste des clients
+      // 4️⃣ Recharger la liste des clients
       await chargerClients();
       setClientTrouve(null);
       setLoading(false);
