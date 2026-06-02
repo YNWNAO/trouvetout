@@ -82,7 +82,7 @@ export default function FastBuy229() {
   const [heroIndex, setHeroIndex] = useState(0);
   const [showGererProduits, setShowGererProduits] = useState(false);
   const [produitEdit, setProduitEdit] = useState(null);
-  const [editForm, setEditForm] = useState({ price: "", etat: "" });
+  const [editForm, setEditForm] = useState({ title: "", description: "", price: "", etat: "", category: "", genre: "" });
   const [loginForm, setLoginForm] = useState({ identifiant: "", motDePasse: "" });
   const [inscForm, setInscForm] = useState({ prenom: "", nom: "", email: "", telephone: "", date_naissance: "", mot_de_passe: "", confirmer: "" });
   const [authError, setAuthError] = useState("");
@@ -104,8 +104,6 @@ export default function FastBuy229() {
   const [showAuthModal, setShowAuthModal] = useState("inscription");
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [clientCommandes, setClientCommandes] = useState([]);
-  
-  // ✅ CAROUSEL STATES
   const [carouselImages, setCarouselImages] = useState([]);
   const [showGererCarousel, setShowGererCarousel] = useState(false);
   const [carouselFiles, setCarouselFiles] = useState([]);
@@ -115,14 +113,11 @@ export default function FastBuy229() {
     setShowPassword(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
-  // ✅ AUTO-DEFILER CAROUSEL TOUTES LES 10 SECONDES
   useEffect(() => {
     if (carouselImages.length === 0) return;
-    
     const interval = setInterval(() => {
       setHeroIndex(prev => (prev + 1) % carouselImages.length);
-    }, 10000); // 10 secondes
-    
+    }, 10000);
     return () => clearInterval(interval);
   }, [carouselImages.length]);
 
@@ -159,14 +154,12 @@ export default function FastBuy229() {
     setTimeout(() => chargerProduits(), 500);
   }, []);
 
-  // ✅ CHARGER LES IMAGES DU CAROUSEL
   const chargerCarousel = async () => {
     try {
       const { data } = await supabase
         .from("carousel")
         .select("*")
         .order("position", { ascending: true });
-      
       if (data) {
         setCarouselImages(data);
         setHeroIndex(0);
@@ -176,7 +169,6 @@ export default function FastBuy229() {
     }
   };
 
-  // ✅ FIX 2: Améliorer la gestion des commandes client avec polling au lieu de realtime
   const chargerCommandesClientConnecte = async (clientId) => {
     try {
       const { data, error } = await supabase
@@ -192,7 +184,6 @@ export default function FastBuy229() {
       
       setClientCommandes(data || []);
       
-      // ✅ Polling simple au lieu de subscription realtime (plus stable)
       const pollInterval = setInterval(async () => {
         try {
           const { data: newData } = await supabase
@@ -207,7 +198,7 @@ export default function FastBuy229() {
         } catch (e) {
           console.error("Erreur polling commandes:", e);
         }
-      }, 30000); // Poll toutes les 30 secondes
+      }, 30000);
       
       return () => clearInterval(pollInterval);
     } catch (e) {
@@ -635,20 +626,35 @@ export default function FastBuy229() {
     }
   };
 
-  const modifierProduit = async (produitId) => {
-    if (!editForm.price || !editForm.etat) { alert("Remplis tous!"); return; }
+  const modifierProduitComplet = async (produitId) => {
+    if (!editForm.title) { alert("Titre requis!"); return; }
+    if (!editForm.price) { alert("Prix requis!"); return; }
+    if (variantes.length === 0) { alert("Ajoute au moins une variante!"); return; }
+    
     setLoading(true);
     try {
-      const { error } = await supabase.from("produits").update({ price: parseInt(editForm.price), etat: editForm.etat }).eq("id", produitId);
+      const { error } = await supabase.from("produits").update({
+        title: editForm.title,
+        description: editForm.description,
+        price: parseInt(editForm.price),
+        etat: editForm.etat,
+        category: editForm.category,
+        genre: editForm.genre,
+        variantes: variantes
+      }).eq("id", produitId);
+      
       if (error) {
         alert("❌ Erreur: " + error.message);
         setLoading(false);
         return;
       }
+      
       alert("✅ Produit modifié!");
       await chargerProduits();
       setProduitEdit(null);
-      setEditForm({ price: "", etat: "" });
+      setEditForm({ title: "", description: "", price: "", etat: "", category: "", genre: "" });
+      setVariantes([]);
+      setNewVariante({ couleur: "", taille: "", nbrPieces: "", prix: "" });
       setLoading(false);
     } catch (e) {
       alert("❌ Erreur: " + e.message);
@@ -656,18 +662,15 @@ export default function FastBuy229() {
     }
   };
 
-  // ✅ AJOUTER/MODIFIER LES IMAGES DU CAROUSEL
   const sauvegarderCarousel = async () => {
     if (carouselFiles.length === 0) { alert("Ajoute au moins une image!"); return; }
     
     setLoading(true);
     try {
-      // Supprimer les anciennes images
       for (const img of carouselImages) {
         await supabase.from("carousel").delete().eq("id", img.id);
       }
       
-      // Upload les nouvelles
       let newImages = [];
       for (let i = 0; i < carouselFiles.length; i++) {
         const file = carouselFiles[i];
@@ -683,7 +686,6 @@ export default function FastBuy229() {
         newImages.push({ position: i + 1, image: fileName });
       }
       
-      // Insérer dans la base
       const { error: insertError } = await supabase.from("carousel").insert(newImages);
       if (insertError) {
         alert("Erreur création: " + insertError.message);
@@ -983,31 +985,209 @@ export default function FastBuy229() {
 
         {showGererProduits && (
           <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowGererProduits(false); }}>
-            <div className="modal" style={{ maxWidth: "900px", display: "flex", flexDirection: "column", padding: 0 }}>
-              <div style={{ background: "#f59e0b", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Gérer Produits</div>
+            <div className="modal" style={{ maxWidth: "1000px", display: "flex", flexDirection: "column", padding: 0 }}>
+              <div style={{ background: "#f59e0b", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0", fontSize: "1.2rem" }}>
+                ✏️ Gérer Produits - Édition Complète
+              </div>
+              
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                <div style={{ width: "220px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
+                <div style={{ width: "250px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
                   {produits.map(p => (
-                    <div key={p.id} onClick={() => { setProduitEdit(p); setEditForm({ price: p.price, etat: p.etat }); }} style={{ padding: "10px", borderRadius: 8, marginBottom: 8, fontSize: 11, cursor: "pointer", background: produitEdit?.id === p.id ? "#f59e0b" : "#fff", color: produitEdit?.id === p.id ? "#fff" : "#1a1a2e", border: "1px solid #e5e7eb", fontWeight: 600 }}>
-                      <div>{p.title}</div>
-                      <div style={{ fontSize: 9, opacity: 0.7, marginTop: 3 }}>{p.price?.toLocaleString()} FCFA</div>
+                    <div 
+                      key={p.id} 
+                      onClick={() => { 
+                        setProduitEdit(p); 
+                        setEditForm({ 
+                          title: p.title,
+                          description: p.description || "",
+                          price: p.price,
+                          etat: p.etat,
+                          category: p.category,
+                          genre: p.genre
+                        });
+                        setVariantes(parseVariantes(p.variantes) || []);
+                      }} 
+                      style={{ 
+                        padding: "10px", 
+                        borderRadius: 8, 
+                        marginBottom: 8, 
+                        fontSize: 11, 
+                        cursor: "pointer", 
+                        background: produitEdit?.id === p.id ? "#f59e0b" : "#fff", 
+                        color: produitEdit?.id === p.id ? "#fff" : "#1a1a2e", 
+                        border: "1px solid #e5e7eb", 
+                        fontWeight: 600,
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      <div style={{ marginBottom: 4 }}>{p.title}</div>
+                      <div style={{ fontSize: 9, opacity: 0.7 }}>{p.price?.toLocaleString()} FCFA</div>
+                      <div style={{ fontSize: 9, opacity: 0.6, marginTop: 4 }}>{p.category}</div>
                     </div>
                   ))}
                 </div>
+
                 {produitEdit ? (
-                  <div style={{ flex: 1, padding: "1rem", overflowY: "auto" }}>
-                    <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 4 }}>{produitEdit.title}</h2>
-                    <input type="number" value={editForm.price} onChange={e => setEditForm({ ...editForm, price: e.target.value })} placeholder="Prix" style={{ marginBottom: 12 }} />
-                    <select value={editForm.etat} onChange={e => setEditForm({ ...editForm, etat: e.target.value })} style={{ marginBottom: 12 }}>
-                      <option>Neuf</option>
-                      <option>Bon état</option>
-                      <option>Occasion</option>
-                    </select>
-                    <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8 }} onClick={() => modifierProduit(produitEdit.id)}>✏️ Modifier</button>
-                    <button className="btn-primary" style={{ background: "#ef4444" }} onClick={() => supprimerProduit(produitEdit.id)}>🗑️ Supprimer</button>
+                  <div style={{ flex: 1, padding: "1.5rem", overflowY: "auto" }}>
+                    <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem", color: "#1a1a2e" }}>
+                      ✏️ Modifier: {produitEdit.title}
+                    </h2>
+
+                    <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1rem", marginBottom: "1.5rem" }}>
+                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>📝 Informations</h3>
+                      
+                      <input 
+                        value={editForm.title} 
+                        onChange={e => setEditForm({ ...editForm, title: e.target.value })} 
+                        placeholder="Titre du produit"
+                        style={{ marginBottom: 12 }}
+                      />
+                      
+                      <textarea 
+                        value={editForm.description} 
+                        onChange={e => setEditForm({ ...editForm, description: e.target.value })} 
+                        placeholder="Description"
+                        rows={3}
+                        style={{ marginBottom: 12, width: "100%", padding: "10px", border: "1px solid #e5e7eb", borderRadius: 8, fontFamily: "inherit", fontSize: 14 }}
+                      />
+
+                      <select 
+                        value={editForm.category} 
+                        onChange={e => setEditForm({ ...editForm, category: e.target.value })} 
+                        style={{ marginBottom: 12 }}
+                      >
+                        {CATEGORIES.filter(c => c !== "Tous").map(c => <option key={c}>{c}</option>)}
+                      </select>
+
+                      <select 
+                        value={editForm.genre} 
+                        onChange={e => setEditForm({ ...editForm, genre: e.target.value })} 
+                        style={{ marginBottom: 12 }}
+                      >
+                        <option>Homme</option>
+                        <option>Femme</option>
+                        <option>Unisexe</option>
+                      </select>
+                    </div>
+
+                    <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1rem", marginBottom: "1.5rem" }}>
+                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>💰 Prix et État</h3>
+                      
+                      <input 
+                        type="number" 
+                        value={editForm.price} 
+                        onChange={e => setEditForm({ ...editForm, price: e.target.value })} 
+                        placeholder="Prix" 
+                        style={{ marginBottom: 12 }}
+                      />
+
+                      <select 
+                        value={editForm.etat} 
+                        onChange={e => setEditForm({ ...editForm, etat: e.target.value })} 
+                        style={{ marginBottom: 0 }}
+                      >
+                        <option>Neuf</option>
+                        <option>Bon état</option>
+                        <option>Occasion</option>
+                      </select>
+                    </div>
+
+                    <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1rem", marginBottom: "1.5rem" }}>
+                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>🎨 Variantes</h3>
+                      
+                      <div style={{ marginBottom: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <input 
+                          value={newVariante.couleur} 
+                          onChange={e => setNewVariante({ ...newVariante, couleur: e.target.value })} 
+                          placeholder="Couleur" 
+                          style={{ flex: 1, minWidth: 80 }}
+                        />
+                        <input 
+                          value={newVariante.taille} 
+                          onChange={e => setNewVariante({ ...newVariante, taille: e.target.value })} 
+                          placeholder="Taille" 
+                          style={{ flex: 1, minWidth: 60 }}
+                        />
+                        <input 
+                          type="number" 
+                          value={newVariante.nbrPieces} 
+                          onChange={e => setNewVariante({ ...newVariante, nbrPieces: e.target.value })} 
+                          placeholder="Pièces" 
+                          style={{ flex: 1, minWidth: 60 }}
+                        />
+                        <input 
+                          type="number" 
+                          value={newVariante.prix} 
+                          onChange={e => setNewVariante({ ...newVariante, prix: e.target.value })} 
+                          placeholder="Prix" 
+                          style={{ flex: 1, minWidth: 70 }}
+                        />
+                        <button 
+                          onClick={ajouterVariante} 
+                          style={{ padding: "8px 12px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}
+                        >
+                          ➕ Ajouter
+                        </button>
+                      </div>
+
+                      <div style={{ maxHeight: 200, overflowY: "auto", background: "#fff", borderRadius: 8, padding: "0.5rem" }}>
+                        {variantes.length === 0 ? (
+                          <div style={{ padding: "1rem", textAlign: "center", color: "#9ca3af", fontSize: 12 }}>
+                            Aucune variante
+                          </div>
+                        ) : (
+                          variantes.map((v, i) => (
+                            <div 
+                              key={i} 
+                              style={{ 
+                                background: "#f3f4f6", 
+                                padding: "0.75rem", 
+                                borderRadius: 6, 
+                                marginBottom: 6, 
+                                fontSize: 12,
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center"
+                              }}
+                            >
+                              <span>
+                                <strong>{v.couleur}</strong> • {v.taille} • {v.nbrPieces} pcs • <span style={{ color: "#2563eb", fontWeight: 600 }}>{v.prix} FCFA</span>
+                              </span>
+                              <button 
+                                onClick={() => setVariantes(variantes.filter((_, idx) => idx !== i))}
+                                style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
+                              >
+                                ✕ Supprimer
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <button 
+                        className="btn-primary" 
+                        style={{ background: "#10b981", flex: 1 }} 
+                        onClick={() => modifierProduitComplet(produitEdit.id)}
+                        disabled={loading}
+                      >
+                        {loading ? "Modification..." : "✅ Sauvegarder"}
+                      </button>
+                      <button 
+                        className="btn-primary" 
+                        style={{ background: "#ef4444", flex: 1 }} 
+                        onClick={() => supprimerProduit(produitEdit.id)}
+                        disabled={loading}
+                      >
+                        {loading ? "Suppression..." : "🗑️ Supprimer"}
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Sélectionne un produit</div>
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>
+                    👈 Sélectionne un produit pour le modifier
+                  </div>
                 )}
               </div>
             </div>
@@ -1303,7 +1483,6 @@ export default function FastBuy229() {
         ))}
       </div>
 
-      {/* ✅ FIX 1: CAROUSEL AVEC HAUTEUR CORRIGÉE - S'AFFICHE TOTALEMENT SANS NOIR */}
       {page === "accueil" && (
         <>
           {carouselImages.length > 0 && (
