@@ -176,6 +176,7 @@ export default function FastBuy229() {
     }
   };
 
+  // ✅ FIX 2: Améliorer la gestion des commandes client avec polling au lieu de realtime
   const chargerCommandesClientConnecte = async (clientId) => {
     try {
       const { data, error } = await supabase
@@ -191,16 +192,24 @@ export default function FastBuy229() {
       
       setClientCommandes(data || []);
       
-      const subscription = supabase
-        .from("commandes")
-        .on("*", (payload) => {
-          if (payload.new.user_id === clientId) {
-            chargerCommandesClientConnecte(clientId);
+      // ✅ Polling simple au lieu de subscription realtime (plus stable)
+      const pollInterval = setInterval(async () => {
+        try {
+          const { data: newData } = await supabase
+            .from("commandes")
+            .select("*")
+            .eq("user_id", clientId)
+            .order("created_at", { ascending: false });
+          
+          if (newData) {
+            setClientCommandes(newData);
           }
-        })
-        .subscribe();
+        } catch (e) {
+          console.error("Erreur polling commandes:", e);
+        }
+      }, 30000); // Poll toutes les 30 secondes
       
-      return () => subscription.unsubscribe();
+      return () => clearInterval(pollInterval);
     } catch (e) {
       console.error("Exception chargerCommandesClientConnecte:", e);
     }
@@ -1294,14 +1303,14 @@ export default function FastBuy229() {
         ))}
       </div>
 
-      {/* ✅ PAGE ACCUEIL AVEC CAROUSEL AUTO-DEFILER */}
+      {/* ✅ FIX 1: CAROUSEL AVEC HAUTEUR CORRIGÉE - S'AFFICHE TOTALEMENT SANS NOIR */}
       {page === "accueil" && (
         <>
           {carouselImages.length > 0 && (
-            <div style={{ position: "relative", height: 500, background: "#000", marginBottom: 20 }}>
-              <div style={{ display: "flex", transition: "transform 0.5s ease-in-out", transform: `translateX(-${heroIndex * 100}%)` }}>
+            <div style={{ position: "relative", height: 300, background: "#000", marginBottom: 20, overflow: "hidden" }}>
+              <div style={{ display: "flex", transition: "transform 0.5s ease-in-out", transform: `translateX(-${heroIndex * 100}%)`, height: "100%" }}>
                 {carouselImages.map((item, i) => (
-                  <div key={i} style={{ minWidth: "100%", height: 250 }}>
+                  <div key={i} style={{ minWidth: "100%", height: "100%" }}>
                     {item.image && <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                   </div>
                 ))}
