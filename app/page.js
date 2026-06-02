@@ -108,6 +108,8 @@ export default function FastBuy229() {
   const [showGererCarousel, setShowGererCarousel] = useState(false);
   const [carouselFiles, setCarouselFiles] = useState([]);
   const [carouselPreviews, setCarouselPreviews] = useState([]);
+  const [produitImageIndex, setProduitImageIndex] = useState(0);
+  const [editingVariante, setEditingVariante] = useState(null);
 
   const togglePassword = (field) => {
     setShowPassword(prev => ({ ...prev, [field]: !prev[field] }));
@@ -153,6 +155,13 @@ export default function FastBuy229() {
   useEffect(() => {
     setTimeout(() => chargerProduits(), 500);
   }, []);
+
+  // Réinitialiser l'index d'image quand on ouvre un nouveau produit
+  useEffect(() => {
+    if (showProduit) {
+      setProduitImageIndex(0);
+    }
+  }, [showProduit?.id]);
 
   const chargerCarousel = async () => {
     try {
@@ -553,6 +562,24 @@ export default function FastBuy229() {
     setNewVariante({ couleur: "", taille: "", nbrPieces: "", prix: "" });
   };
 
+  // Nouvelle fonction: Modifier une variante existante
+  const sauvegarderVarianteModifiee = () => {
+    if (!newVariante.couleur || !newVariante.taille || !newVariante.nbrPieces || !newVariante.prix) {
+      alert("Remplis tous les champs!");
+      return;
+    }
+    
+    const variantesModifiees = variantes.map((v, i) => 
+      i === editingVariante 
+        ? { ...newVariante, prix: parseInt(newVariante.prix), nbrPieces: parseInt(newVariante.nbrPieces) }
+        : v
+    );
+    
+    setVariantes(variantesModifiees);
+    setEditingVariante(null);
+    setNewVariante({ couleur: "", taille: "", nbrPieces: "", prix: "" });
+  };
+
   const ajouterProduit = async () => {
     if (!newProduct.title) { alert("Titre requis!"); return; }
     if (variantes.length === 0) { alert("Ajoute au moins une variante!"); return; }
@@ -655,6 +682,7 @@ export default function FastBuy229() {
       setEditForm({ title: "", description: "", price: "", etat: "", category: "", genre: "" });
       setVariantes([]);
       setNewVariante({ couleur: "", taille: "", nbrPieces: "", prix: "" });
+      setEditingVariante(null);
       setLoading(false);
     } catch (e) {
       alert("❌ Erreur: " + e.message);
@@ -941,7 +969,7 @@ export default function FastBuy229() {
                 <option>Unisexe</option>
               </select>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 12, fontWeight: 600 }}>Photos</label>
+                <label style={{ fontSize: 12, fontWeight: 600 }}>Photos (jusqu'à 5)</label>
                 <div onClick={() => document.getElementById("photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginTop: 6 }}>
                   {imagePreviews.length > 0 ? (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
@@ -1006,6 +1034,7 @@ export default function FastBuy229() {
                           genre: p.genre
                         });
                         setVariantes(parseVariantes(p.variantes) || []);
+                        setEditingVariante(null);
                       }} 
                       style={{ 
                         padding: "10px", 
@@ -1095,42 +1124,92 @@ export default function FastBuy229() {
                     <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1rem", marginBottom: "1.5rem" }}>
                       <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>🎨 Variantes</h3>
                       
-                      <div style={{ marginBottom: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <input 
-                          value={newVariante.couleur} 
-                          onChange={e => setNewVariante({ ...newVariante, couleur: e.target.value })} 
-                          placeholder="Couleur" 
-                          style={{ flex: 1, minWidth: 80 }}
-                        />
-                        <input 
-                          value={newVariante.taille} 
-                          onChange={e => setNewVariante({ ...newVariante, taille: e.target.value })} 
-                          placeholder="Taille" 
-                          style={{ flex: 1, minWidth: 60 }}
-                        />
-                        <input 
-                          type="number" 
-                          value={newVariante.nbrPieces} 
-                          onChange={e => setNewVariante({ ...newVariante, nbrPieces: e.target.value })} 
-                          placeholder="Pièces" 
-                          style={{ flex: 1, minWidth: 60 }}
-                        />
-                        <input 
-                          type="number" 
-                          value={newVariante.prix} 
-                          onChange={e => setNewVariante({ ...newVariante, prix: e.target.value })} 
-                          placeholder="Prix" 
-                          style={{ flex: 1, minWidth: 70 }}
-                        />
-                        <button 
-                          onClick={ajouterVariante} 
-                          style={{ padding: "8px 12px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}
-                        >
-                          ➕ Ajouter
-                        </button>
-                      </div>
+                      {editingVariante !== null ? (
+                        <>
+                          <div style={{ marginBottom: 12, padding: "1rem", background: "#eff6ff", borderRadius: 8, border: "2px solid #bfdbfe" }}>
+                            <h4 style={{ fontSize: "0.9rem", fontWeight: 600, marginBottom: "1rem", color: "#1e40af" }}>✏️ Édition de variante</h4>
+                            <div style={{ marginBottom: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              <input 
+                                value={newVariante.couleur} 
+                                onChange={e => setNewVariante({ ...newVariante, couleur: e.target.value })} 
+                                placeholder="Couleur" 
+                                style={{ flex: 1, minWidth: 80, marginBottom: 0 }}
+                              />
+                              <input 
+                                value={newVariante.taille} 
+                                onChange={e => setNewVariante({ ...newVariante, taille: e.target.value })} 
+                                placeholder="Taille" 
+                                style={{ flex: 1, minWidth: 60, marginBottom: 0 }}
+                              />
+                              <input 
+                                type="number" 
+                                value={newVariante.nbrPieces} 
+                                onChange={e => setNewVariante({ ...newVariante, nbrPieces: e.target.value })} 
+                                placeholder="Pièces" 
+                                style={{ flex: 1, minWidth: 60, marginBottom: 0 }}
+                              />
+                              <input 
+                                type="number" 
+                                value={newVariante.prix} 
+                                onChange={e => setNewVariante({ ...newVariante, prix: e.target.value })} 
+                                placeholder="Prix" 
+                                style={{ flex: 1, minWidth: 70, marginBottom: 0 }}
+                              />
+                            </div>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button 
+                                onClick={sauvegarderVarianteModifiee}
+                                style={{ flex: 1, padding: "8px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}
+                              >
+                                ✅ Sauvegarder
+                              </button>
+                              <button 
+                                onClick={() => { setEditingVariante(null); setNewVariante({ couleur: "", taille: "", nbrPieces: "", prix: "" }); }}
+                                style={{ flex: 1, padding: "8px 12px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}
+                              >
+                                ✕ Annuler
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ marginBottom: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <input 
+                            value={newVariante.couleur} 
+                            onChange={e => setNewVariante({ ...newVariante, couleur: e.target.value })} 
+                            placeholder="Couleur" 
+                            style={{ flex: 1, minWidth: 80 }}
+                          />
+                          <input 
+                            value={newVariante.taille} 
+                            onChange={e => setNewVariante({ ...newVariante, taille: e.target.value })} 
+                            placeholder="Taille" 
+                            style={{ flex: 1, minWidth: 60 }}
+                          />
+                          <input 
+                            type="number" 
+                            value={newVariante.nbrPieces} 
+                            onChange={e => setNewVariante({ ...newVariante, nbrPieces: e.target.value })} 
+                            placeholder="Pièces" 
+                            style={{ flex: 1, minWidth: 60 }}
+                          />
+                          <input 
+                            type="number" 
+                            value={newVariante.prix} 
+                            onChange={e => setNewVariante({ ...newVariante, prix: e.target.value })} 
+                            placeholder="Prix" 
+                            style={{ flex: 1, minWidth: 70 }}
+                          />
+                          <button 
+                            onClick={ajouterVariante} 
+                            style={{ padding: "8px 12px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}
+                          >
+                            ➕ Ajouter
+                          </button>
+                        </div>
+                      )}
 
-                      <div style={{ maxHeight: 200, overflowY: "auto", background: "#fff", borderRadius: 8, padding: "0.5rem" }}>
+                      <div style={{ maxHeight: 250, overflowY: "auto", background: "#fff", borderRadius: 8, padding: "0.5rem" }}>
                         {variantes.length === 0 ? (
                           <div style={{ padding: "1rem", textAlign: "center", color: "#9ca3af", fontSize: 12 }}>
                             Aucune variante
@@ -1140,25 +1219,38 @@ export default function FastBuy229() {
                             <div 
                               key={i} 
                               style={{ 
-                                background: "#f3f4f6", 
+                                background: editingVariante === i ? "#eff6ff" : "#f3f4f6", 
                                 padding: "0.75rem", 
                                 borderRadius: 6, 
                                 marginBottom: 6, 
                                 fontSize: 12,
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center"
+                                border: editingVariante === i ? "2px solid #bfdbfe" : "1px solid transparent",
+                                cursor: editingVariante === i ? "default" : "pointer",
+                                transition: "all 0.2s"
                               }}
                             >
-                              <span>
-                                <strong>{v.couleur}</strong> • {v.taille} • {v.nbrPieces} pcs • <span style={{ color: "#2563eb", fontWeight: 600 }}>{v.prix} FCFA</span>
-                              </span>
-                              <button 
-                                onClick={() => setVariantes(variantes.filter((_, idx) => idx !== i))}
-                                style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
-                              >
-                                ✕ Supprimer
-                              </button>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span>
+                                  <strong>{v.couleur}</strong> • {v.taille} • {v.nbrPieces} pcs • <span style={{ color: "#2563eb", fontWeight: 600 }}>{v.prix} FCFA</span>
+                                </span>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  <button 
+                                    onClick={() => {
+                                      setEditingVariante(i);
+                                      setNewVariante(v);
+                                    }}
+                                    style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
+                                  >
+                                    ✏️ Modifier
+                                  </button>
+                                  <button 
+                                    onClick={() => setVariantes(variantes.filter((_, idx) => idx !== i))}
+                                    style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
+                                  >
+                                    ✕ Supprimer
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           ))
                         )}
@@ -1567,9 +1659,46 @@ export default function FastBuy229() {
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowProduit(null); setSelectedVariante(null); } }}>
           <div className="modal">
             <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>{showProduit.title}</h2>
-            <div style={{ height: 200, background: "#f3f4f6", borderRadius: 12, marginBottom: 12, display: "flex", alignItems: "center" }}>
-              {showProduit.image ? <img src={getImageUrl(showProduit.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+            
+            {/* Carousel d'images */}
+            <div style={{ position: "relative", height: 250, background: "#f3f4f6", borderRadius: 12, marginBottom: 12, display: "flex", alignItems: "center", overflow: "hidden" }}>
+              <div style={{ display: "flex", transition: "transform 0.3s ease-in-out", transform: `translateX(-${produitImageIndex * 100}%)`, width: "100%", height: "100%" }}>
+                {parseImages(showProduit.images).length > 0 
+                  ? parseImages(showProduit.images).map((img, i) => (
+                      <div key={i} style={{ minWidth: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <img src={getImageUrl(img)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
+                    ))
+                  : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Aucune image</div>
+                }
+              </div>
+              
+              {parseImages(showProduit.images).length > 1 && (
+                <>
+                  <button 
+                    onClick={() => setProduitImageIndex(produitImageIndex > 0 ? produitImageIndex - 1 : parseImages(showProduit.images).length - 1)} 
+                    style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.8)", border: "none", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", fontWeight: 600, fontSize: 16 }}>
+                    {'<'}
+                  </button>
+                  <button 
+                    onClick={() => setProduitImageIndex(produitImageIndex < parseImages(showProduit.images).length - 1 ? produitImageIndex + 1 : 0)} 
+                    style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.8)", border: "none", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", fontWeight: 600, fontSize: 16 }}>
+                    {'>'}
+                  </button>
+                  
+                  {/* Points indicateurs */}
+                  <div style={{ position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 4 }}>
+                    {parseImages(showProduit.images).map((_, i) => (
+                      <div 
+                        key={i} 
+                        onClick={() => setProduitImageIndex(i)}
+                        style={{ width: 6, height: 6, borderRadius: "50%", background: i === produitImageIndex ? "#fff" : "rgba(255,255,255,0.5)", cursor: "pointer", transition: "all 0.2s" }} />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
+
             {showProduit.description && <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>{showProduit.description}</div>}
             {parseVariantes(showProduit.variantes).length > 0 && (
               <div style={{ marginBottom: 12 }}>
