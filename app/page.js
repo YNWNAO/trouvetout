@@ -203,7 +203,7 @@ export default function FastBuy229() {
   const produitsFiltres = produits.filter(p => {
     const matchCat = catActive === "Tous" || p.category === catActive;
     const matchSearch = !search || p.title?.toLowerCase().includes(search.toLowerCase());
-    const matchGenre = !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi;
+    const matchGenre = !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi || p.genre === "Unisexe";
     return matchCat && matchSearch && matchGenre;
   });
 
