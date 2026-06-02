@@ -104,10 +104,27 @@ export default function FastBuy229() {
   const [showAuthModal, setShowAuthModal] = useState("inscription");
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [clientCommandes, setClientCommandes] = useState([]);
+  
+  // ✅ CAROUSEL STATES
+  const [carouselImages, setCarouselImages] = useState([]);
+  const [showGererCarousel, setShowGererCarousel] = useState(false);
+  const [carouselFiles, setCarouselFiles] = useState([]);
+  const [carouselPreviews, setCarouselPreviews] = useState([]);
 
   const togglePassword = (field) => {
     setShowPassword(prev => ({ ...prev, [field]: !prev[field] }));
   };
+
+  // ✅ AUTO-DEFILER CAROUSEL TOUTES LES 10 SECONDES
+  useEffect(() => {
+    if (carouselImages.length === 0) return;
+    
+    const interval = setInterval(() => {
+      setHeroIndex(prev => (prev + 1) % carouselImages.length);
+    }, 10000); // 10 secondes
+    
+    return () => clearInterval(interval);
+  }, [carouselImages.length]);
 
   useEffect(() => {
     const savedGenre = localStorage.getItem("fastbuy_genre");
@@ -123,6 +140,7 @@ export default function FastBuy229() {
     if (savedPanier) setPanier(JSON.parse(savedPanier));
     chargerProduits();
     chargerCommandes();
+    chargerCarousel();
     if (typeof window !== "undefined" && window.location.search.includes("page=admin")) {
       setPage("admin");
       setShowGenreModal(false);
@@ -140,6 +158,23 @@ export default function FastBuy229() {
   useEffect(() => {
     setTimeout(() => chargerProduits(), 500);
   }, []);
+
+  // ✅ CHARGER LES IMAGES DU CAROUSEL
+  const chargerCarousel = async () => {
+    try {
+      const { data } = await supabase
+        .from("carousel")
+        .select("*")
+        .order("position", { ascending: true });
+      
+      if (data) {
+        setCarouselImages(data);
+        setHeroIndex(0);
+      }
+    } catch (e) {
+      console.error("Erreur chargerCarousel:", e);
+    }
+  };
 
   const chargerCommandesClientConnecte = async (clientId) => {
     try {
@@ -208,11 +243,9 @@ export default function FastBuy229() {
     return `https://nuhpdqioggxznceqvpvx.supabase.co/storage/v1/object/public/produits/${path}`; 
   };
 
-  // ✅ FILTRE CORRIGÉ : Unisexe s'affiche PARTOUT
   const produitsFiltres = produits.filter(p => {
     const matchCat = catActive === "Tous" || p.category === catActive;
     const matchSearch = !search || p.title?.toLowerCase().includes(search.toLowerCase());
-    // ✅ Unisexe s'affiche dans Homme ET Femme ET Tous
     const matchGenre = !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi || p.genre === "Unisexe";
     return matchCat && matchSearch && matchGenre;
   });
@@ -614,6 +647,53 @@ export default function FastBuy229() {
     }
   };
 
+  // ✅ AJOUTER/MODIFIER LES IMAGES DU CAROUSEL
+  const sauvegarderCarousel = async () => {
+    if (carouselFiles.length === 0) { alert("Ajoute au moins une image!"); return; }
+    
+    setLoading(true);
+    try {
+      // Supprimer les anciennes images
+      for (const img of carouselImages) {
+        await supabase.from("carousel").delete().eq("id", img.id);
+      }
+      
+      // Upload les nouvelles
+      let newImages = [];
+      for (let i = 0; i < carouselFiles.length; i++) {
+        const file = carouselFiles[i];
+        const fileName = `carousel-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        const { data, error: uploadError } = await supabase.storage.from("produits").upload(fileName, file, { upsert: true });
+        if (uploadError) {
+          alert("Erreur upload: " + uploadError.message);
+          setLoading(false);
+          return;
+        }
+        
+        newImages.push({ position: i + 1, image: fileName });
+      }
+      
+      // Insérer dans la base
+      const { error: insertError } = await supabase.from("carousel").insert(newImages);
+      if (insertError) {
+        alert("Erreur création: " + insertError.message);
+        setLoading(false);
+        return;
+      }
+      
+      alert("✅ Carousel sauvegardé!");
+      await chargerCarousel();
+      setShowGererCarousel(false);
+      setCarouselFiles([]);
+      setCarouselPreviews([]);
+      setLoading(false);
+    } catch (e) {
+      alert("Erreur: " + e.message);
+      setLoading(false);
+    }
+  };
+
   const chargerCommandesClient = async (clientId) => {
     try {
       const { data, error } = await supabase.from("commandes").select("*").eq("user_id", clientId).order("created_at", { ascending: false });
@@ -795,10 +875,42 @@ export default function FastBuy229() {
               <h1 style={{ fontSize: "1.8rem", fontWeight: 800 }}>Admin Dashboard</h1>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => { setShowAddProduct(true); setVariantes([]); }}>Ajouter Produit</button>
+                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#8b5cf6" }} onClick={() => setShowGererCarousel(true)}>🎠 Gérer Carousel</button>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#f59e0b" }} onClick={() => setShowGererProduits(true)}>Gérer Produits</button>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#10b981" }} onClick={() => { setShowGererClients(true); setTabAdmin("commandes"); chargerClients(); }}>Gérer Commandes</button>
                 <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "10px 18px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 10, cursor: "pointer", fontWeight: 600 }}>Déco</button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {showGererCarousel && (
+          <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowGererCarousel(false); }}>
+            <div className="modal">
+              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>🎠 Gérer Carousel</h2>
+              <div style={{ background: "#f9fafb", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem" }}>
+                <div style={{ fontSize: 12, color: "#6b7280", marginBottom: "1rem" }}>
+                  ⚠️ Les images défileront automatiquement chaque 10 secondes<br/>
+                  📸 Ajoute jusqu'à 5 images
+                </div>
+                <div onClick={() => document.getElementById("carousel-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "2rem", textAlign: "center", cursor: "pointer", marginBottom: "1rem" }}>
+                  {carouselPreviews.length > 0 ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+                      {carouselPreviews.map((p, i) => (
+                        <div key={i} style={{ position: "relative", paddingBottom: "100%", background: "#f3f4f6", borderRadius: 6, overflow: "hidden" }}>
+                          <img src={p} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                          <div style={{ position: "absolute", top: 2, right: 2, background: "#2563eb", color: "#fff", borderRadius: "50%", width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{i + 1}</div>
+                          <button onClick={e => { e.stopPropagation(); setCarouselFiles(carouselFiles.filter((_, idx) => idx !== i)); setCarouselPreviews(carouselPreviews.filter((_, idx) => idx !== i)); }} style={{ position: "absolute", bottom: 2, right: 2, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: "#9ca3af" }}>Cliquez pour ajouter les images</div>
+                  )}
+                  <input id="carousel-input" type="file" accept="image/*" multiple onChange={e => { const files = Array.from(e.target.files).slice(0, 5); setCarouselFiles(files); setCarouselPreviews(files.map(f => URL.createObjectURL(f))); }} style={{ display: "none" }} />
+                </div>
+              </div>
+              <button onClick={sauvegarderCarousel} disabled={loading} className="btn-primary">{loading ? "Sauvegarde..." : "💾 Sauvegarder"}</button>
             </div>
           </div>
         )}
@@ -1182,20 +1294,25 @@ export default function FastBuy229() {
         ))}
       </div>
 
-      {/* ✅ PAGE ACCUEIL MODIFIÉE : AFFICHE TOUS LES PRODUITS DIRECTEMENT */}
+      {/* ✅ PAGE ACCUEIL AVEC CAROUSEL AUTO-DEFILER */}
       {page === "accueil" && (
         <>
-          {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi || p.genre === "Unisexe").length > 0 && (
+          {carouselImages.length > 0 && (
             <div style={{ position: "relative", height: 250, background: "#000", marginBottom: 20 }}>
-              <div style={{ display: "flex", transition: "transform 0.3s ease", transform: `translateX(-${heroIndex * 100}%)` }}>
-                {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi || p.genre === "Unisexe").slice(0, 5).map((item, i) => (
+              <div style={{ display: "flex", transition: "transform 0.5s ease-in-out", transform: `translateX(-${heroIndex * 100}%)` }}>
+                {carouselImages.map((item, i) => (
                   <div key={i} style={{ minWidth: "100%", height: 250 }}>
                     {item.image && <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                   </div>
                 ))}
               </div>
-              <button onClick={() => setHeroIndex(heroIndex > 0 ? heroIndex - 1 : 4)} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer" }}>{'<'}</button>
-              <button onClick={() => setHeroIndex(heroIndex < 4 ? heroIndex + 1 : 0)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer" }}>{'>'}</button>
+              <button onClick={() => setHeroIndex(heroIndex > 0 ? heroIndex - 1 : carouselImages.length - 1)} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer" }}>{'<'}</button>
+              <button onClick={() => setHeroIndex(heroIndex < carouselImages.length - 1 ? heroIndex + 1 : 0)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.7)", border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer" }}>{'>'}</button>
+              <div style={{ position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 6 }}>
+                {carouselImages.map((_, i) => (
+                  <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: i === heroIndex ? "#fff" : "rgba(255,255,255,0.5)", cursor: "pointer" }} onClick={() => setHeroIndex(i)} />
+                ))}
+              </div>
             </div>
           )}
 
