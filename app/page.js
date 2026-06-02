@@ -102,6 +102,8 @@ export default function FastBuy229() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotForm, setForgotForm] = useState({ prenom: "", nom: "", date_naissance: "", newPassword: "", confirmPassword: "" });
   const [showAuthModal, setShowAuthModal] = useState("inscription");
+  const [showClientProfile, setShowClientProfile] = useState(false);
+  const [clientCommandes, setClientCommandes] = useState([]);
 
   const togglePassword = (field) => {
     setShowPassword(prev => ({ ...prev, [field]: !prev[field] }));
@@ -112,7 +114,12 @@ export default function FastBuy229() {
     const savedClient = localStorage.getItem("fastbuy_client");
     const savedPanier = localStorage.getItem("fastbuy_panier");
     if (savedGenre) { setGenreChoisi(savedGenre); setShowGenreModal(false); }
-    if (savedClient) setClient(JSON.parse(savedClient));
+    if (savedClient) {
+      const parsedClient = JSON.parse(savedClient);
+      setClient(parsedClient);
+      // ✅ Charge les commandes du client
+      chargerCommandesClientConnecte(parsedClient.id);
+    }
     if (savedPanier) setPanier(JSON.parse(savedPanier));
     chargerProduits();
     chargerCommandes();
@@ -123,6 +130,38 @@ export default function FastBuy229() {
   }, []);
 
   useEffect(() => { localStorage.setItem("fastbuy_panier", JSON.stringify(panier)); }, [panier]);
+
+  // ✅ FONCTION POUR CHARGER LES COMMANDES DU CLIENT CONNECTÉ
+  const chargerCommandesClientConnecte = async (clientId) => {
+    try {
+      const { data, error } = await supabase
+        .from("commandes")
+        .select("*")
+        .eq("user_id", clientId)
+        .order("created_at", { ascending: false });
+      
+      if (error) {
+        console.error("Erreur chargerCommandesClientConnecte:", error);
+        return;
+      }
+      
+      setClientCommandes(data || []);
+      
+      // ✅ REALTIME - S'abonner aux changements des commandes
+      const subscription = supabase
+        .from("commandes")
+        .on("*", (payload) => {
+          if (payload.new.user_id === clientId) {
+            chargerCommandesClientConnecte(clientId);
+          }
+        })
+        .subscribe();
+      
+      return () => subscription.unsubscribe();
+    } catch (e) {
+      console.error("Exception chargerCommandesClientConnecte:", e);
+    }
+  };
 
   const chargerProduits = async () => { 
     try {
@@ -280,6 +319,7 @@ export default function FastBuy229() {
     
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
+    chargerCommandesClientConnecte(data.id);  // ✅ Charge les commandes du client (empty pour nouvelle inscription)
     
     if (!isOldClient) {
       alert(`🎉 Bienvenue ${inscForm.prenom}!\n\n🎁 Code promo 1ère commande:\n${inscForm.prenom}10\n(-10% sur votre commande)`);
@@ -304,6 +344,7 @@ export default function FastBuy229() {
     const user = { id: data.id, prenom, nom: data.nom, email: data.email, telephone: data.telephone, premiereCommande: data.premiereCommande };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
+    chargerCommandesClientConnecte(data.id);  // ✅ Charge les commandes du client
     setShowAuthModal("accueil");
     setLoginForm({ identifiant: "", motDePasse: "" });
   };
@@ -1070,7 +1111,64 @@ export default function FastBuy229() {
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }} />
         <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => setShowPanier(true)}>Panier ({panier.reduce((s, i) => s + i.qty, 0)})</span>
         {client ? (
-          <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
+          <div style={{ position: "relative" }}>
+            <span style={{ cursor: "pointer", fontSize: "1.5rem" }} onClick={() => setShowClientProfile(!showClientProfile)}>👤</span>
+            {showClientProfile && (
+              <div style={{
+                position: "absolute",
+                right: 0,
+                top: "100%",
+                background: "#fff",
+                border: "1px solid #e5e7eb",
+                borderRadius: 10,
+                padding: "1rem",
+                minWidth: "250px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                zIndex: 1000
+              }}>
+                <div style={{ borderBottom: "1px solid #e5e7eb", paddingBottom: "1rem", marginBottom: "1rem" }}>
+                  <div style={{ fontWeight: 700, fontSize: "1rem", marginBottom: "0.25rem" }}>👋 {client.prenom}</div>
+                  <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>{client.email}</div>
+                  <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>{client.telephone}</div>
+                </div>
+                
+                <div style={{ maxHeight: "300px", overflowY: "auto", marginBottom: "1rem" }}>
+                  <div style={{ fontWeight: 600, marginBottom: "0.75rem", fontSize: "0.9rem" }}>📦 Mes commandes ({clientCommandes.length})</div>
+                  {clientCommandes.length === 0 ? (
+                    <div style={{ fontSize: "0.85rem", color: "#9ca3af" }}>Aucune commande</div>
+                  ) : (
+                    clientCommandes.map(cmd => (
+                      <div key={cmd.id} style={{ background: "#f9fafb", padding: "0.75rem", borderRadius: 6, marginBottom: "0.5rem", fontSize: "0.85rem" }}>
+                        <div style={{ fontWeight: 600, color: "#2563eb", marginBottom: "0.25rem" }}>{cmd.numero}</div>
+                        <div style={{ color: "#6b7280", marginBottom: "0.25rem" }}>💰 {cmd.totalFinal?.toLocaleString()} FCFA</div>
+                        <div style={{ 
+                          color: cmd.statut === "Livré" ? "#16a34a" : cmd.statut === "En cours" ? "#f59e0b" : "#6b7280",
+                          fontWeight: 600,
+                          fontSize: "0.8rem"
+                        }}>
+                          {cmd.statut === "Livré" ? "✅" : cmd.statut === "En cours" ? "🚚" : "⏳"} {cmd.statut}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                <button onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); setShowClientProfile(false); }} style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  background: "#fef2f2",
+                  color: "#ef4444",
+                  border: "1px solid #fecaca",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: "0.9rem"
+                }}>
+                  🚪 Déconnexion
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#2563eb", textDecoration: "underline" }} onClick={() => setShowAuthModal("inscription")}>S'inscrire / Connexion</span>
         )}
