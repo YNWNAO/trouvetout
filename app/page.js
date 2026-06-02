@@ -22,15 +22,14 @@ const getFraisLivraison = (ville) => {
 
 const globalStyles = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1a1a2e}input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;background:#fff;outline:none}input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);overflow-y:auto}.modal{background:#fff;border-radius:20px;padding:2rem;width:100%;max-width:600px;max-height:90vh;overflow-y:auto}.btn-primary{background:#2563eb;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;width:100%}.btn-primary:hover{background:#1d4ed8}`;
 
-// ✅ FONCTION POUR ENVOYER L'EMAIL
-const envoyerEmail = async (to, subject, html, nom) => {
+// ✅ FONCTION POUR ENVOYER L'EMAIL À L'ADMIN
+const envoyerEmailAdmin = async (subject, html) => {
   try {
-    console.log("📧 Envoi email à:", to);
+    console.log("📧 Envoi email à l'admin");
     const response = await fetch("/api/send-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        to,
         subject,
         html
       })
@@ -41,7 +40,7 @@ const envoyerEmail = async (to, subject, html, nom) => {
       console.error("❌ Erreur email:", data);
       return false;
     }
-    console.log("✅ Email envoyé:", data);
+    console.log("✅ Email admin envoyé:", data);
     return true;
   } catch (e) {
     console.error("❌ Exception email:", e);
@@ -287,8 +286,8 @@ export default function FastBuy229() {
         return;
       }
 
-      // ✅ ENVOYER L'EMAIL AU CLIENT
-      console.log("📧 Préparation email pour:", formCmd.email);
+      // ✅ ENVOYER L'EMAIL À L'ADMIN
+      console.log("📧 Préparation email pour admin");
       const articlesHtml = panier.map(item => `
         <tr>
           <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${item.title}</td>
@@ -299,11 +298,20 @@ export default function FastBuy229() {
 
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; color: #1a1a2e; max-width: 600px;">
-          <h2 style="color: #2563eb; margin-bottom: 20px;">✅ Commande Confirmée</h2>
+          <h2 style="color: #2563eb; margin-bottom: 20px;">🎉 NOUVELLE COMMANDE!</h2>
           
           <div style="background: #eff6ff; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
             <p style="margin: 0; font-size: 14px;"><strong>Numéro:</strong> #${num}</p>
             <p style="margin: 5px 0 0 0; font-size: 14px;"><strong>Date:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+          </div>
+
+          <h3 style="margin-bottom: 10px; font-size: 16px;">👤 Infos Client</h3>
+          <div style="background: #f9fafb; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <p style="margin: 0 0 8px 0;"><strong>Nom:</strong> ${formCmd.nom}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${formCmd.email}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Téléphone:</strong> ${formCmd.telephone}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Livraison:</strong> ${formCmd.numeroAppel}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Lieu:</strong> ${formCmd.quartier}, ${formCmd.ville}</p>
           </div>
 
           <h3 style="margin-bottom: 10px; font-size: 16px;">📦 Articles Commandés</h3>
@@ -338,28 +346,25 @@ export default function FastBuy229() {
             </div>
             ` : ''}
             <div style="display: flex; justify-content: space-between; border-top: 2px solid #2563eb; padding-top: 10px; font-size: 16px; font-weight: 700; color: #2563eb;">
-              <span>Total à payer:</span>
+              <span>TOTAL À RECEVOIR:</span>
               <span>${totalFinal.toLocaleString()} FCFA</span>
             </div>
           </div>
 
           <div style="background: #fffbeb; border: 2px solid #fde68a; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-            <p style="margin: 0 0 10px 0; font-weight: 600; color: #92400e;">📱 Paiement via Mobile Money</p>
-            <p style="margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: #f59e0b;">${MOMO}</p>
-            <p style="margin: 0; font-size: 14px; color: #b45309;"><strong>Montant à envoyer: ${totalFinal.toLocaleString()} FCFA</strong></p>
+            <p style="margin: 0 0 10px 0; font-weight: 600; color: #92400e;">📱 Paiement reçu sur:</p>
+            <p style="margin: 0; font-size: 18px; font-weight: 700; color: #f59e0b;">${MOMO}</p>
           </div>
 
-          <p style="color: #6b7280; font-size: 13px; margin: 20px 0 0 0;">
-            Merci pour votre achat! Si vous avez des questions, contactez-nous.
+          <p style="color: #6b7280; font-size: 13px; margin: 20px 0 0 0; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+            ✅ Capture de paiement: REÇUE
           </p>
         </div>
       `;
 
-      await envoyerEmail(
-        formCmd.email,
-        `✅ Commande confirmée #${num}`,
-        emailHtml,
-        formCmd.nom
+      await envoyerEmailAdmin(
+        `🎉 NOUVELLE COMMANDE #${num} - ${formCmd.nom}`,
+        emailHtml
       );
       
       if (client?.premiereCommande) {
@@ -472,7 +477,6 @@ export default function FastBuy229() {
     setLoading(false);
   };
 
-  // ✅ CORRIGÉ: Charger les commandes du client
   const chargerCommandesClient = async (clientId) => {
     try {
       console.log("🔍 Chargement commandes pour clientId:", clientId);
