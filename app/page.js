@@ -8,9 +8,9 @@ const MOMO = "+2290157577895";
 const ADMIN_EMAIL = "nahofalgbadamassi@gmail.com";
 const ADMIN_WHATSAPP = "+33775958442";
 
-// Frais livraison insensibles à la casse
+// ✅ CORRIGÉ: porto-novo au lieu de porto
 const FRAIS_LIVRAISON = {
-  "porto": 500,
+  "porto-novo": 500,
   "cotonou": 1000,
   "calavi": 1500
 };
@@ -80,6 +80,7 @@ export default function FastBuy229() {
     if (savedClient) setClient(JSON.parse(savedClient));
     if (savedPanier) setPanier(JSON.parse(savedPanier));
     chargerProduits();
+    chargerCommandes(); // ✅ AJOUTÉ
     if (typeof window !== "undefined" && window.location.search.includes("page=admin")) {
       setPage("admin");
       setShowGenreModal(false);
@@ -88,9 +89,21 @@ export default function FastBuy229() {
 
   useEffect(() => { localStorage.setItem("fastbuy_panier", JSON.stringify(panier)); }, [panier]);
 
-  const chargerProduits = async () => { const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false }); if (data) setProduits(data); };
-  const chargerCommandes = async () => { const { data } = await supabase.from("commandes").select("*").order("created_at", { ascending: false }); if (data) setCommandes(data); };
-  const chargerClients = async () => { const { data } = await supabase.from("users").select("*").order("created_at", { ascending: false }); if (data) setClients(data); };
+  const chargerProduits = async () => { 
+    const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false }); 
+    if (data) setProduits(data); 
+  };
+  
+  const chargerCommandes = async () => { 
+    const { data } = await supabase.from("commandes").select("*").order("created_at", { ascending: false }); 
+    if (data) setCommandes(data); 
+  };
+  
+  const chargerClients = async () => { 
+    const { data } = await supabase.from("users").select("*").order("created_at", { ascending: false }); 
+    if (data) setClients(data);
+    await chargerCommandes(); // ✅ FORCE REFRESH DES COMMANDES
+  };
 
   const getImageUrl = (path) => { if (!path) return null; if (path.startsWith("http")) return path; return `https://nuhpdqioggxznceqvpvx.supabase.co/storage/v1/object/public/produits/${path}`; };
 
@@ -179,7 +192,9 @@ export default function FastBuy229() {
   const envoyerCommande = async () => {
     if (!formCmd.nom || !formCmd.email || !formCmd.telephone || !formCmd.numeroAppel || !formCmd.ville || !formCmd.quartier) { alert("Remplis tous!"); return; }
     if (panier.length === 0) { alert("Panier vide!"); return; }
-    if (!captureFile) { alert("Capture requise!"); return; }
+    // ✅ CORRIGÉ: Vérifier la capture AVANT d'envoyer
+    if (!captureFile) { alert("❌ Capture requise! Envoie d'abord la capture de Mobile Money"); return; }
+    
     setLoading(true);
     
     try {
@@ -231,10 +246,16 @@ export default function FastBuy229() {
         localStorage.setItem("fastbuy_client", JSON.stringify(updatedClient));
       }
       
+      // ✅ CORRIGÉ: Réinitialiser TOUS les states
       setShowConfirm({ numero: num, totalFinal, ville: formCmd.ville });
       setPanier([]);
       setShowCommande(false);
+      setFormCmd({ nom: "", email: "", telephone: "", numeroAppel: "", ville: "", quartier: "", codePromo: "" });
+      setCaptureFile(null);
       setLoading(false);
+      
+      // ✅ AJOUTER: Recharger les commandes de l'admin
+      await chargerCommandes();
     } catch (e) {
       console.error("Exception:", e);
       alert("Erreur: " + e.message);
@@ -330,6 +351,7 @@ export default function FastBuy229() {
     setLoading(false);
   };
 
+  // ✅ CORRIGÉ: Ajouter .order()
   const chargerCommandesClient = async (clientId) => {
     try {
       const { data } = await supabase.from("commandes").select("*").eq("user_id", clientId).order("created_at", { ascending: false });
@@ -362,7 +384,6 @@ export default function FastBuy229() {
         return;
       }
       alert("✅ Commande supprimée!");
-      // Recharger les commandes du client
       if (clientTrouve?.id) {
         await chargerCommandesClient(clientTrouve.id);
       }
@@ -841,7 +862,7 @@ export default function FastBuy229() {
               <input placeholder="Email" value={formCmd.email} onChange={e => setFormCmd({ ...formCmd, email: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Téléphone" value={formCmd.telephone} onChange={e => setFormCmd({ ...formCmd, telephone: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Numéro pour appel livraison" value={formCmd.numeroAppel} onChange={e => setFormCmd({ ...formCmd, numeroAppel: e.target.value })} style={{ marginBottom: 12 }} />
-              <input placeholder="Ville" value={formCmd.ville} onChange={e => setFormCmd({ ...formCmd, ville: e.target.value })} style={{ marginBottom: 12 }} />
+              <input placeholder="Ville (Porto-Novo, Cotonou, Calavi...)" value={formCmd.ville} onChange={e => setFormCmd({ ...formCmd, ville: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Quartier" value={formCmd.quartier} onChange={e => setFormCmd({ ...formCmd, quartier: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Code promo (optionnel)" value={formCmd.codePromo} onChange={e => setFormCmd({ ...formCmd, codePromo: e.target.value })} style={{ marginBottom: 0 }} />
             </div>
