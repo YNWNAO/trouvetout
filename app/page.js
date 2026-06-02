@@ -362,14 +362,17 @@ export default function FastBuy229() {
     setNewVariante({ couleur: "", taille: "", nbrPieces: "", prix: "" });
   };
 
+  // ✅ FONCTION CORRIGÉE
   const ajouterProduit = async () => {
     if (!newProduct.title) { alert("Titre requis!"); return; }
     if (variantes.length === 0) { alert("Ajoute au moins une variante!"); return; }
     if (imageFiles.length === 0) { alert("Ajoute au moins une image!"); return; }
+    
     setLoading(true);
     try {
       let imagePaths = [];
       
+      // Étape 1: Upload toutes les images
       for (const file of imageFiles) {
         const fileName = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const { data, error: uploadError } = await supabase.storage.from("produits").upload(fileName, file, { upsert: true });
@@ -381,14 +384,20 @@ export default function FastBuy229() {
         imagePaths.push(fileName);
       }
       
+      // Étape 2: Crée l'objet du produit
       const prodData = { 
-        ...newProduct, 
-        price: variantes[0].prix,
-        image: imagePaths[0], 
-        images: imagePaths.join(','),
-        variantes: JSON.stringify(variantes)
+        title: newProduct.title,
+        description: newProduct.description,
+        category: newProduct.category,
+        genre: newProduct.genre,
+        etat: newProduct.etat || "Neuf",
+        price: parseInt(variantes[0].prix),
+        image: imagePaths[0],
+        images: imagePaths,
+        variantes: variantes
       };
       
+      // Étape 3: Envoie à Supabase
       const { error: insertError } = await supabase.from("produits").insert([prodData]);
       if (insertError) {
         alert("Erreur création: " + insertError.message);
@@ -396,11 +405,13 @@ export default function FastBuy229() {
         return;
       }
       
+      // Étape 4: Succès !
       alert("Produit créé!");
       await chargerProduits();
       setShowAddProduct(false);
       setNewProduct({ title: "", description: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
-      setImageFiles([]); setImagePreviews([]);
+      setImageFiles([]);
+      setImagePreviews([]);
       setVariantes([]);
       setLoading(false);
     } catch (e) {
