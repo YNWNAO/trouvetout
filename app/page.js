@@ -7,11 +7,18 @@ const ADMIN_PWD = "N-beat3140";
 const MOMO = "+2290157577895";
 const ADMIN_EMAIL = "nahofalgbadamassi@gmail.com";
 const ADMIN_WHATSAPP = "+33775958442";
+
+// Frais livraison insensibles à la casse
 const FRAIS_LIVRAISON = {
-  "Porto-Novo": 500,
-  "Cotonou": 1000,
-  "Calavi": 1500,
-  "default": 2000
+  "porto": 500,
+  "cotonou": 1000,
+  "calavi": 1500
+};
+
+const getFraisLivraison = (ville) => {
+  if (!ville) return 2000;
+  const villeNorm = ville.toLowerCase().trim();
+  return FRAIS_LIVRAISON[villeNorm] || 2000;
 };
 
 const globalStyles = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1a1a2e}input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;background:#fff;outline:none}input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);overflow-y:auto}.modal{background:#fff;border-radius:20px;padding:2rem;width:100%;max-width:600px;max-height:90vh;overflow-y:auto}.btn-primary{background:#2563eb;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;width:100%}.btn-primary:hover{background:#1d4ed8}`;
@@ -96,18 +103,12 @@ export default function FastBuy229() {
 
   const totalPanier = panier.reduce((s, i) => s + i.price * i.qty, 0);
   
-  const getFraisLivraison = (ville) => {
-    return FRAIS_LIVRAISON[ville] || FRAIS_LIVRAISON["default"];
-  };
-
   const calculerTotalFinal = (ville, codePromo) => {
     let total = totalPanier;
     let reduction = 0;
     
-    // Vérifier si c'est la première commande pour le code promo
-    const isFirstOrder = !client?.premiereCommande === false; // true si c'est la première
+    const isFirstOrder = !client?.premiereCommande === false;
     
-    // Réduction 10% si code promo correct ET première commande
     if (codePromo && client?.prenom && isFirstOrder) {
       if (codePromo.toLowerCase() === (client.prenom + "10").toLowerCase()) {
         reduction = total * 0.1;
@@ -115,7 +116,6 @@ export default function FastBuy229() {
       }
     }
     
-    // Frais livraison si total < 20000
     let fraisLivraison = 0;
     if (total < 20000 && ville) {
       fraisLivraison = getFraisLivraison(ville);
@@ -224,7 +224,6 @@ export default function FastBuy229() {
         return;
       }
       
-      // Marquer que la première commande est passée
       if (client?.premiereCommande) {
         await supabase.from("users").update({ premiereCommande: false }).eq("id", client.id);
         const updatedClient = { ...client, premiereCommande: false };
@@ -333,7 +332,7 @@ export default function FastBuy229() {
 
   const chargerCommandesClient = async (clientId) => {
     try {
-      const { data } = await supabase.from("commandes").select("*").eq("user_id", clientId);
+      const { data } = await supabase.from("commandes").select("*").eq("user_id", clientId).order("created_at", { ascending: false });
       if (data) setCommandesClient(data);
     } catch (e) {
       console.error(e);
@@ -355,16 +354,21 @@ export default function FastBuy229() {
   };
 
   const supprimerCommande = async (commandeId) => {
-    if (!confirm("Supprimer cette commande?")) return;
-    setLoading(true);
+    if (!confirm("Supprimer cette commande ?")) return;
     try {
-      await supabase.from("commandes").delete().eq("id", commandeId);
-      alert("Commande supprimée!");
-      await chargerCommandesClient(clientTrouve.id);
+      const { error } = await supabase.from("commandes").delete().eq("id", commandeId);
+      if (error) {
+        alert("Erreur suppression: " + error.message);
+        return;
+      }
+      alert("✅ Commande supprimée!");
+      // Recharger les commandes du client
+      if (clientTrouve?.id) {
+        await chargerCommandesClient(clientTrouve.id);
+      }
     } catch (e) {
       alert("Erreur: " + e.message);
     }
-    setLoading(false);
   };
 
   const changerMdpClient = async (clientId) => {
@@ -555,7 +559,7 @@ export default function FastBuy229() {
                             <div key={cmd.id} style={{ background: "#fff", padding: "0.75rem", borderRadius: 6, marginBottom: 8, border: "1px solid #e5e7eb" }}>
                               <div style={{ fontWeight: 600, fontSize: 11, marginBottom: 4, color: "#2563eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                 <span>{cmd.numero}</span>
-                                <button onClick={() => supprimerCommande(cmd.id)} disabled={loading} style={{ background: "#fef2f2", color: "#ef4444", border: "none", borderRadius: 3, padding: "2px 6px", cursor: "pointer", fontSize: 9, fontWeight: 600 }}>🗑️</button>
+                                <button onClick={() => supprimerCommande(cmd.id)} style={{ background: "#fef2f2", color: "#ef4444", border: "none", borderRadius: 3, padding: "2px 6px", cursor: "pointer", fontSize: 9, fontWeight: 600, minWidth: "auto" }}>🗑️ Suppr</button>
                               </div>
                               <div style={{ fontSize: 9, color: "#666", marginBottom: 3 }}>📧 {cmd.email}</div>
                               {cmd.numeroAppel && <div style={{ fontSize: 9, color: "#f59e0b", marginBottom: 3, fontWeight: 600 }}>📞 {cmd.numeroAppel}</div>}
@@ -904,7 +908,7 @@ export default function FastBuy229() {
 
             {/* PAIEMENT */}
             <div style={{ background: "#fffbeb", border: "2px solid #fde68a", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem", fontSize: 13 }}>
-              <div style={{ fontWeight: 700, marginBottom: "0.75rem", color: "#92400e" }}>📱 Paiement via Orange Money / MTN Money</div>
+              <div style={{ fontWeight: 700, marginBottom: "0.75rem", color: "#92400e" }}>📱 Paiement via Mobile Money</div>
               <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#f59e0b", marginBottom: "0.5rem" }}>{MOMO}</div>
               <div style={{ fontSize: 12, color: "#b45309", fontWeight: 600 }}>Montant à envoyer: <strong>{totalFinal.toLocaleString()} FCFA</strong></div>
             </div>
