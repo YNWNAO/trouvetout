@@ -156,7 +156,6 @@ export default function FastBuy229() {
     setTimeout(() => chargerProduits(), 500);
   }, []);
 
-  // Réinitialiser l'index d'image quand on ouvre un nouveau produit
   useEffect(() => {
     if (showProduit) {
       setProduitImageIndex(0);
@@ -562,7 +561,6 @@ export default function FastBuy229() {
     setNewVariante({ couleur: "", taille: "", nbrPieces: "", prix: "" });
   };
 
-  // Nouvelle fonction: Modifier une variante existante
   const sauvegarderVarianteModifiee = () => {
     if (!newVariante.couleur || !newVariante.taille || !newVariante.nbrPieces || !newVariante.prix) {
       alert("Remplis tous les champs!");
@@ -660,6 +658,23 @@ export default function FastBuy229() {
     
     setLoading(true);
     try {
+      let newImagePaths = [];
+      for (const file of imageFiles.filter(f => f instanceof File)) {
+        const fileName = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const { data, error: uploadError } = await supabase.storage.from("produits").upload(fileName, file, { upsert: true });
+        if (uploadError) {
+          alert("Erreur upload: " + uploadError.message);
+          setLoading(false);
+          return;
+        }
+        newImagePaths.push(fileName);
+      }
+      
+      const allImages = [
+        ...imagePreviews.filter((_, i) => !(imageFiles[i] instanceof File)).map((_, i) => imageFiles.find(f => !f instanceof File)),
+        ...newImagePaths
+      ].filter(Boolean);
+      
       const { error } = await supabase.from("produits").update({
         title: editForm.title,
         description: editForm.description,
@@ -667,7 +682,9 @@ export default function FastBuy229() {
         etat: editForm.etat,
         category: editForm.category,
         genre: editForm.genre,
-        variantes: variantes
+        variantes: variantes,
+        images: allImages,
+        image: allImages[0] || produitEdit.image
       }).eq("id", produitId);
       
       if (error) {
@@ -683,6 +700,8 @@ export default function FastBuy229() {
       setVariantes([]);
       setNewVariante({ couleur: "", taille: "", nbrPieces: "", prix: "" });
       setEditingVariante(null);
+      setImageFiles([]);
+      setImagePreviews([]);
       setLoading(false);
     } catch (e) {
       alert("❌ Erreur: " + e.message);
@@ -946,7 +965,19 @@ export default function FastBuy229() {
                   ) : (
                     <div style={{ fontSize: 12, color: "#9ca3af" }}>Cliquez pour ajouter les images</div>
                   )}
-                  <input id="carousel-input" type="file" accept="image/*" multiple onChange={e => { const files = Array.from(e.target.files).slice(0, 5); setCarouselFiles(files); setCarouselPreviews(files.map(f => URL.createObjectURL(f))); }} style={{ display: "none" }} />
+                  <input 
+                    id="carousel-input" 
+                    type="file" 
+                    accept="image/*" 
+                    multiple 
+                    onChange={e => { 
+                      const newFiles = Array.from(e.target.files);
+                      const combined = [...carouselFiles, ...newFiles].slice(0, 5);
+                      setCarouselFiles(combined);
+                      setCarouselPreviews(combined.map(f => URL.createObjectURL(f)));
+                    }} 
+                    style={{ display: "none" }} 
+                  />
                 </div>
               </div>
               <button onClick={sauvegarderCarousel} disabled={loading} className="btn-primary">{loading ? "Sauvegarde..." : "💾 Sauvegarder"}</button>
@@ -983,7 +1014,19 @@ export default function FastBuy229() {
                   ) : (
                     <div style={{ fontSize: 12, color: "#9ca3af" }}>Cliquez pour ajouter</div>
                   )}
-                  <input id="photo-input" type="file" accept="image/*" multiple onChange={e => { const files = Array.from(e.target.files).slice(0, 5); setImageFiles(files); setImagePreviews(files.map(f => URL.createObjectURL(f))); }} style={{ display: "none" }} />
+                  <input 
+                    id="photo-input" 
+                    type="file" 
+                    accept="image/*" 
+                    multiple 
+                    onChange={e => { 
+                      const newFiles = Array.from(e.target.files);
+                      const combined = [...imageFiles, ...newFiles].slice(0, 5);
+                      setImageFiles(combined);
+                      setImagePreviews(combined.map(f => URL.createObjectURL(f)));
+                    }} 
+                    style={{ display: "none" }} 
+                  />
                 </div>
               </div>
 
@@ -1035,6 +1078,8 @@ export default function FastBuy229() {
                         });
                         setVariantes(parseVariantes(p.variantes) || []);
                         setEditingVariante(null);
+                        setImageFiles(parseImages(p.images) || []);
+                        setImagePreviews((parseImages(p.images) || []).map(img => getImageUrl(img)));
                       }} 
                       style={{ 
                         padding: "10px", 
@@ -1097,6 +1142,38 @@ export default function FastBuy229() {
                         <option>Femme</option>
                         <option>Unisexe</option>
                       </select>
+                    </div>
+
+                    <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1rem", marginBottom: "1.5rem" }}>
+                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>🖼️ Images ({imagePreviews.length}/5)</h3>
+                      
+                      <div onClick={() => document.getElementById("edit-photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginBottom: "1rem" }}>
+                        {imagePreviews.length > 0 ? (
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+                            {imagePreviews.map((p, i) => (
+                              <div key={i} style={{ position: "relative", paddingBottom: "100%", background: "#f3f4f6", borderRadius: 6, overflow: "hidden" }}>
+                                <img src={p} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                                <button onClick={e => { e.stopPropagation(); setImageFiles(imageFiles.filter((_, idx) => idx !== i)); setImagePreviews(imagePreviews.filter((_, idx) => idx !== i)); }} style={{ position: "absolute", top: 2, right: 2, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 12, color: "#9ca3af" }}>Cliquez pour ajouter des images</div>
+                        )}
+                        <input 
+                          id="edit-photo-input" 
+                          type="file" 
+                          accept="image/*" 
+                          multiple 
+                          onChange={e => { 
+                            const newFiles = Array.from(e.target.files);
+                            const combined = [...imageFiles, ...newFiles].slice(0, 5);
+                            setImageFiles(combined);
+                            setImagePreviews(combined.map(f => f instanceof File ? URL.createObjectURL(f) : f));
+                          }} 
+                          style={{ display: "none" }} 
+                        />
+                      </div>
                     </div>
 
                     <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1rem", marginBottom: "1.5rem" }}>
