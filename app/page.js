@@ -1298,7 +1298,7 @@ export default function FastBuy229() {
       {page === "accueil" && (
         <>
           {carouselImages.length > 0 && (
-            <div style={{ position: "relative", height: 250, background: "#000", marginBottom: 20 }}>
+            <div style={{ position: "relative", height: 500, background: "#000", marginBottom: 20 }}>
               <div style={{ display: "flex", transition: "transform 0.5s ease-in-out", transform: `translateX(-${heroIndex * 100}%)` }}>
                 {carouselImages.map((item, i) => (
                   <div key={i} style={{ minWidth: "100%", height: 250 }}>
