@@ -248,14 +248,18 @@ export default function FastBuy229() {
     let { data: telExist } = await supabase.from("users").select("id").eq("telephone", inscForm.telephone).maybeSingle();
     if (telExist) { setAuthError("📱 Ce numéro est déjà utilisé"); return; }
     
-    // ✅ NE PAS envoyer premiereCommande - Supabase gère la valeur par défaut
+    // ✅ Vérifie si c'est un ANCIEN client (archivé)
+    let { data: emailArchived } = await supabase.from("archived_emails").select("id").eq("email", inscForm.email).maybeSingle();
+    const isOldClient = !!emailArchived;
+    
     const { data, error } = await supabase.from("users").insert([{ 
       prenom: inscForm.prenom, 
       nom: `${inscForm.prenom} ${inscForm.nom}`, 
       email: inscForm.email, 
       telephone: inscForm.telephone, 
       date_naissance: inscForm.date_naissance, 
-      mot_de_passe: inscForm.mot_de_passe
+      mot_de_passe: inscForm.mot_de_passe,
+      premiereCommande: !isOldClient  // ✅ true si NOUVEAU, false si ANCIEN
     }]).select().single();
     
     if (error) { setAuthError("❌ Erreur lors de l'inscription: " + (error.message || "Essayez plus tard")); return; }
@@ -266,13 +270,12 @@ export default function FastBuy229() {
       nom: data.nom, 
       email: data.email, 
       telephone: data.telephone, 
-      premiereCommande: data.premiereCommande // ✅ Récupère la vraie valeur de Supabase
+      premiereCommande: data.premiereCommande
     };
     
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
     
-    // ✅ Affiche la promo SEULEMENT si c'est vraiment la première commande
     if (data.premiereCommande) {
       alert(`🎉 Bienvenue ${inscForm.prenom}!\n\n🎁 Code promo 1ère commande:\n${inscForm.prenom}10\n(-10% sur votre commande)`);
     } else {
@@ -579,7 +582,24 @@ export default function FastBuy229() {
     setLoading(true);
     
     try {
-      // 1️⃣ D'abord supprimer les messages du client
+      // 1️⃣ Récupère les infos du client AVANT de le supprimer
+      const { data: clientData } = await supabase
+        .from("users")
+        .select("email, telephone, nom")
+        .eq("id", clientId)
+        .single();
+
+      // 2️⃣ Archive l'email et le téléphone pour bloquer la réduction future
+      if (clientData) {
+        await supabase.from("archived_emails").insert([{
+          email: clientData.email,
+          telephone: clientData.telephone,
+          nom: clientData.nom
+        }]);
+        console.log("✅ Email archivé:", clientData.email);
+      }
+
+      // 3️⃣ D'abord supprimer les messages du client
       const { error: errMsg } = await supabase
         .from("messages")
         .delete()
@@ -594,7 +614,7 @@ export default function FastBuy229() {
       
       console.log("✅ Messages supprimés");
 
-      // 2️⃣ Ensuite supprimer les commandes du client
+      // 4️⃣ Ensuite supprimer les commandes du client
       const { error: errCmd } = await supabase
         .from("commandes")
         .delete()
@@ -609,7 +629,7 @@ export default function FastBuy229() {
       
       console.log("✅ Commandes supprimées");
 
-      // 3️⃣ Finalement supprimer le client
+      // 5️⃣ Finalement supprimer le client
       const { error: errUser } = await supabase
         .from("users")
         .delete()
@@ -623,9 +643,9 @@ export default function FastBuy229() {
       }
 
       console.log("✅ Client supprimé");
-      alert("✅ Client, messages et commandes supprimés!");
+      alert("✅ Client supprimé et archivé!");
       
-      // 4️⃣ Recharger la liste des clients
+      // 6️⃣ Recharger la liste des clients
       await chargerClients();
       setClientTrouve(null);
       setLoading(false);
