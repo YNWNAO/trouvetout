@@ -606,8 +606,8 @@ export default function FastBuy229() {
         etat: newProduct.etat || "Neuf",
         price: parseInt(variantes[0].prix),
         image: imagePaths[0],
-        images: imagePaths,
-        variantes: variantes
+        images: JSON.stringify(imagePaths),
+        variantes: JSON.stringify(variantes)
       };
       
       const { error: insertError } = await supabase.from("produits").insert([prodData]);
