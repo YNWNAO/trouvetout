@@ -385,7 +385,7 @@ export default function FastBuy229() {
         ...newProduct, 
         price: variantes[0].prix,
         image: imagePaths[0], 
-        images: JSON.stringify(imagePaths),
+        images: imagePaths.join(','),
         variantes: JSON.stringify(variantes)
       };
       
@@ -1024,19 +1024,19 @@ export default function FastBuy229() {
             <h2 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: "1.5rem" }}>📋 Commande</h2>
             
             <div style={{ background: "#f9fafb", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem" }}>
-              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem" }}>Vos informations</h3>
+              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem" }}>Vos infos</h3>
               <input placeholder="Nom complet" value={formCmd.nom} onChange={e => setFormCmd({ ...formCmd, nom: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Email" value={formCmd.email} onChange={e => setFormCmd({ ...formCmd, email: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Téléphone" value={formCmd.telephone} onChange={e => setFormCmd({ ...formCmd, telephone: e.target.value })} style={{ marginBottom: 12 }} />
-              <input placeholder="Numéro appel livraison" value={formCmd.numeroAppel} onChange={e => setFormCmd({ ...formCmd, numeroAppel: e.target.value })} style={{ marginBottom: 12 }} />
+              <input placeholder="Numéro appel" value={formCmd.numeroAppel} onChange={e => setFormCmd({ ...formCmd, numeroAppel: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Ville" value={formCmd.ville} onChange={e => setFormCmd({ ...formCmd, ville: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Quartier" value={formCmd.quartier} onChange={e => setFormCmd({ ...formCmd, quartier: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Code promo" value={formCmd.codePromo} onChange={e => setFormCmd({ ...formCmd, codePromo: e.target.value })} style={{ marginBottom: 0 }} />
             </div>
 
             {client?.premiereCommande && client?.prenom && (
-              <div style={{ background: "#eff6ff", border: "2px solid #bfdbfe", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem", fontSize: 12, fontWeight: 600, color: "#1e40af" }}>
-                🎁 Code promo: {client.prenom}10 (-10%)
+              <div style={{ background: "#eff6ff", border: "2px solid #bfdbfe", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem", fontSize: 12, fontWeight: 600 }}>
+                🎁 Code: {client.prenom}10 (-10%)
               </div>
             )}
 
@@ -1085,9 +1085,9 @@ export default function FastBuy229() {
 
             <div onClick={() => document.getElementById("capture-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 12, padding: "2rem", textAlign: "center", cursor: "pointer", marginBottom: "1.5rem", background: "#fafafa", fontSize: 13 }}>
               {captureFile ? (
-                <div style={{ color: "#16a34a", fontWeight: 600 }}>✅ Capture reçue</div>
+                <div style={{ color: "#16a34a", fontWeight: 600 }}>✅ Reçue</div>
               ) : (
-                <div style={{ color: "#6b7280" }}>📸 Cliquez pour joindre la capture</div>
+                <div style={{ color: "#6b7280" }}>📸 Cliquez pour joindre capture</div>
               )}
               <input id="capture-input" type="file" accept="image/*" onChange={e => setCaptureFile(e.target.files[0])} style={{ display: "none" }} />
             </div>
