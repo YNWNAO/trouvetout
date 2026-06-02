@@ -117,6 +117,7 @@ export default function FastBuy229() {
     if (savedClient) {
       const parsedClient = JSON.parse(savedClient);
       setClient(parsedClient);
+      setShowAuthModal("accueil");  // ✅ FERME LE MODAL SI CLIENT TROUVÉ
       // ✅ Charge les commandes du client
       chargerCommandesClientConnecte(parsedClient.id);
     }
@@ -130,6 +131,18 @@ export default function FastBuy229() {
   }, []);
 
   useEffect(() => { localStorage.setItem("fastbuy_panier", JSON.stringify(panier)); }, [panier]);
+
+  // ✅ RECHARGE LES PRODUITS QUAND LA CATÉGORIE CHANGE
+  useEffect(() => {
+    if (page === "produits") {
+      chargerProduits();
+    }
+  }, [catActive, page]);
+
+  // ✅ FORCE LE CHARGEMENT DES PRODUITS AU DÉMARRAGE
+  useEffect(() => {
+    setTimeout(() => chargerProduits(), 500);
+  }, []);
 
   // ✅ FONCTION POUR CHARGER LES COMMANDES DU CLIENT CONNECTÉ
   const chargerCommandesClientConnecte = async (clientId) => {
