@@ -117,8 +117,7 @@ export default function FastBuy229() {
     if (savedClient) {
       const parsedClient = JSON.parse(savedClient);
       setClient(parsedClient);
-      setShowAuthModal("accueil");  // ✅ FERME LE MODAL SI CLIENT TROUVÉ
-      // ✅ Charge les commandes du client
+      setShowAuthModal("accueil");
       chargerCommandesClientConnecte(parsedClient.id);
     }
     if (savedPanier) setPanier(JSON.parse(savedPanier));
@@ -132,19 +131,16 @@ export default function FastBuy229() {
 
   useEffect(() => { localStorage.setItem("fastbuy_panier", JSON.stringify(panier)); }, [panier]);
 
-  // ✅ RECHARGE LES PRODUITS QUAND LA CATÉGORIE CHANGE
   useEffect(() => {
     if (page === "produits") {
       chargerProduits();
     }
   }, [catActive, page]);
 
-  // ✅ FORCE LE CHARGEMENT DES PRODUITS AU DÉMARRAGE
   useEffect(() => {
     setTimeout(() => chargerProduits(), 500);
   }, []);
 
-  // ✅ FONCTION POUR CHARGER LES COMMANDES DU CLIENT CONNECTÉ
   const chargerCommandesClientConnecte = async (clientId) => {
     try {
       const { data, error } = await supabase
@@ -160,7 +156,6 @@ export default function FastBuy229() {
       
       setClientCommandes(data || []);
       
-      // ✅ REALTIME - S'abonner aux changements des commandes
       const subscription = supabase
         .from("commandes")
         .on("*", (payload) => {
@@ -213,9 +208,11 @@ export default function FastBuy229() {
     return `https://nuhpdqioggxznceqvpvx.supabase.co/storage/v1/object/public/produits/${path}`; 
   };
 
+  // ✅ FILTRE CORRIGÉ : Unisexe s'affiche PARTOUT
   const produitsFiltres = produits.filter(p => {
     const matchCat = catActive === "Tous" || p.category === catActive;
     const matchSearch = !search || p.title?.toLowerCase().includes(search.toLowerCase());
+    // ✅ Unisexe s'affiche dans Homme ET Femme ET Tous
     const matchGenre = !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi || p.genre === "Unisexe";
     return matchCat && matchSearch && matchGenre;
   });
@@ -300,11 +297,9 @@ export default function FastBuy229() {
     let { data: telExist } = await supabase.from("users").select("id").eq("telephone", inscForm.telephone).maybeSingle();
     if (telExist) { setAuthError("📱 Ce numéro est déjà utilisé"); return; }
     
-    // ✅ Vérifie si c'est un ANCIEN client (archivé)
     let { data: emailArchived } = await supabase.from("archived_emails").select("id").eq("email", inscForm.email).maybeSingle();
     const isOldClient = !!emailArchived;
     
-    // ✅ N'envoie PAS premiereCommande - laisse Supabase utiliser la valeur par défaut (true)
     const { data, error } = await supabase.from("users").insert([{ 
       prenom: inscForm.prenom, 
       nom: `${inscForm.prenom} ${inscForm.nom}`, 
@@ -316,7 +311,6 @@ export default function FastBuy229() {
     
     if (error) { setAuthError("❌ Erreur lors de l'inscription: " + (error.message || "Essayez plus tard")); return; }
     
-    // ✅ Si ancien client, update premiereCommande à false APRÈS insertion
     if (isOldClient) {
       await supabase.from("users").update({ premiereCommande: false }).eq("id", data.id);
     }
@@ -327,12 +321,12 @@ export default function FastBuy229() {
       nom: data.nom, 
       email: data.email, 
       telephone: data.telephone, 
-      premiereCommande: !isOldClient  // ✅ true si nouveau, false si ancien
+      premiereCommande: !isOldClient
     };
     
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
-    chargerCommandesClientConnecte(data.id);  // ✅ Charge les commandes du client (empty pour nouvelle inscription)
+    chargerCommandesClientConnecte(data.id);
     
     if (!isOldClient) {
       alert(`🎉 Bienvenue ${inscForm.prenom}!\n\n🎁 Code promo 1ère commande:\n${inscForm.prenom}10\n(-10% sur votre commande)`);
@@ -357,7 +351,7 @@ export default function FastBuy229() {
     const user = { id: data.id, prenom, nom: data.nom, email: data.email, telephone: data.telephone, premiereCommande: data.premiereCommande };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
-    chargerCommandesClientConnecte(data.id);  // ✅ Charge les commandes du client
+    chargerCommandesClientConnecte(data.id);
     setShowAuthModal("accueil");
     setLoginForm({ identifiant: "", motDePasse: "" });
   };
@@ -635,20 +629,17 @@ export default function FastBuy229() {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE POUR SUPPRIMER UN CLIENT
   const supprimerClient = async (clientId) => {
     if (!confirm("Confirmer? Ses messages, commandes et données seront aussi supprimés!")) return;
     setLoading(true);
     
     try {
-      // 1️⃣ Récupère les infos du client AVANT de le supprimer
       const { data: clientData } = await supabase
         .from("users")
         .select("email, telephone, nom")
         .eq("id", clientId)
         .single();
 
-      // 2️⃣ Archive l'email et le téléphone pour bloquer la réduction future
       if (clientData) {
         await supabase.from("archived_emails").insert([{
           email: clientData.email,
@@ -658,7 +649,6 @@ export default function FastBuy229() {
         console.log("✅ Email archivé:", clientData.email);
       }
 
-      // 3️⃣ D'abord supprimer les messages du client
       const { error: errMsg } = await supabase
         .from("messages")
         .delete()
@@ -673,7 +663,6 @@ export default function FastBuy229() {
       
       console.log("✅ Messages supprimés");
 
-      // 4️⃣ Ensuite supprimer les commandes du client
       const { error: errCmd } = await supabase
         .from("commandes")
         .delete()
@@ -688,7 +677,6 @@ export default function FastBuy229() {
       
       console.log("✅ Commandes supprimées");
 
-      // 5️⃣ Finalement supprimer le client
       const { error: errUser } = await supabase
         .from("users")
         .delete()
@@ -704,7 +692,6 @@ export default function FastBuy229() {
       console.log("✅ Client supprimé");
       alert("✅ Client supprimé et archivé!");
       
-      // 6️⃣ Recharger la liste des clients
       await chargerClients();
       setClientTrouve(null);
       setLoading(false);
@@ -716,7 +703,6 @@ export default function FastBuy229() {
     }
   };
 
-  // ✅ FONCTION CORRIGÉE POUR SUPPRIMER UNE COMMANDE
   const supprimerCommande = async (commandeId) => {
     if (!confirm("Supprimer cette commande?")) return;
     
@@ -1196,12 +1182,13 @@ export default function FastBuy229() {
         ))}
       </div>
 
+      {/* ✅ PAGE ACCUEIL MODIFIÉE : AFFICHE TOUS LES PRODUITS DIRECTEMENT */}
       {page === "accueil" && (
         <>
-          {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).length > 0 && (
+          {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi || p.genre === "Unisexe").length > 0 && (
             <div style={{ position: "relative", height: 250, background: "#000", marginBottom: 20 }}>
               <div style={{ display: "flex", transition: "transform 0.3s ease", transform: `translateX(-${heroIndex * 100}%)` }}>
-                {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi).slice(0, 5).map((item, i) => (
+                {produits.filter(p => !genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi || p.genre === "Unisexe").slice(0, 5).map((item, i) => (
                   <div key={i} style={{ minWidth: "100%", height: 250 }}>
                     {item.image && <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                   </div>
@@ -1214,25 +1201,32 @@ export default function FastBuy229() {
 
           <div style={{ padding: "1.5rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <h2 style={{ fontSize: "1rem", fontWeight: 700 }}>Catégories</h2>
+              <h2 style={{ fontSize: "1rem", fontWeight: 700 }}>Tous les produits</h2>
               <button onClick={() => setShowContactAdmin(true)} style={{ padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 8, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Nous Contacter</button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
-              {CATEGORIES.filter(c => c !== "Tous").map(cat => {
-                const catProduits = produits.filter(p => p.category === cat && (!genreChoisi || genreChoisi === "Tous" || p.genre === genreChoisi));
-                const premierProduit = catProduits[0];
-                return (
-                  <div key={cat} onClick={() => { setCatActive(cat); setPage("produits"); }} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", cursor: "pointer", height: 140, position: "relative" }}>
-                    {premierProduit?.image ? (
-                      <img src={getImageUrl(premierProduit.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    ) : (
-                      <div style={{ width: "100%", height: "100%", background: "#f3f4f6" }} />
-                    )}
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)", color: "#fff", padding: "8px", fontSize: 12, fontWeight: 600 }}>{cat}</div>
+            
+            {produitsFiltres.length === 0 ? (
+              <div style={{ textAlign: "center", color: "#9ca3af" }}>Aucun produit</div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
+                {produitsFiltres.map(item => (
+                  <div key={item.id} onClick={() => { setShowProduit(item); setSelectedVariante(null); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", cursor: "pointer" }}>
+                    <div style={{ height: 130, background: "#f3f4f6" }}>
+                      {item.image ? <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+                    </div>
+                    <div style={{ padding: "8px" }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: "#6b7280" }}>{item.title}</div>
+                      <div style={{ fontWeight: 700, fontSize: 11, color: "#2563eb" }}>
+                        {parseVariantes(item.variantes).length > 0 
+                          ? parseVariantes(item.variantes)[0]?.prix?.toLocaleString() 
+                          : item.price?.toLocaleString()
+                        } FCFA
+                      </div>
+                    </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
