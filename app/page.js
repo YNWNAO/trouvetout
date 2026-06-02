@@ -190,6 +190,13 @@ export default function FastBuy229() {
   };
 
   const envoyerCommande = async () => {
+    // ✅ VÉRIFIER LE CLIENT D'ABORD
+    if (!client?.id) {
+      alert("❌ Erreur: Pas de client connecté! Connecte-toi d'abord.");
+      console.log("Client problème:", client);
+      return;
+    }
+    
     if (!formCmd.nom || !formCmd.email || !formCmd.telephone || !formCmd.numeroAppel || !formCmd.ville || !formCmd.quartier) { alert("Remplis tous!"); return; }
     if (panier.length === 0) { alert("Panier vide!"); return; }
     // ✅ CORRIGÉ: Vérifier la capture AVANT d'envoyer
