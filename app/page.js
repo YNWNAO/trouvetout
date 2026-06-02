@@ -20,14 +20,12 @@ const getFraisLivraison = (ville) => {
   return FRAIS_LIVRAISON[villeNorm] || 2000;
 };
 
-// Fonction utilitaire pour parser variantes (array ou string)
 const parseVariantes = (variantes) => {
   if (!variantes) return [];
   if (typeof variantes === 'string') return JSON.parse(variantes);
   return Array.isArray(variantes) ? variantes : [];
 };
 
-// Fonction utilitaire pour parser images (array ou string)
 const parseImages = (images) => {
   if (!images) return [];
   if (typeof images === 'string') return JSON.parse(images);
@@ -472,11 +470,15 @@ export default function FastBuy229() {
   };
 
   const supprimerClient = async (clientId) => {
-    if (!confirm("Confirmer?")) return;
+    if (!confirm("Confirmer? Ses commandes seront aussi supprimées!")) return;
     setLoading(true);
     try {
+      // D'abord supprimer les commandes du client
+      await supabase.from("commandes").delete().eq("user_id", clientId);
+      
+      // Ensuite supprimer le client
       await supabase.from("users").delete().eq("id", clientId);
-      alert("Supprimé!");
+      alert("✅ Supprimé!");
       await chargerClients();
       setClientTrouve(null);
     } catch (e) {
