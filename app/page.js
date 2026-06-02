@@ -20,6 +20,20 @@ const getFraisLivraison = (ville) => {
   return FRAIS_LIVRAISON[villeNorm] || 2000;
 };
 
+// Fonction utilitaire pour parser variantes (array ou string)
+const parseVariantes = (variantes) => {
+  if (!variantes) return [];
+  if (typeof variantes === 'string') return JSON.parse(variantes);
+  return Array.isArray(variantes) ? variantes : [];
+};
+
+// Fonction utilitaire pour parser images (array ou string)
+const parseImages = (images) => {
+  if (!images) return [];
+  if (typeof images === 'string') return JSON.parse(images);
+  return Array.isArray(images) ? images : [];
+};
+
 const globalStyles = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1a1a2e}input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;background:#fff;outline:none}input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);overflow-y:auto}.modal{background:#fff;border-radius:20px;padding:2rem;width:100%;max-width:600px;max-height:90vh;overflow-y:auto}.btn-primary{background:#2563eb;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;width:100%}.btn-primary:hover{background:#1d4ed8}`;
 
 const envoyerEmailAdmin = async (subject, html) => {
@@ -362,7 +376,6 @@ export default function FastBuy229() {
     setNewVariante({ couleur: "", taille: "", nbrPieces: "", prix: "" });
   };
 
-  // ✅ FONCTION CORRIGÉE
   const ajouterProduit = async () => {
     if (!newProduct.title) { alert("Titre requis!"); return; }
     if (variantes.length === 0) { alert("Ajoute au moins une variante!"); return; }
@@ -372,7 +385,6 @@ export default function FastBuy229() {
     try {
       let imagePaths = [];
       
-      // Étape 1: Upload toutes les images
       for (const file of imageFiles) {
         const fileName = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const { data, error: uploadError } = await supabase.storage.from("produits").upload(fileName, file, { upsert: true });
@@ -384,7 +396,6 @@ export default function FastBuy229() {
         imagePaths.push(fileName);
       }
       
-      // Étape 2: Crée l'objet du produit
       const prodData = { 
         title: newProduct.title,
         description: newProduct.description,
@@ -397,7 +408,6 @@ export default function FastBuy229() {
         variantes: variantes
       };
       
-      // Étape 3: Envoie à Supabase
       const { error: insertError } = await supabase.from("produits").insert([prodData]);
       if (insertError) {
         alert("Erreur création: " + insertError.message);
@@ -405,7 +415,6 @@ export default function FastBuy229() {
         return;
       }
       
-      // Étape 4: Succès !
       alert("Produit créé!");
       await chargerProduits();
       setShowAddProduct(false);
@@ -917,8 +926,8 @@ export default function FastBuy229() {
                   <div style={{ padding: "8px" }}>
                     <div style={{ fontSize: 10, fontWeight: 600, color: "#6b7280" }}>{item.title}</div>
                     <div style={{ fontWeight: 700, fontSize: 11, color: "#2563eb" }}>
-                      {item.variantes 
-                        ? JSON.parse(item.variantes)[0]?.prix?.toLocaleString() 
+                      {parseVariantes(item.variantes).length > 0 
+                        ? parseVariantes(item.variantes)[0]?.prix?.toLocaleString() 
                         : item.price?.toLocaleString()
                       } FCFA
                     </div>
@@ -938,11 +947,11 @@ export default function FastBuy229() {
               {showProduit.image ? <img src={getImageUrl(showProduit.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
             </div>
             {showProduit.description && <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>{showProduit.description}</div>}
-            {showProduit.variantes && JSON.parse(showProduit.variantes).length > 0 && (
+            {parseVariantes(showProduit.variantes).length > 0 && (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>🎯 Sélectionner une variante</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-                  {JSON.parse(showProduit.variantes).map((v, i) => (
+                  {parseVariantes(showProduit.variantes).map((v, i) => (
                     <button 
                       type="button"
                       key={i}
@@ -966,7 +975,7 @@ export default function FastBuy229() {
                 </div>
               </div>
             )}
-            <button type="button" onClick={() => { if (selectedVariante === null && showProduit.variantes && JSON.parse(showProduit.variantes).length > 0) { alert("Sélectionne une variante!"); return; } const variante = selectedVariante !== null && showProduit.variantes ? JSON.parse(showProduit.variantes)[selectedVariante] : null; ajouterAuPanier({...showProduit, price: variante ? variante.prix : showProduit.price}, variante); }} className="btn-primary">{!client ? "Connexion" : "Ajouter au panier"}</button>
+            <button type="button" onClick={() => { if (selectedVariante === null && parseVariantes(showProduit.variantes).length > 0) { alert("Sélectionne une variante!"); return; } const variante = selectedVariante !== null && parseVariantes(showProduit.variantes).length > 0 ? parseVariantes(showProduit.variantes)[selectedVariante] : null; ajouterAuPanier({...showProduit, price: variante ? variante.prix : showProduit.price}, variante); }} className="btn-primary">{!client ? "Connexion" : "Ajouter au panier"}</button>
           </div>
         </div>
       )}
