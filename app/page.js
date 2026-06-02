@@ -956,7 +956,7 @@ export default function FastBuy229() {
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
                       {carouselPreviews.map((p, i) => (
                         <div key={i} style={{ position: "relative", paddingBottom: "100%", background: "#f3f4f6", borderRadius: 6, overflow: "hidden" }}>
-                          <img src={p} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                          <img src={p} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "contain" }} />
                           <div style={{ position: "absolute", top: 2, right: 2, background: "#2563eb", color: "#fff", borderRadius: "50%", width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{i + 1}</div>
                           <button onClick={e => { e.stopPropagation(); setCarouselFiles(carouselFiles.filter((_, idx) => idx !== i)); setCarouselPreviews(carouselPreviews.filter((_, idx) => idx !== i)); }} style={{ position: "absolute", bottom: 2, right: 2, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>✕</button>
                         </div>
@@ -1006,7 +1006,7 @@ export default function FastBuy229() {
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
                       {imagePreviews.map((p, i) => (
                         <div key={i} style={{ position: "relative", paddingBottom: "100%", background: "#f3f4f6", borderRadius: 6, overflow: "hidden" }}>
-                          <img src={p} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                          <img src={p} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "contain" }} />
                           <button onClick={e => { e.stopPropagation(); setImageFiles(imageFiles.filter((_, idx) => idx !== i)); setImagePreviews(imagePreviews.filter((_, idx) => idx !== i)); }} style={{ position: "absolute", top: 2, right: 2, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>✕</button>
                         </div>
                       ))}
@@ -1152,7 +1152,7 @@ export default function FastBuy229() {
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
                             {imagePreviews.map((p, i) => (
                               <div key={i} style={{ position: "relative", paddingBottom: "100%", background: "#f3f4f6", borderRadius: 6, overflow: "hidden" }}>
-                                <img src={p} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                                <img src={p} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "contain" }} />
                                 <button onClick={e => { e.stopPropagation(); setImageFiles(imageFiles.filter((_, idx) => idx !== i)); setImagePreviews(imagePreviews.filter((_, idx) => idx !== i)); }} style={{ position: "absolute", top: 2, right: 2, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>✕</button>
                               </div>
                             ))}
@@ -1659,7 +1659,7 @@ export default function FastBuy229() {
               <div style={{ display: "flex", transition: "transform 0.5s ease-in-out", transform: `translateX(-${heroIndex * 100}%)`, height: "100%" }}>
                 {carouselImages.map((item, i) => (
                   <div key={i} style={{ minWidth: "100%", height: "100%" }}>
-                    {item.image && <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                    {item.image && <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
                   </div>
                 ))}
               </div>
@@ -1686,7 +1686,7 @@ export default function FastBuy229() {
                 {produitsFiltres.map(item => (
                   <div key={item.id} onClick={() => { setShowProduit(item); setSelectedVariante(null); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", cursor: "pointer" }}>
                     <div style={{ height: 130, background: "#f3f4f6" }}>
-                      {item.image ? <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+                      {item.image ? <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : null}
                     </div>
                     <div style={{ padding: "8px" }}>
                       <div style={{ fontSize: 10, fontWeight: 600, color: "#6b7280" }}>{item.title}</div>
@@ -1714,7 +1714,7 @@ export default function FastBuy229() {
               {produitsFiltres.map(item => (
                 <div key={item.id} onClick={() => { setShowProduit(item); setSelectedVariante(null); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", cursor: "pointer" }}>
                   <div style={{ height: 130, background: "#f3f4f6" }}>
-                    {item.image ? <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+                    {item.image ? <img src={getImageUrl(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : null}
                   </div>
                   <div style={{ padding: "8px" }}>
                     <div style={{ fontSize: 10, fontWeight: 600, color: "#6b7280" }}>{item.title}</div>
@@ -1743,7 +1743,7 @@ export default function FastBuy229() {
                 {parseImages(showProduit.images).length > 0 
                   ? parseImages(showProduit.images).map((img, i) => (
                       <div key={i} style={{ minWidth: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <img src={getImageUrl(img)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <img src={getImageUrl(img)} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                       </div>
                     ))
                   : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Aucune image</div>
