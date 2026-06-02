@@ -252,17 +252,22 @@ export default function FastBuy229() {
     let { data: emailArchived } = await supabase.from("archived_emails").select("id").eq("email", inscForm.email).maybeSingle();
     const isOldClient = !!emailArchived;
     
+    // ✅ N'envoie PAS premiereCommande - laisse Supabase utiliser la valeur par défaut (true)
     const { data, error } = await supabase.from("users").insert([{ 
       prenom: inscForm.prenom, 
       nom: `${inscForm.prenom} ${inscForm.nom}`, 
       email: inscForm.email, 
       telephone: inscForm.telephone, 
       date_naissance: inscForm.date_naissance, 
-      mot_de_passe: inscForm.mot_de_passe,
-      premiereCommande: !isOldClient  // ✅ true si NOUVEAU, false si ANCIEN
+      mot_de_passe: inscForm.mot_de_passe
     }]).select().single();
     
     if (error) { setAuthError("❌ Erreur lors de l'inscription: " + (error.message || "Essayez plus tard")); return; }
+    
+    // ✅ Si ancien client, update premiereCommande à false APRÈS insertion
+    if (isOldClient) {
+      await supabase.from("users").update({ premiereCommande: false }).eq("id", data.id);
+    }
     
     const user = { 
       id: data.id, 
@@ -270,13 +275,13 @@ export default function FastBuy229() {
       nom: data.nom, 
       email: data.email, 
       telephone: data.telephone, 
-      premiereCommande: data.premiereCommande
+      premiereCommande: !isOldClient  // ✅ true si nouveau, false si ancien
     };
     
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
     
-    if (data.premiereCommande) {
+    if (!isOldClient) {
       alert(`🎉 Bienvenue ${inscForm.prenom}!\n\n🎁 Code promo 1ère commande:\n${inscForm.prenom}10\n(-10% sur votre commande)`);
     } else {
       alert(`🎉 Bienvenue ${inscForm.prenom}!`);
