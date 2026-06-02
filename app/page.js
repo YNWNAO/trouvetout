@@ -22,19 +22,14 @@ const getFraisLivraison = (ville) => {
 
 const globalStyles = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1a1a2e}input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;background:#fff;outline:none}input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);overflow-y:auto}.modal{background:#fff;border-radius:20px;padding:2rem;width:100%;max-width:600px;max-height:90vh;overflow-y:auto}.btn-primary{background:#2563eb;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;width:100%}.btn-primary:hover{background:#1d4ed8}`;
 
-// ✅ FONCTION POUR ENVOYER L'EMAIL À L'ADMIN
 const envoyerEmailAdmin = async (subject, html) => {
   try {
     console.log("📧 Envoi email à l'admin");
     const response = await fetch("/api/send-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subject,
-        html
-      })
+      body: JSON.stringify({ subject, html })
     });
-
     const data = await response.json();
     if (!response.ok) {
       console.error("❌ Erreur email:", data);
@@ -92,6 +87,9 @@ export default function FastBuy229() {
   const [commandesClient, setCommandesClient] = useState([]);
   const [messageAuClient, setMessageAuClient] = useState("");
   const [showPassword, setShowPassword] = useState({});
+  const [allCommandes, setAllCommandes] = useState([]);
+  const [filterCommande, setFilterCommande] = useState("");
+  const [tabAdmin, setTabAdmin] = useState("commandes"); // "commandes" ou "clients"
 
   const togglePassword = (field) => {
     setShowPassword(prev => ({ ...prev, [field]: !prev[field] }));
@@ -126,7 +124,10 @@ export default function FastBuy229() {
   const chargerCommandes = async () => { 
     try {
       const { data } = await supabase.from("commandes").select("*").order("created_at", { ascending: false }); 
-      if (data) setCommandes(data);
+      if (data) {
+        setCommandes(data);
+        setAllCommandes(data);
+      }
     } catch (e) {
       console.error("Erreur chargerCommandes:", e);
     }
@@ -160,7 +161,6 @@ export default function FastBuy229() {
   const calculerTotalFinal = (ville, codePromo) => {
     let total = totalPanier;
     let reduction = 0;
-    
     const isFirstOrder = client?.premiereCommande === true;
     
     if (codePromo && client?.prenom && isFirstOrder) {
@@ -234,7 +234,6 @@ export default function FastBuy229() {
   const envoyerCommande = async () => {
     if (!client?.id) {
       alert("❌ Erreur: Pas de client connecté! Connecte-toi d'abord.");
-      console.log("Client problème:", client);
       return;
     }
     
@@ -286,7 +285,6 @@ export default function FastBuy229() {
         return;
       }
 
-      // ✅ ENVOYER L'EMAIL À L'ADMIN
       console.log("📧 Préparation email pour admin");
       const articlesHtml = panier.map(item => `
         <tr>
@@ -523,9 +521,7 @@ export default function FastBuy229() {
         return;
       }
       alert("✅ Commande supprimée!");
-      if (clientTrouve?.id) {
-        await chargerCommandesClient(clientTrouve.id);
-      }
+      await chargerCommandes();
     } catch (e) {
       alert("Erreur: " + e.message);
     }
@@ -542,6 +538,15 @@ export default function FastBuy229() {
       alert("Erreur: " + e.message);
     }
     setLoading(false);
+  };
+
+  const changerStatutCommande = async (commandeId, nouveauStatut) => {
+    try {
+      await supabase.from("commandes").update({ statut: nouveauStatut }).eq("id", commandeId);
+      await chargerCommandes();
+    } catch (e) {
+      alert("Erreur: " + e.message);
+    }
   };
 
   if (page === "admin") {
@@ -564,11 +569,11 @@ export default function FastBuy229() {
         ) : (
           <div style={{ padding: "2rem", maxWidth: 1400, margin: "0 auto" }}>
             <div style={{ display: "flex", gap: 10, justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap" }}>
-              <h1 style={{ fontSize: "1.8rem", fontWeight: 800 }}>Admin</h1>
+              <h1 style={{ fontSize: "1.8rem", fontWeight: 800 }}>Admin Dashboard</h1>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => { setShowAddProduct(true); setVariantes([]); }}>Ajouter Produit</button>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#f59e0b" }} onClick={() => { setShowGererProduits(true); }}>Gérer Produits</button>
-                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#10b981" }} onClick={() => { setShowGererClients(true); chargerClients(); }}>Gérer Clients</button>
+                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#10b981" }} onClick={() => { setShowGererClients(true); setTabAdmin("commandes"); chargerClients(); chargerCommandes(); }}>Gérer Commandes & Clients</button>
                 <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "10px 18px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 10, cursor: "pointer", fontWeight: 600 }}>Déco</button>
               </div>
             </div>
@@ -685,84 +690,226 @@ export default function FastBuy229() {
 
         {showGererClients && (
           <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowGererClients(false); }}>
-            <div className="modal" style={{ maxWidth: "1000px", maxHeight: "90vh", display: "flex", flexDirection: "column", padding: 0 }}>
-              <div style={{ background: "#10b981", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Gérer Clients</div>
-              <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                {/* LISTE CLIENTS */}
-                <div style={{ width: "200px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
-                  {clients.map(c => (
-                    <div key={c.id} onClick={() => { setClientTrouve(c); chargerCommandesClient(c.id); }} style={{ padding: "10px", borderRadius: 8, marginBottom: 8, fontSize: 11, cursor: "pointer", background: clientTrouve?.id === c.id ? "#10b981" : "#fff", color: clientTrouve?.id === c.id ? "#fff" : "#1a1a2e", border: "1px solid #e5e7eb", fontWeight: 600 }}>
-                      <div>{c.nom}</div>
-                      <div style={{ fontSize: 9, opacity: 0.7, marginTop: 3 }}>{c.telephone}</div>
-                    </div>
-                  ))}
-                </div>
+            <div className="modal" style={{ maxWidth: "1200px", maxHeight: "90vh", display: "flex", flexDirection: "column", padding: 0 }}>
+              {/* ONGLETS */}
+              <div style={{ display: "flex", background: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
+                <button 
+                  onClick={() => setTabAdmin("commandes")}
+                  style={{
+                    flex: 1,
+                    padding: "1rem",
+                    border: "none",
+                    background: tabAdmin === "commandes" ? "#10b981" : "transparent",
+                    color: tabAdmin === "commandes" ? "#fff" : "#6b7280",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: "1rem"
+                  }}
+                >
+                  📦 TOUTES LES COMMANDES ({allCommandes.length})
+                </button>
+                <button 
+                  onClick={() => setTabAdmin("clients")}
+                  style={{
+                    flex: 1,
+                    padding: "1rem",
+                    border: "none",
+                    background: tabAdmin === "clients" ? "#2563eb" : "transparent",
+                    color: tabAdmin === "clients" ? "#fff" : "#6b7280",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: "1rem"
+                  }}
+                >
+                  👥 PAR CLIENT
+                </button>
+              </div>
 
-                {/* INFOS CLIENT */}
-                {clientTrouve ? (
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "1rem", overflowY: "auto" }}>
-                    {/* HEADER */}
-                    <div style={{ marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "2px solid #e5e7eb" }}>
-                      <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 4 }}>{clientTrouve.nom}</h2>
-                      <div style={{ fontSize: 11, color: "#6b7280" }}>📧 {clientTrouve.email}</div>
-                      <div style={{ fontSize: 11, color: "#6b7280" }}>📱 {clientTrouve.telephone}</div>
-                    </div>
-
-                    {/* COMMANDES */}
-                    <div style={{ marginBottom: "1.5rem" }}>
-                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.5rem", color: "#1a1a2e" }}>📦 Commandes ({commandesClient.length})</h3>
-                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: "0.5rem", maxHeight: 240, overflowY: "auto", border: "1px solid #e5e7eb" }}>
-                        {commandesClient.length === 0 ? (
-                          <div style={{ textAlign: "center", padding: "1rem", color: "#9ca3af", fontSize: 12 }}>Aucune commande</div>
-                        ) : (
-                          commandesClient.map(cmd => (
-                            <div key={cmd.id} style={{ background: "#fff", padding: "0.75rem", borderRadius: 6, marginBottom: 8, border: "1px solid #e5e7eb" }}>
-                              <div style={{ fontWeight: 600, fontSize: 11, marginBottom: 4, color: "#2563eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <span>{cmd.numero}</span>
-                                <button onClick={() => supprimerCommande(cmd.id)} style={{ background: "#fef2f2", color: "#ef4444", border: "none", borderRadius: 3, padding: "2px 6px", cursor: "pointer", fontSize: 9, fontWeight: 600, minWidth: "auto" }}>🗑️ Suppr</button>
-                              </div>
-                              <div style={{ fontSize: 9, color: "#666", marginBottom: 3 }}>📧 {cmd.email}</div>
-                              {cmd.numeroAppel && <div style={{ fontSize: 9, color: "#f59e0b", marginBottom: 3, fontWeight: 600 }}>📞 {cmd.numeroAppel}</div>}
-                              <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>💰 Total: <strong>{cmd.totalFinal?.toLocaleString()} FCFA</strong></div>
-                              <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>📊 Statut: <strong>{cmd.statut}</strong></div>
-                              <div style={{ fontSize: 10, color: "#1a1a2e", marginBottom: 3 }}>💳 Paiement: <strong>{cmd.paiement}</strong></div>
-                              {cmd.capture && <div style={{ fontSize: 10, color: "#16a34a", marginBottom: 3 }}>✅ Capture reçue</div>}
-                              <details style={{ fontSize: 9, marginTop: 4 }}>
-                                <summary style={{ cursor: "pointer", color: "#2563eb", fontWeight: 600 }}>Articles ({cmd.articles ? JSON.parse(cmd.articles).length : 0})</summary>
-                                <div style={{ marginLeft: 12, marginTop: 4 }}>
-                                  {cmd.articles && JSON.parse(cmd.articles).map((art, i) => (
-                                    <div key={i} style={{ fontSize: 9, color: "#6b7280", marginBottom: 2 }}>• {art.title} x{art.qty} = {(art.price * art.qty).toLocaleString()} FCFA</div>
-                                  ))}
-                                </div>
-                              </details>
+              {/* TAB 1: TOUTES LES COMMANDES */}
+              {tabAdmin === "commandes" ? (
+                <div style={{ flex: 1, overflow: "auto", padding: "1.5rem" }}>
+                  <input 
+                    type="text"
+                    placeholder="Rechercher par numéro ou client..."
+                    value={filterCommande}
+                    onChange={e => setFilterCommande(e.target.value)}
+                    style={{ marginBottom: "1.5rem", maxWidth: "400px" }}
+                  />
+                  
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "1.5rem" }}>
+                    {allCommandes.filter(cmd => 
+                      cmd.numero.includes(filterCommande.toUpperCase()) || 
+                      cmd.nom.toLowerCase().includes(filterCommande.toLowerCase())
+                    ).map(cmd => (
+                      <div key={cmd.id} style={{
+                        border: "2px solid #e5e7eb",
+                        borderRadius: "10px",
+                        padding: "1.5rem",
+                        background: "#fff",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
+                      }}>
+                        {/* Header */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "2px solid #e5e7eb" }}>
+                          <div>
+                            <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#2563eb" }}>{cmd.numero}</div>
+                            <div style={{ fontSize: "0.85rem", color: "#6b7280", marginTop: "4px" }}>
+                              {new Date(cmd.created_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })}
                             </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
+                          </div>
+                          <select 
+                            value={cmd.statut}
+                            onChange={(e) => changerStatutCommande(cmd.id, e.target.value)}
+                            style={{
+                              padding: "6px 8px",
+                              borderRadius: "6px",
+                              border: "1px solid #e5e7eb",
+                              fontSize: "0.85rem",
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                          >
+                            <option>En attente</option>
+                            <option>En cours</option>
+                            <option>Livré</option>
+                            <option>Annulée</option>
+                          </select>
+                        </div>
 
-                    {/* ACTIONS */}
-                    <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: "1rem" }}>
-                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.75rem", color: "#1a1a2e" }}>⚙️ Actions</h3>
-                      <div style={{ position: "relative", marginBottom: 8 }}>
-                        <input type={showPassword.gererClientMdp ? "text" : "password"} value={newMdpClient} onChange={e => setNewMdpClient(e.target.value)} placeholder="Nouveau mot de passe" style={{ fontSize: 12, paddingRight: 40 }} />
-                        <button onClick={() => togglePassword("gererClientMdp")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>
-                          {showPassword.gererClientMdp ? "👁️" : "👁️‍🗨️"}
+                        {/* Client Info */}
+                        <div style={{ marginBottom: "1rem", fontSize: "0.9rem" }}>
+                          <div style={{ fontWeight: 600, color: "#1a1a2e", marginBottom: "0.5rem" }}>👤 {cmd.nom}</div>
+                          <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: "0.25rem" }}>📧 {cmd.email}</div>
+                          <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: "0.25rem" }}>📱 {cmd.telephone}</div>
+                          <div style={{ color: "#f59e0b", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.25rem" }}>📞 {cmd.numeroAppel}</div>
+                          <div style={{ color: "#6b7280", fontSize: "0.85rem" }}>🏠 {cmd.quartier}, {cmd.ville}</div>
+                        </div>
+
+                        {/* Articles */}
+                        <div style={{ marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid #e5e7eb", maxHeight: "150px", overflowY: "auto" }}>
+                          <div style={{ fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "#1a1a2e" }}>📦 Articles:</div>
+                          {cmd.articles && JSON.parse(cmd.articles).map((art, i) => (
+                            <div key={i} style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: "0.25rem" }}>
+                              • {art.title} x{art.qty} = {(art.price * art.qty).toLocaleString()} FCFA
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Total */}
+                        <div style={{ 
+                          background: "#eff6ff", 
+                          padding: "0.75rem", 
+                          borderRadius: "6px", 
+                          marginBottom: "0.75rem",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center"
+                        }}>
+                          <span style={{ fontWeight: 600, color: "#1e40af" }}>💰 Total:</span>
+                          <span style={{ fontSize: "1rem", fontWeight: 700, color: "#2563eb" }}>
+                            {cmd.totalFinal?.toLocaleString()} FCFA
+                          </span>
+                        </div>
+
+                        {/* Payment */}
+                        <div style={{ 
+                          background: cmd.paiement === "Confirmé" ? "#d1fae5" : "#fef3c7",
+                          padding: "0.75rem",
+                          borderRadius: "6px",
+                          marginBottom: "0.75rem",
+                          fontSize: "0.85rem",
+                          fontWeight: 600,
+                          color: cmd.paiement === "Confirmé" ? "#065f46" : "#92400e"
+                        }}>
+                          💳 Paiement: {cmd.paiement}
+                        </div>
+
+                        {/* Capture */}
+                        {cmd.capture && (
+                          <div style={{ background: "#d1fae5", padding: "0.5rem", borderRadius: "6px", marginBottom: "0.75rem", fontSize: "0.85rem", color: "#065f46", fontWeight: 600 }}>
+                            ✅ Capture reçue
+                          </div>
+                        )}
+
+                        {/* Delete Button */}
+                        <button 
+                          onClick={() => supprimerCommande(cmd.id)}
+                          style={{
+                            width: "100%",
+                            padding: "0.75rem",
+                            background: "#fef2f2",
+                            color: "#ef4444",
+                            border: "1px solid #fecaca",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            fontSize: "0.9rem"
+                          }}
+                        >
+                          🗑️ Supprimer
                         </button>
                       </div>
-                      <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8, fontSize: 12, padding: "10px" }} onClick={() => changerMdpClient(clientTrouve.id)} disabled={loading}>🔐 Changer MDP</button>
-                      <button className="btn-primary" style={{ background: "#ef4444", fontSize: 12, padding: "10px" }} onClick={() => supprimerClient(clientTrouve.id)} disabled={loading}>🗑️ Supprimer Compte</button>
-                    </div>
+                    ))}
                   </div>
-                ) : (
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 14, marginBottom: 8 }}>👈</div>
-                      <div>Sélectionne un client</div>
+
+                  {allCommandes.length === 0 && (
+                    <div style={{ textAlign: "center", color: "#9ca3af", padding: "3rem 1rem" }}>
+                      Aucune commande
                     </div>
+                  )}
+                </div>
+              ) : (
+                /* TAB 2: PAR CLIENT */
+                <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+                  <div style={{ width: "220px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
+                    {clients.map(c => (
+                      <div key={c.id} onClick={() => { setClientTrouve(c); chargerCommandesClient(c.id); }} style={{ padding: "10px", borderRadius: 8, marginBottom: 8, fontSize: 11, cursor: "pointer", background: clientTrouve?.id === c.id ? "#2563eb" : "#fff", color: clientTrouve?.id === c.id ? "#fff" : "#1a1a2e", border: "1px solid #e5e7eb", fontWeight: 600 }}>
+                        <div>{c.nom}</div>
+                        <div style={{ fontSize: 9, opacity: 0.7, marginTop: 3 }}>{c.telephone}</div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
+
+                  {clientTrouve ? (
+                    <div style={{ flex: 1, padding: "1.5rem", overflowY: "auto" }}>
+                      <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>{clientTrouve.nom}</h3>
+                      
+                      <div style={{ background: "#f9fafb", borderRadius: 8, padding: "1rem", marginBottom: "1.5rem" }}>
+                        <div style={{ fontSize: "0.9rem", color: "#6b7280", marginBottom: "0.5rem" }}>📧 {clientTrouve.email}</div>
+                        <div style={{ fontSize: "0.9rem", color: "#6b7280" }}>📱 {clientTrouve.telephone}</div>
+                      </div>
+
+                      <h4 style={{ fontWeight: 600, marginBottom: "1rem" }}>Commandes ({commandesClient.length})</h4>
+                      {commandesClient.map(cmd => (
+                        <div key={cmd.id} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, padding: "1rem", marginBottom: "1rem" }}>
+                          <div style={{ fontWeight: 600, color: "#2563eb", marginBottom: "0.5rem" }}>{cmd.numero}</div>
+                          <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "0.5rem" }}>💰 {cmd.totalFinal?.toLocaleString()} FCFA</div>
+                          <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "0.5rem" }}>📊 {cmd.statut}</div>
+                          <button onClick={() => supprimerCommande(cmd.id)} style={{ width: "100%", padding: "6px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>🗑️ Supprimer</button>
+                        </div>
+                      ))}
+
+                      <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: "1rem", marginTop: "1rem" }}>
+                        <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.75rem", color: "#1a1a2e" }}>⚙️ Actions</h3>
+                        <div style={{ position: "relative", marginBottom: 8 }}>
+                          <input type={showPassword.gererClientMdp ? "text" : "password"} value={newMdpClient} onChange={e => setNewMdpClient(e.target.value)} placeholder="Nouveau mot de passe" style={{ fontSize: 12, paddingRight: 40 }} />
+                          <button onClick={() => togglePassword("gererClientMdp")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>
+                            {showPassword.gererClientMdp ? "👁️" : "👁️‍🗨️"}
+                          </button>
+                        </div>
+                        <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8, fontSize: 12, padding: "10px" }} onClick={() => changerMdpClient(clientTrouve.id)} disabled={loading}>🔐 Changer MDP</button>
+                        <button className="btn-primary" style={{ background: "#ef4444", fontSize: 12, padding: "10px" }} onClick={() => supprimerClient(clientTrouve.id)} disabled={loading}>🗑️ Supprimer Compte</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 14, marginBottom: 8 }}>👈</div>
+                        <div>Sélectionne un client</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
