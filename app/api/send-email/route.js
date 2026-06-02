@@ -2,6 +2,8 @@ export async function POST(request) {
   try {
     const { to, subject, html } = await request.json();
 
+    console.log("📧 Envoi email à:", to, "Sujet:", subject);
+
     const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -18,13 +20,18 @@ export async function POST(request) {
       }),
     });
 
+    const data = await response.json();
+    console.log("✅ Réponse EmailJS:", data);
+
     if (!response.ok) {
-      const error = await response.text();
-      return Response.json({ error }, { status: 400 });
+      console.error("❌ Erreur EmailJS:", data);
+      return Response.json({ error: data }, { status: 400 });
     }
 
-    return Response.json({ success: true });
+    console.log("✅ Email envoyé avec succès!");
+    return Response.json({ success: true, data });
   } catch (error) {
+    console.error("❌ Exception:", error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }

@@ -8,7 +8,6 @@ const MOMO = "+2290157577895";
 const ADMIN_EMAIL = "nahofalgbadamassi@gmail.com";
 const ADMIN_WHATSAPP = "+33775958442";
 
-// ✅ CORRIGÉ: porto-novo au lieu de porto
 const FRAIS_LIVRAISON = {
   "porto-novo": 500,
   "cotonou": 1000,
@@ -22,6 +21,33 @@ const getFraisLivraison = (ville) => {
 };
 
 const globalStyles = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1a1a2e}input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;background:#fff;outline:none}input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);overflow-y:auto}.modal{background:#fff;border-radius:20px;padding:2rem;width:100%;max-width:600px;max-height:90vh;overflow-y:auto}.btn-primary{background:#2563eb;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;width:100%}.btn-primary:hover{background:#1d4ed8}`;
+
+// ✅ FONCTION POUR ENVOYER L'EMAIL
+const envoyerEmail = async (to, subject, html, nom) => {
+  try {
+    console.log("📧 Envoi email à:", to);
+    const response = await fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to,
+        subject,
+        html
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error("❌ Erreur email:", data);
+      return false;
+    }
+    console.log("✅ Email envoyé:", data);
+    return true;
+  } catch (e) {
+    console.error("❌ Exception email:", e);
+    return false;
+  }
+};
 
 export default function FastBuy229() {
   const [page, setPage] = useState("accueil");
@@ -80,7 +106,7 @@ export default function FastBuy229() {
     if (savedClient) setClient(JSON.parse(savedClient));
     if (savedPanier) setPanier(JSON.parse(savedPanier));
     chargerProduits();
-    chargerCommandes(); // ✅ AJOUTÉ
+    chargerCommandes();
     if (typeof window !== "undefined" && window.location.search.includes("page=admin")) {
       setPage("admin");
       setShowGenreModal(false);
@@ -90,22 +116,38 @@ export default function FastBuy229() {
   useEffect(() => { localStorage.setItem("fastbuy_panier", JSON.stringify(panier)); }, [panier]);
 
   const chargerProduits = async () => { 
-    const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false }); 
-    if (data) setProduits(data); 
+    try {
+      const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false }); 
+      if (data) setProduits(data);
+    } catch (e) {
+      console.error("Erreur chargerProduits:", e);
+    }
   };
   
   const chargerCommandes = async () => { 
-    const { data } = await supabase.from("commandes").select("*").order("created_at", { ascending: false }); 
-    if (data) setCommandes(data); 
+    try {
+      const { data } = await supabase.from("commandes").select("*").order("created_at", { ascending: false }); 
+      if (data) setCommandes(data);
+    } catch (e) {
+      console.error("Erreur chargerCommandes:", e);
+    }
   };
   
   const chargerClients = async () => { 
-    const { data } = await supabase.from("users").select("*").order("created_at", { ascending: false }); 
-    if (data) setClients(data);
-    await chargerCommandes(); // ✅ FORCE REFRESH DES COMMANDES
+    try {
+      const { data } = await supabase.from("users").select("*").order("created_at", { ascending: false }); 
+      if (data) setClients(data);
+      await chargerCommandes();
+    } catch (e) {
+      console.error("Erreur chargerClients:", e);
+    }
   };
 
-  const getImageUrl = (path) => { if (!path) return null; if (path.startsWith("http")) return path; return `https://nuhpdqioggxznceqvpvx.supabase.co/storage/v1/object/public/produits/${path}`; };
+  const getImageUrl = (path) => { 
+    if (!path) return null; 
+    if (path.startsWith("http")) return path; 
+    return `https://nuhpdqioggxznceqvpvx.supabase.co/storage/v1/object/public/produits/${path}`; 
+  };
 
   const produitsFiltres = produits.filter(p => {
     const matchCat = catActive === "Tous" || p.category === catActive;
@@ -120,7 +162,7 @@ export default function FastBuy229() {
     let total = totalPanier;
     let reduction = 0;
     
-    const isFirstOrder = !client?.premiereCommande === false;
+    const isFirstOrder = client?.premiereCommande === true;
     
     if (codePromo && client?.prenom && isFirstOrder) {
       if (codePromo.toLowerCase() === (client.prenom + "10").toLowerCase()) {
@@ -142,6 +184,7 @@ export default function FastBuy229() {
   const totalFinal = totalDetails.total;
 
   const choisirGenre = (genre) => { setGenreChoisi(genre); localStorage.setItem("fastbuy_genre", genre); setShowGenreModal(false); };
+  
   const ajouterAuPanier = (prod, variante = null) => { 
     if (!client) { setShowLogin(true); return; } 
     const varianteKey = variante ? `${variante.couleur}-${variante.taille}-${variante.nbrPieces}` : "novar";
@@ -190,7 +233,6 @@ export default function FastBuy229() {
   };
 
   const envoyerCommande = async () => {
-    // ✅ VÉRIFIER LE CLIENT D'ABORD
     if (!client?.id) {
       alert("❌ Erreur: Pas de client connecté! Connecte-toi d'abord.");
       console.log("Client problème:", client);
@@ -199,7 +241,6 @@ export default function FastBuy229() {
     
     if (!formCmd.nom || !formCmd.email || !formCmd.telephone || !formCmd.numeroAppel || !formCmd.ville || !formCmd.quartier) { alert("Remplis tous!"); return; }
     if (panier.length === 0) { alert("Panier vide!"); return; }
-    // ✅ CORRIGÉ: Vérifier la capture AVANT d'envoyer
     if (!captureFile) { alert("❌ Capture requise! Envoie d'abord la capture de Mobile Money"); return; }
     
     setLoading(true);
@@ -245,6 +286,81 @@ export default function FastBuy229() {
         setLoading(false);
         return;
       }
+
+      // ✅ ENVOYER L'EMAIL AU CLIENT
+      console.log("📧 Préparation email pour:", formCmd.email);
+      const articlesHtml = panier.map(item => `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${item.title}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">x${item.qty}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right;">${(item.price * item.qty).toLocaleString()} FCFA</td>
+        </tr>
+      `).join("");
+
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; color: #1a1a2e; max-width: 600px;">
+          <h2 style="color: #2563eb; margin-bottom: 20px;">✅ Commande Confirmée</h2>
+          
+          <div style="background: #eff6ff; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 14px;"><strong>Numéro:</strong> #${num}</p>
+            <p style="margin: 5px 0 0 0; font-size: 14px;"><strong>Date:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+          </div>
+
+          <h3 style="margin-bottom: 10px; font-size: 16px;">📦 Articles Commandés</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <thead>
+              <tr style="background: #f3f4f6;">
+                <th style="padding: 10px; text-align: left; font-weight: 600;">Produit</th>
+                <th style="padding: 10px; text-align: center; font-weight: 600;">Quantité</th>
+                <th style="padding: 10px; text-align: right; font-weight: 600;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${articlesHtml}
+            </tbody>
+          </table>
+
+          <div style="background: #fff; border: 1px solid #e5e7eb; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span>Sous-total:</span>
+              <strong>${totalPanier.toLocaleString()} FCFA</strong>
+            </div>
+            ${totalDetails.reduction > 0 ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: #16a34a;">
+              <span>Réduction (-10%):</span>
+              <strong>-${totalDetails.reduction.toLocaleString()} FCFA</strong>
+            </div>
+            ` : ''}
+            ${totalDetails.fraisLivraison > 0 ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: #f59e0b;">
+              <span>Frais livraison (${formCmd.ville}):</span>
+              <strong>+${totalDetails.fraisLivraison.toLocaleString()} FCFA</strong>
+            </div>
+            ` : ''}
+            <div style="display: flex; justify-content: space-between; border-top: 2px solid #2563eb; padding-top: 10px; font-size: 16px; font-weight: 700; color: #2563eb;">
+              <span>Total à payer:</span>
+              <span>${totalFinal.toLocaleString()} FCFA</span>
+            </div>
+          </div>
+
+          <div style="background: #fffbeb; border: 2px solid #fde68a; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <p style="margin: 0 0 10px 0; font-weight: 600; color: #92400e;">📱 Paiement via Mobile Money</p>
+            <p style="margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: #f59e0b;">${MOMO}</p>
+            <p style="margin: 0; font-size: 14px; color: #b45309;"><strong>Montant à envoyer: ${totalFinal.toLocaleString()} FCFA</strong></p>
+          </div>
+
+          <p style="color: #6b7280; font-size: 13px; margin: 20px 0 0 0;">
+            Merci pour votre achat! Si vous avez des questions, contactez-nous.
+          </p>
+        </div>
+      `;
+
+      await envoyerEmail(
+        formCmd.email,
+        `✅ Commande confirmée #${num}`,
+        emailHtml,
+        formCmd.nom
+      );
       
       if (client?.premiereCommande) {
         await supabase.from("users").update({ premiereCommande: false }).eq("id", client.id);
@@ -253,7 +369,6 @@ export default function FastBuy229() {
         localStorage.setItem("fastbuy_client", JSON.stringify(updatedClient));
       }
       
-      // ✅ CORRIGÉ: Réinitialiser TOUS les states
       setShowConfirm({ numero: num, totalFinal, ville: formCmd.ville });
       setPanier([]);
       setShowCommande(false);
@@ -261,7 +376,6 @@ export default function FastBuy229() {
       setCaptureFile(null);
       setLoading(false);
       
-      // ✅ AJOUTER: Recharger les commandes de l'admin
       await chargerCommandes();
     } catch (e) {
       console.error("Exception:", e);
@@ -358,13 +472,27 @@ export default function FastBuy229() {
     setLoading(false);
   };
 
-  // ✅ CORRIGÉ: Ajouter .order()
+  // ✅ CORRIGÉ: Charger les commandes du client
   const chargerCommandesClient = async (clientId) => {
     try {
-      const { data } = await supabase.from("commandes").select("*").eq("user_id", clientId).order("created_at", { ascending: false });
-      if (data) setCommandesClient(data);
+      console.log("🔍 Chargement commandes pour clientId:", clientId);
+      const { data, error } = await supabase
+        .from("commandes")
+        .select("*")
+        .eq("user_id", clientId)
+        .order("created_at", { ascending: false });
+      
+      if (error) {
+        console.error("❌ Erreur Supabase:", error);
+        setCommandesClient([]);
+        return;
+      }
+      
+      console.log("✅ Commandes trouvées:", data);
+      setCommandesClient(data || []);
     } catch (e) {
-      console.error(e);
+      console.error("❌ Exception:", e);
+      setCommandesClient([]);
     }
   };
 
