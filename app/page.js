@@ -431,79 +431,150 @@ export default function FastBuy229() {
     if (!confirm("Confirmer?")) return;
     setLoading(true);
     try {
-      await supabase.from("produits").delete().eq("id", produitId);
-      alert("Supprimé!");
+      const { error } = await supabase.from("produits").delete().eq("id", produitId);
+      if (error) {
+        alert("❌ Erreur: " + error.message);
+        setLoading(false);
+        return;
+      }
+      alert("✅ Produit supprimé!");
       await chargerProduits();
       setProduitEdit(null);
+      setLoading(false);
     } catch (e) {
-      alert("Erreur: " + e.message);
+      alert("❌ Erreur: " + e.message);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const modifierProduit = async (produitId) => {
     if (!editForm.price || !editForm.etat) { alert("Remplis tous!"); return; }
     setLoading(true);
     try {
-      await supabase.from("produits").update({ price: parseInt(editForm.price), etat: editForm.etat }).eq("id", produitId);
-      alert("Modifié!");
+      const { error } = await supabase.from("produits").update({ price: parseInt(editForm.price), etat: editForm.etat }).eq("id", produitId);
+      if (error) {
+        alert("❌ Erreur: " + error.message);
+        setLoading(false);
+        return;
+      }
+      alert("✅ Produit modifié!");
       await chargerProduits();
       setProduitEdit(null);
       setEditForm({ price: "", etat: "" });
+      setLoading(false);
     } catch (e) {
-      alert("Erreur: " + e.message);
+      alert("❌ Erreur: " + e.message);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const chargerCommandesClient = async (clientId) => {
     try {
       const { data, error } = await supabase.from("commandes").select("*").eq("user_id", clientId).order("created_at", { ascending: false });
       if (error) {
+        console.error("Erreur charger commandes client:", error);
         setCommandesClient([]);
         return;
       }
       setCommandesClient(data || []);
     } catch (e) {
+      console.error("Exception:", e);
       setCommandesClient([]);
     }
   };
 
+  // ✅ FONCTION CORRIGÉE POUR SUPPRIMER UN CLIENT
   const supprimerClient = async (clientId) => {
     if (!confirm("Confirmer? Ses commandes seront aussi supprimées!")) return;
     setLoading(true);
+    
     try {
-      // D'abord supprimer les commandes du client
-      await supabase.from("commandes").delete().eq("user_id", clientId);
+      // 1️⃣ D'abord supprimer les commandes du client
+      const { error: errCmd } = await supabase
+        .from("commandes")
+        .delete()
+        .eq("user_id", clientId);
       
-      // Ensuite supprimer le client
-      await supabase.from("users").delete().eq("id", clientId);
-      alert("✅ Supprimé!");
+      if (errCmd) {
+        console.error("❌ Erreur suppression commandes:", errCmd);
+        alert("❌ Erreur suppression commandes: " + errCmd.message);
+        setLoading(false);
+        return;
+      }
+      
+      console.log("✅ Commandes supprimées");
+
+      // 2️⃣ Ensuite supprimer le client
+      const { error: errUser } = await supabase
+        .from("users")
+        .delete()
+        .eq("id", clientId);
+      
+      if (errUser) {
+        console.error("❌ Erreur suppression client:", errUser);
+        alert("❌ Erreur suppression client: " + errUser.message);
+        setLoading(false);
+        return;
+      }
+
+      console.log("✅ Client supprimé");
+      alert("✅ Client et ses commandes supprimés!");
+      
+      // 3️⃣ Recharger la liste des clients
       await chargerClients();
       setClientTrouve(null);
+      setLoading(false);
+      
     } catch (e) {
-      alert("Erreur: " + e.message);
+      console.error("❌ Exception:", e);
+      alert("❌ Erreur: " + (e.message || "Erreur inconnue"));
+      setLoading(false);
     }
-    setLoading(false);
   };
 
+  // ✅ FONCTION CORRIGÉE POUR SUPPRIMER UNE COMMANDE
   const supprimerCommande = async (commandeId) => {
-    if (!confirm("Supprimer?")) return;
+    if (!confirm("Supprimer cette commande?")) return;
+    
     try {
-      await supabase.from("commandes").delete().eq("id", commandeId);
-      alert("✅ Supprimée!");
+      const { error } = await supabase
+        .from("commandes")
+        .delete()
+        .eq("id", commandeId);
+      
+      if (error) {
+        console.error("❌ Erreur suppression commande:", error);
+        alert("❌ Erreur: " + error.message);
+        return;
+      }
+      
+      console.log("✅ Commande supprimée");
+      alert("✅ Commande supprimée!");
       await chargerCommandes();
+      
     } catch (e) {
-      alert("Erreur: " + e.message);
+      console.error("❌ Exception:", e);
+      alert("❌ Erreur: " + (e.message || "Erreur inconnue"));
     }
   };
 
   const changerStatutCommande = async (commandeId, nouveauStatut) => {
     try {
-      await supabase.from("commandes").update({ statut: nouveauStatut }).eq("id", commandeId);
+      const { error } = await supabase
+        .from("commandes")
+        .update({ statut: nouveauStatut })
+        .eq("id", commandeId);
+      
+      if (error) {
+        console.error("❌ Erreur changement statut:", error);
+        alert("❌ Erreur: " + error.message);
+        return;
+      }
+      
       await chargerCommandes();
     } catch (e) {
-      alert("Erreur: " + e.message);
+      console.error("❌ Exception:", e);
+      alert("❌ Erreur: " + e.message);
     }
   };
 
@@ -511,13 +582,24 @@ export default function FastBuy229() {
     if (!newMdpClient || newMdpClient.length < 8) { alert("Min 8 chars!"); return; }
     setLoading(true);
     try {
-      await supabase.from("users").update({ mot_de_passe: newMdpClient }).eq("id", clientId);
-      alert("OK!");
+      const { error } = await supabase
+        .from("users")
+        .update({ mot_de_passe: newMdpClient })
+        .eq("id", clientId);
+      
+      if (error) {
+        alert("❌ Erreur: " + error.message);
+        setLoading(false);
+        return;
+      }
+      
+      alert("✅ Mot de passe changé!");
       setNewMdpClient("");
+      setLoading(false);
     } catch (e) {
-      alert("Erreur: " + e.message);
+      alert("❌ Erreur: " + e.message);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (page === "admin") {
@@ -819,7 +901,7 @@ export default function FastBuy229() {
                           </button>
                         </div>
                         <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8, fontSize: 12, padding: "10px" }} onClick={() => changerMdpClient(clientTrouve.id)}>🔐 Changer MDP</button>
-                        <button className="btn-primary" style={{ background: "#ef4444", fontSize: 12, padding: "10px" }} onClick={() => supprimerClient(clientTrouve.id)}>🗑️ Supprimer</button>
+                        <button className="btn-primary" style={{ background: "#ef4444", fontSize: 12, padding: "10px" }} onClick={() => supprimerClient(clientTrouve.id)} disabled={loading}>{loading ? "Suppression..." : "🗑️ Supprimer"}</button>
                       </div>
                     </div>
                   ) : (
