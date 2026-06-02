@@ -248,12 +248,37 @@ export default function FastBuy229() {
     let { data: telExist } = await supabase.from("users").select("id").eq("telephone", inscForm.telephone).maybeSingle();
     if (telExist) { setAuthError("📱 Ce numéro est déjà utilisé"); return; }
     
-    const { data, error } = await supabase.from("users").insert([{ prenom: inscForm.prenom, nom: `${inscForm.prenom} ${inscForm.nom}`, email: inscForm.email, telephone: inscForm.telephone, date_naissance: inscForm.date_naissance, mot_de_passe: inscForm.mot_de_passe, premiereCommande: true }]).select().single();
+    // ✅ NE PAS envoyer premiereCommande - Supabase gère la valeur par défaut
+    const { data, error } = await supabase.from("users").insert([{ 
+      prenom: inscForm.prenom, 
+      nom: `${inscForm.prenom} ${inscForm.nom}`, 
+      email: inscForm.email, 
+      telephone: inscForm.telephone, 
+      date_naissance: inscForm.date_naissance, 
+      mot_de_passe: inscForm.mot_de_passe
+    }]).select().single();
+    
     if (error) { setAuthError("❌ Erreur lors de l'inscription: " + (error.message || "Essayez plus tard")); return; }
-    const user = { id: data.id, prenom: inscForm.prenom, nom: data.nom, email: data.email, telephone: data.telephone, premiereCommande: true };
+    
+    const user = { 
+      id: data.id, 
+      prenom: inscForm.prenom, 
+      nom: data.nom, 
+      email: data.email, 
+      telephone: data.telephone, 
+      premiereCommande: data.premiereCommande // ✅ Récupère la vraie valeur de Supabase
+    };
+    
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
-    alert(`🎉 Bienvenue ${inscForm.prenom}!\n\n🎁 Code promo 1ère commande:\n${inscForm.prenom}10\n(-10% sur votre commande)`);
+    
+    // ✅ Affiche la promo SEULEMENT si c'est vraiment la première commande
+    if (data.premiereCommande) {
+      alert(`🎉 Bienvenue ${inscForm.prenom}!\n\n🎁 Code promo 1ère commande:\n${inscForm.prenom}10\n(-10% sur votre commande)`);
+    } else {
+      alert(`🎉 Bienvenue ${inscForm.prenom}!`);
+    }
+    
     setShowAuthModal("accueil");
     setInscForm({ prenom: "", nom: "", email: "", telephone: "", date_naissance: "", mot_de_passe: "", confirmer: "" });
   };
