@@ -5,7 +5,7 @@ import { supabase } from "./supabase";
 const CATEGORIES = ["Tous", "Vêtements", "Chaussures", "Parfums", "Téléphones", "Sacs", "Bijoux", "Ordinateurs", "Accessoires"];
 const ADMIN_PWD = "N-beat3140";
 const MOMO = "+2290157577895";
-const ADMIN_EMAIL = "nahofalgbadamassi@gmail.com";
+const ADMIN_EMAIL = "gbadamassinahofal@gmail.com";
 const ADMIN_WHATSAPP = "+33775958442";
 
 const FRAIS_LIVRAISON = {
@@ -99,6 +99,9 @@ export default function FastBuy229() {
   const [allCommandes, setAllCommandes] = useState([]);
   const [filterCommande, setFilterCommande] = useState("");
   const [tabAdmin, setTabAdmin] = useState("commandes");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotForm, setForgotForm] = useState({ prenom: "", nom: "", date_naissance: "", newPassword: "", confirmPassword: "" });
+  const [showAuthModal, setShowAuthModal] = useState("inscription");
 
   const togglePassword = (field) => {
     setShowPassword(prev => ({ ...prev, [field]: !prev[field] }));
@@ -206,38 +209,100 @@ export default function FastBuy229() {
     setSelectedVariante(null); 
   };
 
+  const formatDateInput = (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length >= 2) {
+      value = value.slice(0, 2) + '/' + value.slice(2);
+    }
+    if (value.length >= 5) {
+      value = value.slice(0, 5) + '/' + value.slice(5, 9);
+    }
+    setInscForm({ ...inscForm, date_naissance: value.slice(0, 10) });
+  };
+
+  const formatDateInputForgot = (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length >= 2) {
+      value = value.slice(0, 2) + '/' + value.slice(2);
+    }
+    if (value.length >= 5) {
+      value = value.slice(0, 5) + '/' + value.slice(5, 9);
+    }
+    setForgotForm({ ...forgotForm, date_naissance: value.slice(0, 10) });
+  };
+
   const inscrire = async () => {
     setAuthError("");
-    if (!inscForm.prenom || !inscForm.nom || !inscForm.email || !inscForm.telephone || !inscForm.date_naissance || !inscForm.mot_de_passe) { setAuthError("Remplis tous!"); return; }
-    if (inscForm.mot_de_passe !== inscForm.confirmer) { setAuthError("MDP ≠"); return; }
+    if (!inscForm.prenom) { setAuthError("❌ Prénom requis"); return; }
+    if (!inscForm.nom) { setAuthError("❌ Nom requis"); return; }
+    if (!inscForm.email) { setAuthError("❌ Email requis"); return; }
+    if (!inscForm.telephone) { setAuthError("❌ Téléphone requis"); return; }
+    if (!inscForm.date_naissance) { setAuthError("❌ Date de naissance requise (JJ/MM/AAAA)"); return; }
+    if (!inscForm.mot_de_passe) { setAuthError("❌ Mot de passe requis (min 8 caractères)"); return; }
+    if (inscForm.mot_de_passe.length < 8) { setAuthError("❌ Mot de passe trop court (min 8 caractères)"); return; }
+    if (inscForm.mot_de_passe !== inscForm.confirmer) { setAuthError("❌ Les mots de passe ne correspondent pas"); return; }
     
     let { data: emailExist } = await supabase.from("users").select("id").eq("email", inscForm.email).maybeSingle();
-    if (emailExist) { setAuthError("📧 Email existe!"); return; }
+    if (emailExist) { setAuthError("📧 Cet email est déjà utilisé"); return; }
     
     let { data: telExist } = await supabase.from("users").select("id").eq("telephone", inscForm.telephone).maybeSingle();
-    if (telExist) { setAuthError("📱 Tel existe!"); return; }
+    if (telExist) { setAuthError("📱 Ce numéro est déjà utilisé"); return; }
     
     const { data, error } = await supabase.from("users").insert([{ prenom: inscForm.prenom, nom: `${inscForm.prenom} ${inscForm.nom}`, email: inscForm.email, telephone: inscForm.telephone, date_naissance: inscForm.date_naissance, mot_de_passe: inscForm.mot_de_passe, premiereCommande: true }]).select().single();
-    if (error) { setAuthError("Erreur"); return; }
+    if (error) { setAuthError("❌ Erreur lors de l'inscription: " + (error.message || "Essayez plus tard")); return; }
     const user = { id: data.id, prenom: inscForm.prenom, nom: data.nom, email: data.email, telephone: data.telephone, premiereCommande: true };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
     alert(`🎉 Bienvenue ${inscForm.prenom}!\n\n🎁 Code promo 1ère commande:\n${inscForm.prenom}10\n(-10% sur votre commande)`);
-    setShowInscription(false);
+    setShowAuthModal("accueil");
+    setInscForm({ prenom: "", nom: "", email: "", telephone: "", date_naissance: "", mot_de_passe: "", confirmer: "" });
   };
 
   const connecter = async () => {
     setAuthError("");
+    if (!loginForm.identifiant) { setAuthError("❌ Email ou téléphone requis"); return; }
+    if (!loginForm.motDePasse) { setAuthError("❌ Mot de passe requis"); return; }
+    
     let { data } = await supabase.from("users").select("*").eq("email", loginForm.identifiant).maybeSingle();
     if (!data) ({ data } = await supabase.from("users").select("*").eq("telephone", loginForm.identifiant).maybeSingle());
-    if (!data) { setAuthError("Pas trouvé"); return; }
-    if (data.mot_de_passe !== loginForm.motDePasse) { setAuthError("MDP faux"); return; }
+    if (!data) { setAuthError("❌ Aucun compte trouvé avec cet email/téléphone"); return; }
+    if (data.mot_de_passe !== loginForm.motDePasse) { setAuthError("❌ Mot de passe incorrect"); return; }
     const prenom = data.nom.split(" ")[0];
     const user = { id: data.id, prenom, nom: data.nom, email: data.email, telephone: data.telephone, premiereCommande: data.premiereCommande };
     setClient(user);
     localStorage.setItem("fastbuy_client", JSON.stringify(user));
-    setShowLogin(false);
+    setShowAuthModal("accueil");
     setLoginForm({ identifiant: "", motDePasse: "" });
+  };
+
+  const recupererMotDePasse = async () => {
+    setAuthError("");
+    if (!forgotForm.prenom) { setAuthError("❌ Prénom requis"); return; }
+    if (!forgotForm.nom) { setAuthError("❌ Nom requis"); return; }
+    if (!forgotForm.date_naissance) { setAuthError("❌ Date de naissance requise"); return; }
+    if (!forgotForm.newPassword) { setAuthError("❌ Nouveau mot de passe requis"); return; }
+    if (forgotForm.newPassword.length < 8) { setAuthError("❌ Mot de passe trop court (min 8 caractères)"); return; }
+    if (forgotForm.newPassword !== forgotForm.confirmPassword) { setAuthError("❌ Les mots de passe ne correspondent pas"); return; }
+    
+    let { data } = await supabase
+      .from("users")
+      .select("*")
+      .eq("nom", `${forgotForm.prenom} ${forgotForm.nom}`)
+      .eq("date_naissance", forgotForm.date_naissance)
+      .maybeSingle();
+    
+    if (!data) { setAuthError("❌ Aucun compte trouvé avec ces informations"); return; }
+    
+    const { error } = await supabase
+      .from("users")
+      .update({ mot_de_passe: forgotForm.newPassword })
+      .eq("id", data.id);
+    
+    if (error) { setAuthError("❌ Erreur lors de la réinitialisation: " + error.message); return; }
+    
+    alert("✅ Mot de passe changé avec succès!\nVous pouvez maintenant vous connecter.");
+    setShowAuthModal("connexion");
+    setForgotForm({ prenom: "", nom: "", date_naissance: "", newPassword: "", confirmPassword: "" });
   };
 
   const envoyerCommande = async () => {
@@ -957,7 +1022,7 @@ export default function FastBuy229() {
         {client ? (
           <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }} onClick={() => { setClient(null); localStorage.removeItem("fastbuy_client"); }}>Déco</span>
         ) : (
-          <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#2563eb" }} onClick={() => setShowLogin(true)}>Connexion</span>
+          <span style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, color: "#2563eb", textDecoration: "underline" }} onClick={() => setShowAuthModal("inscription")}>S'inscrire / Connexion</span>
         )}
         <span style={{ cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, padding: "4px 8px", background: "#f3f4f6", borderRadius: 6 }} onClick={() => setShowGenreModal(true)}>{genreChoisi}</span>
       </div>
@@ -1250,49 +1315,102 @@ export default function FastBuy229() {
         </div>
       )}
 
-      {showLogin && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowLogin(false); }}>
+      {showAuthModal !== "accueil" && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowAuthModal("accueil"); }}>
           <div className="modal">
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Connexion</h2>
-            <input placeholder="Email ou tel" value={loginForm.identifiant} onChange={e => setLoginForm({ ...loginForm, identifiant: e.target.value })} style={{ marginBottom: 12 }} />
-            <div style={{ position: "relative", marginBottom: 12 }}>
-              <input type={showPassword.login ? "text" : "password"} placeholder="MDP" value={loginForm.motDePasse} onChange={e => setLoginForm({ ...loginForm, motDePasse: e.target.value })} style={{ paddingRight: 40 }} />
-              <button onClick={() => togglePassword("login")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
-                {showPassword.login ? "👁️" : "👁️‍🗨️"}
-              </button>
-            </div>
-            {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{authError}</div>}
-            <button className="btn-primary" onClick={connecter} style={{ marginBottom: 12 }}>Connexion</button>
-            <div style={{ textAlign: "center", fontSize: 12 }}>
-              <span style={{ cursor: "pointer", color: "#2563eb" }} onClick={() => { setShowLogin(false); setShowInscription(true); }}>S'inscrire</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showInscription && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowInscription(false); }}>
-          <div className="modal">
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>S'inscrire</h2>
-            <input placeholder="Prénom" value={inscForm.prenom} onChange={e => setInscForm({ ...inscForm, prenom: e.target.value })} style={{ marginBottom: 12 }} />
-            <input placeholder="Nom" value={inscForm.nom} onChange={e => setInscForm({ ...inscForm, nom: e.target.value })} style={{ marginBottom: 12 }} />
-            <input placeholder="Email" value={inscForm.email} onChange={e => setInscForm({ ...inscForm, email: e.target.value })} style={{ marginBottom: 12 }} />
-            <input placeholder="Tel" value={inscForm.telephone} onChange={e => setInscForm({ ...inscForm, telephone: e.target.value })} style={{ marginBottom: 12 }} />
-            <input placeholder="JJ/MM/AAAA" value={inscForm.date_naissance} onChange={e => setInscForm({ ...inscForm, date_naissance: e.target.value })} style={{ marginBottom: 12 }} maxLength={10} />
-            <div style={{ position: "relative", marginBottom: 12 }}>
-              <input type={showPassword.inscMdp ? "text" : "password"} placeholder="MDP" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={{ paddingRight: 40 }} />
-              <button onClick={() => togglePassword("inscMdp")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
-                {showPassword.inscMdp ? "👁️" : "👁️‍🗨️"}
-              </button>
-            </div>
-            <div style={{ position: "relative", marginBottom: 12 }}>
-              <input type={showPassword.inscConf ? "text" : "password"} placeholder="Confirmer" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={{ paddingRight: 40 }} />
-              <button onClick={() => togglePassword("inscConf")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
-                {showPassword.inscConf ? "👁️" : "👁️‍🗨️"}
-              </button>
-            </div>
-            {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12 }}>{authError}</div>}
-            <button className="btn-primary" onClick={inscrire}>Créer</button>
+            {showAuthModal === "inscription" ? (
+              <>
+                <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>✍️ S'inscrire</h2>
+                <input placeholder="Prénom" value={inscForm.prenom} onChange={e => setInscForm({ ...inscForm, prenom: e.target.value })} style={{ marginBottom: 12 }} />
+                <input placeholder="Nom" value={inscForm.nom} onChange={e => setInscForm({ ...inscForm, nom: e.target.value })} style={{ marginBottom: 12 }} />
+                <input placeholder="Email" value={inscForm.email} onChange={e => setInscForm({ ...inscForm, email: e.target.value })} style={{ marginBottom: 12 }} />
+                <input placeholder="Téléphone" value={inscForm.telephone} onChange={e => setInscForm({ ...inscForm, telephone: e.target.value })} style={{ marginBottom: 12 }} />
+                <input 
+                  placeholder="Date naissance (JJ/MM/AAAA)" 
+                  value={inscForm.date_naissance} 
+                  onChange={formatDateInput} 
+                  style={{ marginBottom: 12 }} 
+                  maxLength={10}
+                  inputMode="numeric"
+                />
+                <div style={{ position: "relative", marginBottom: 12 }}>
+                  <input type={showPassword.inscMdp ? "text" : "password"} placeholder="Mot de passe (min 8 caractères)" value={inscForm.mot_de_passe} onChange={e => setInscForm({ ...inscForm, mot_de_passe: e.target.value })} style={{ paddingRight: 40 }} />
+                  <button onClick={() => togglePassword("inscMdp")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
+                    {showPassword.inscMdp ? "👁️" : "👁️‍🗨️"}
+                  </button>
+                </div>
+                <div style={{ position: "relative", marginBottom: 12 }}>
+                  <input type={showPassword.inscConf ? "text" : "password"} placeholder="Confirmer le mot de passe" value={inscForm.confirmer} onChange={e => setInscForm({ ...inscForm, confirmer: e.target.value })} style={{ paddingRight: 40 }} />
+                  <button onClick={() => togglePassword("inscConf")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
+                    {showPassword.inscConf ? "👁️" : "👁️‍🗨️"}
+                  </button>
+                </div>
+                {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12, fontWeight: 600 }}>{authError}</div>}
+                <button className="btn-primary" onClick={inscrire} style={{ marginBottom: 12 }}>Créer un compte</button>
+                <div style={{ textAlign: "center", fontSize: 12, color: "#6b7280" }}>
+                  Déjà inscrit ? <span style={{ cursor: "pointer", color: "#2563eb", fontWeight: 600 }} onClick={() => { setShowAuthModal("connexion"); setAuthError(""); }}>Se connecter</span>
+                </div>
+                <div style={{ textAlign: "center", fontSize: 12, color: "#6b7280", marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #e5e7eb" }}>
+                  Besoin d'aide ? <span style={{ cursor: "pointer", color: "#10b981", fontWeight: 600 }} onClick={() => setShowContactAdmin(true)}>Nous contacter</span>
+                </div>
+              </>
+            ) : showAuthModal === "connexion" ? (
+              <>
+                <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>🔐 Connexion</h2>
+                <input placeholder="Email ou téléphone" value={loginForm.identifiant} onChange={e => setLoginForm({ ...loginForm, identifiant: e.target.value })} style={{ marginBottom: 12 }} />
+                <div style={{ position: "relative", marginBottom: 12 }}>
+                  <input type={showPassword.login ? "text" : "password"} placeholder="Mot de passe" value={loginForm.motDePasse} onChange={e => setLoginForm({ ...loginForm, motDePasse: e.target.value })} style={{ paddingRight: 40 }} />
+                  <button onClick={() => togglePassword("login")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
+                    {showPassword.login ? "👁️" : "👁️‍🗨️"}
+                  </button>
+                </div>
+                {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12, fontWeight: 600 }}>{authError}</div>}
+                <button className="btn-primary" onClick={connecter} style={{ marginBottom: 12 }}>Se connecter</button>
+                <div style={{ textAlign: "center", fontSize: 12, color: "#6b7280" }}>
+                  Pas de compte ? <span style={{ cursor: "pointer", color: "#2563eb", fontWeight: 600 }} onClick={() => { setShowAuthModal("inscription"); setAuthError(""); }}>S'inscrire</span>
+                </div>
+                <div style={{ textAlign: "center", fontSize: 12, color: "#6b7280", marginTop: "0.5rem" }}>
+                  <span style={{ cursor: "pointer", color: "#f59e0b", fontWeight: 600 }} onClick={() => { setShowAuthModal("forgot"); setAuthError(""); }}>Mot de passe oublié ?</span>
+                </div>
+                <div style={{ textAlign: "center", fontSize: 12, color: "#6b7280", marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #e5e7eb" }}>
+                  Besoin d'aide ? <span style={{ cursor: "pointer", color: "#10b981", fontWeight: 600 }} onClick={() => setShowContactAdmin(true)}>Nous contacter</span>
+                </div>
+              </>
+            ) : showAuthModal === "forgot" ? (
+              <>
+                <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>🔑 Réinitialiser le mot de passe</h2>
+                <div style={{ background: "#eff6ff", borderRadius: 10, padding: "1rem", marginBottom: "1.5rem", fontSize: 12, color: "#1e40af" }}>
+                  📋 Entrez vos informations d'inscription pour réinitialiser votre mot de passe
+                </div>
+                <input placeholder="Prénom" value={forgotForm.prenom} onChange={e => setForgotForm({ ...forgotForm, prenom: e.target.value })} style={{ marginBottom: 12 }} />
+                <input placeholder="Nom" value={forgotForm.nom} onChange={e => setForgotForm({ ...forgotForm, nom: e.target.value })} style={{ marginBottom: 12 }} />
+                <input 
+                  placeholder="Date naissance (JJ/MM/AAAA)" 
+                  value={forgotForm.date_naissance} 
+                  onChange={formatDateInputForgot} 
+                  style={{ marginBottom: 12 }} 
+                  maxLength={10}
+                  inputMode="numeric"
+                />
+                <div style={{ position: "relative", marginBottom: 12 }}>
+                  <input type={showPassword.forgotMdp ? "text" : "password"} placeholder="Nouveau mot de passe" value={forgotForm.newPassword} onChange={e => setForgotForm({ ...forgotForm, newPassword: e.target.value })} style={{ paddingRight: 40 }} />
+                  <button onClick={() => togglePassword("forgotMdp")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
+                    {showPassword.forgotMdp ? "👁️" : "👁️‍🗨️"}
+                  </button>
+                </div>
+                <div style={{ position: "relative", marginBottom: 12 }}>
+                  <input type={showPassword.forgotConf ? "text" : "password"} placeholder="Confirmer le mot de passe" value={forgotForm.confirmPassword} onChange={e => setForgotForm({ ...forgotForm, confirmPassword: e.target.value })} style={{ paddingRight: 40 }} />
+                  <button onClick={() => togglePassword("forgotConf")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
+                    {showPassword.forgotConf ? "👁️" : "👁️‍🗨️"}
+                  </button>
+                </div>
+                {authError && <div style={{ color: "#ef4444", marginBottom: 12, fontSize: 12, fontWeight: 600 }}>{authError}</div>}
+                <button className="btn-primary" onClick={recupererMotDePasse} style={{ marginBottom: 12, background: "#f59e0b" }}>Réinitialiser</button>
+                <div style={{ textAlign: "center", fontSize: 12, color: "#6b7280" }}>
+                  <span style={{ cursor: "pointer", color: "#2563eb", fontWeight: 600 }} onClick={() => { setShowAuthModal("connexion"); setAuthError(""); }}>Retour à la connexion</span>
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       )}
