@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 
 const CATEGORIES = ["Tous", "Vêtements", "Chaussures", "Parfums", "Téléphones", "Sacs", "Bijoux", "Ordinateurs", "Accessoires"];
@@ -24,7 +24,6 @@ const globalStyles = `@import url('https://fonts.googleapis.com/css2?family=Inte
 
 const envoyerEmailAdmin = async (subject, html) => {
   try {
-    console.log("📧 Envoi email à l'admin");
     const response = await fetch("/api/send-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,7 +34,7 @@ const envoyerEmailAdmin = async (subject, html) => {
       console.error("❌ Erreur email:", data);
       return false;
     }
-    console.log("✅ Email admin envoyé:", data);
+    console.log("✅ Email envoyé:", data);
     return true;
   } catch (e) {
     console.error("❌ Exception email:", e);
@@ -68,7 +67,6 @@ export default function FastBuy229() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showGererClients, setShowGererClients] = useState(false);
   const [clientTrouve, setClientTrouve] = useState(null);
-  const [selectedClientId, setSelectedClientId] = useState(null);
   const [heroIndex, setHeroIndex] = useState(0);
   const [showGererProduits, setShowGererProduits] = useState(false);
   const [produitEdit, setProduitEdit] = useState(null);
@@ -85,11 +83,10 @@ export default function FastBuy229() {
   const [newVariante, setNewVariante] = useState({ couleur: "", taille: "", nbrPieces: "", prix: "" });
   const [newMdpClient, setNewMdpClient] = useState("");
   const [commandesClient, setCommandesClient] = useState([]);
-  const [messageAuClient, setMessageAuClient] = useState("");
   const [showPassword, setShowPassword] = useState({});
   const [allCommandes, setAllCommandes] = useState([]);
   const [filterCommande, setFilterCommande] = useState("");
-  const [tabAdmin, setTabAdmin] = useState("commandes"); // "commandes" ou "clients"
+  const [tabAdmin, setTabAdmin] = useState("commandes");
 
   const togglePassword = (field) => {
     setShowPassword(prev => ({ ...prev, [field]: !prev[field] }));
@@ -233,13 +230,13 @@ export default function FastBuy229() {
 
   const envoyerCommande = async () => {
     if (!client?.id) {
-      alert("❌ Erreur: Pas de client connecté! Connecte-toi d'abord.");
+      alert("❌ Erreur: Pas de client connecté!");
       return;
     }
     
     if (!formCmd.nom || !formCmd.email || !formCmd.telephone || !formCmd.numeroAppel || !formCmd.ville || !formCmd.quartier) { alert("Remplis tous!"); return; }
     if (panier.length === 0) { alert("Panier vide!"); return; }
-    if (!captureFile) { alert("❌ Capture requise! Envoie d'abord la capture de Mobile Money"); return; }
+    if (!captureFile) { alert("❌ Capture requise!"); return; }
     
     setLoading(true);
     
@@ -247,13 +244,8 @@ export default function FastBuy229() {
       let capturePath = null;
       if (captureFile) {
         const fileName = `cap-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        const { data, error: uploadError } = await supabase.storage
-          .from("produits")
-          .upload(fileName, captureFile, { upsert: true });
-        
+        const { data, error: uploadError } = await supabase.storage.from("produits").upload(fileName, captureFile, { upsert: true });
         if (uploadError) {
-          console.error("Upload capture error:", uploadError);
           alert("Erreur capture: " + uploadError.message);
           setLoading(false);
           return;
@@ -285,7 +277,6 @@ export default function FastBuy229() {
         return;
       }
 
-      console.log("📧 Préparation email pour admin");
       const articlesHtml = panier.map(item => `
         <tr>
           <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${item.title}</td>
@@ -297,73 +288,51 @@ export default function FastBuy229() {
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; color: #1a1a2e; max-width: 600px;">
           <h2 style="color: #2563eb; margin-bottom: 20px;">🎉 NOUVELLE COMMANDE!</h2>
-          
           <div style="background: #eff6ff; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-            <p style="margin: 0; font-size: 14px;"><strong>Numéro:</strong> #${num}</p>
-            <p style="margin: 5px 0 0 0; font-size: 14px;"><strong>Date:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+            <p style="margin: 0;"><strong>Numéro:</strong> #${num}</p>
+            <p style="margin: 5px 0 0 0;"><strong>Date:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
           </div>
-
-          <h3 style="margin-bottom: 10px; font-size: 16px;">👤 Infos Client</h3>
+          <h3 style="margin-bottom: 10px;">👤 Infos Client</h3>
           <div style="background: #f9fafb; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
             <p style="margin: 0 0 8px 0;"><strong>Nom:</strong> ${formCmd.nom}</p>
             <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${formCmd.email}</p>
             <p style="margin: 0 0 8px 0;"><strong>Téléphone:</strong> ${formCmd.telephone}</p>
             <p style="margin: 0 0 8px 0;"><strong>Livraison:</strong> ${formCmd.numeroAppel}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Lieu:</strong> ${formCmd.quartier}, ${formCmd.ville}</p>
+            <p style="margin: 0;"><strong>Lieu:</strong> ${formCmd.quartier}, ${formCmd.ville}</p>
           </div>
-
-          <h3 style="margin-bottom: 10px; font-size: 16px;">📦 Articles Commandés</h3>
+          <h3 style="margin-bottom: 10px;">📦 Articles</h3>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
             <thead>
               <tr style="background: #f3f4f6;">
-                <th style="padding: 10px; text-align: left; font-weight: 600;">Produit</th>
-                <th style="padding: 10px; text-align: center; font-weight: 600;">Quantité</th>
-                <th style="padding: 10px; text-align: right; font-weight: 600;">Total</th>
+                <th style="padding: 10px; text-align: left;">Produit</th>
+                <th style="padding: 10px; text-align: center;">Qté</th>
+                <th style="padding: 10px; text-align: right;">Total</th>
               </tr>
             </thead>
             <tbody>
               ${articlesHtml}
             </tbody>
           </table>
-
           <div style="background: #fff; border: 1px solid #e5e7eb; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
               <span>Sous-total:</span>
               <strong>${totalPanier.toLocaleString()} FCFA</strong>
             </div>
-            ${totalDetails.reduction > 0 ? `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: #16a34a;">
-              <span>Réduction (-10%):</span>
-              <strong>-${totalDetails.reduction.toLocaleString()} FCFA</strong>
-            </div>
-            ` : ''}
-            ${totalDetails.fraisLivraison > 0 ? `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: #f59e0b;">
-              <span>Frais livraison (${formCmd.ville}):</span>
-              <strong>+${totalDetails.fraisLivraison.toLocaleString()} FCFA</strong>
-            </div>
-            ` : ''}
-            <div style="display: flex; justify-content: space-between; border-top: 2px solid #2563eb; padding-top: 10px; font-size: 16px; font-weight: 700; color: #2563eb;">
-              <span>TOTAL À RECEVOIR:</span>
+            ${totalDetails.reduction > 0 ? `<div style="display: flex; justify-content: space-between; color: #16a34a;"><span>Réduction (-10%):</span><strong>-${totalDetails.reduction.toLocaleString()} FCFA</strong></div>` : ''}
+            ${totalDetails.fraisLivraison > 0 ? `<div style="display: flex; justify-content: space-between; color: #f59e0b;"><span>Frais livraison:</span><strong>+${totalDetails.fraisLivraison.toLocaleString()} FCFA</strong></div>` : ''}
+            <div style="display: flex; justify-content: space-between; border-top: 2px solid #2563eb; padding-top: 10px; font-weight: 700; color: #2563eb;">
+              <span>TOTAL:</span>
               <span>${totalFinal.toLocaleString()} FCFA</span>
             </div>
           </div>
-
-          <div style="background: #fffbeb; border: 2px solid #fde68a; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-            <p style="margin: 0 0 10px 0; font-weight: 600; color: #92400e;">📱 Paiement reçu sur:</p>
+          <div style="background: #fffbeb; border: 2px solid #fde68a; padding: 15px; border-radius: 10px;">
+            <p style="margin: 0 0 10px 0; font-weight: 600;">📱 Paiement:</p>
             <p style="margin: 0; font-size: 18px; font-weight: 700; color: #f59e0b;">${MOMO}</p>
           </div>
-
-          <p style="color: #6b7280; font-size: 13px; margin: 20px 0 0 0; border-top: 1px solid #e5e7eb; padding-top: 15px;">
-            ✅ Capture de paiement: REÇUE
-          </p>
         </div>
       `;
 
-      await envoyerEmailAdmin(
-        `🎉 NOUVELLE COMMANDE #${num} - ${formCmd.nom}`,
-        emailHtml
-      );
+      await envoyerEmailAdmin(`🎉 NOUVELLE COMMANDE #${num} - ${formCmd.nom}`, emailHtml);
       
       if (client?.premiereCommande) {
         await supabase.from("users").update({ premiereCommande: false }).eq("id", client.id);
@@ -403,13 +372,8 @@ export default function FastBuy229() {
       
       for (const file of imageFiles) {
         const fileName = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        const { data, error: uploadError } = await supabase.storage
-          .from("produits")
-          .upload(fileName, file, { upsert: true });
-        
+        const { data, error: uploadError } = await supabase.storage.from("produits").upload(fileName, file, { upsert: true });
         if (uploadError) {
-          console.error("Upload error:", uploadError);
           alert("Erreur upload: " + uploadError.message);
           setLoading(false);
           return;
@@ -440,18 +404,17 @@ export default function FastBuy229() {
       setVariantes([]);
       setLoading(false);
     } catch (e) {
-      console.error("Exception:", e);
       alert("Erreur: " + e.message);
       setLoading(false);
     }
   };
 
   const supprimerProduit = async (produitId) => {
-    if (!confirm("Confirmer la suppression?")) return;
+    if (!confirm("Confirmer?")) return;
     setLoading(true);
     try {
       await supabase.from("produits").delete().eq("id", produitId);
-      alert("Produit supprimé!");
+      alert("Supprimé!");
       await chargerProduits();
       setProduitEdit(null);
     } catch (e) {
@@ -465,7 +428,7 @@ export default function FastBuy229() {
     setLoading(true);
     try {
       await supabase.from("produits").update({ price: parseInt(editForm.price), etat: editForm.etat }).eq("id", produitId);
-      alert("Produit modifié!");
+      alert("Modifié!");
       await chargerProduits();
       setProduitEdit(null);
       setEditForm({ price: "", etat: "" });
@@ -477,23 +440,13 @@ export default function FastBuy229() {
 
   const chargerCommandesClient = async (clientId) => {
     try {
-      console.log("🔍 Chargement commandes pour clientId:", clientId);
-      const { data, error } = await supabase
-        .from("commandes")
-        .select("*")
-        .eq("user_id", clientId)
-        .order("created_at", { ascending: false });
-      
+      const { data, error } = await supabase.from("commandes").select("*").eq("user_id", clientId).order("created_at", { ascending: false });
       if (error) {
-        console.error("❌ Erreur Supabase:", error);
         setCommandesClient([]);
         return;
       }
-      
-      console.log("✅ Commandes trouvées:", data);
       setCommandesClient(data || []);
     } catch (e) {
-      console.error("❌ Exception:", e);
       setCommandesClient([]);
     }
   };
@@ -513,14 +466,19 @@ export default function FastBuy229() {
   };
 
   const supprimerCommande = async (commandeId) => {
-    if (!confirm("Supprimer cette commande ?")) return;
+    if (!confirm("Supprimer?")) return;
     try {
-      const { error } = await supabase.from("commandes").delete().eq("id", commandeId);
-      if (error) {
-        alert("Erreur suppression: " + error.message);
-        return;
-      }
-      alert("✅ Commande supprimée!");
+      await supabase.from("commandes").delete().eq("id", commandeId);
+      alert("✅ Supprimée!");
+      await chargerCommandes();
+    } catch (e) {
+      alert("Erreur: " + e.message);
+    }
+  };
+
+  const changerStatutCommande = async (commandeId, nouveauStatut) => {
+    try {
+      await supabase.from("commandes").update({ statut: nouveauStatut }).eq("id", commandeId);
       await chargerCommandes();
     } catch (e) {
       alert("Erreur: " + e.message);
@@ -538,15 +496,6 @@ export default function FastBuy229() {
       alert("Erreur: " + e.message);
     }
     setLoading(false);
-  };
-
-  const changerStatutCommande = async (commandeId, nouveauStatut) => {
-    try {
-      await supabase.from("commandes").update({ statut: nouveauStatut }).eq("id", commandeId);
-      await chargerCommandes();
-    } catch (e) {
-      alert("Erreur: " + e.message);
-    }
   };
 
   if (page === "admin") {
@@ -572,8 +521,8 @@ export default function FastBuy229() {
               <h1 style={{ fontSize: "1.8rem", fontWeight: 800 }}>Admin Dashboard</h1>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => { setShowAddProduct(true); setVariantes([]); }}>Ajouter Produit</button>
-                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#f59e0b" }} onClick={() => { setShowGererProduits(true); }}>Gérer Produits</button>
-                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#10b981" }} onClick={() => { setShowGererClients(true); setTabAdmin("commandes"); chargerClients(); chargerCommandes(); }}>Gérer Commandes & Clients</button>
+                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#f59e0b" }} onClick={() => setShowGererProduits(true)}>Gérer Produits</button>
+                <button className="btn-primary" style={{ width: "auto", padding: "10px 20px", background: "#10b981" }} onClick={() => { setShowGererClients(true); setTabAdmin("commandes"); chargerClients(); }}>Gérer Commandes</button>
                 <button onClick={() => { setAdminOk(false); setAdminPwd(""); }} style={{ padding: "10px 18px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 10, cursor: "pointer", fontWeight: 600 }}>Déco</button>
               </div>
             </div>
@@ -582,11 +531,10 @@ export default function FastBuy229() {
 
         {showAddProduct && (
           <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowAddProduct(false); }}>
-            <div className="modal" style={{ maxWidth: "600px" }}>
+            <div className="modal">
               <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Ajouter Produit</h2>
               <input value={newProduct.title} onChange={e => setNewProduct({ ...newProduct, title: e.target.value })} placeholder="Titre" style={{ marginBottom: 12 }} />
-              <textarea value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} placeholder="Description" style={{ marginBottom: 12, resize: "vertical" }} rows={3} />
-              <div style={{ fontSize: 11, color: "#666", marginBottom: 12, padding: "8px", background: "#f0f0f0", borderRadius: 6 }}>ℹ️ Le prix principal est défini par la première variante</div>
+              <textarea value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} placeholder="Description" style={{ marginBottom: 12 }} rows={3} />
               <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} style={{ marginBottom: 12 }}>
                 {CATEGORIES.filter(c => c !== "Tous").map(c => <option key={c}>{c}</option>)}
               </select>
@@ -595,33 +543,27 @@ export default function FastBuy229() {
                 <option>Femme</option>
                 <option>Unisexe</option>
               </select>
-              <select value={newProduct.etat} onChange={e => setNewProduct({ ...newProduct, etat: e.target.value })} style={{ marginBottom: 12 }}>
-                <option>Neuf</option>
-                <option>Bon état</option>
-                <option>Occasion</option>
-              </select>
-
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Photos (min 1, max 5)</label>
-                <div onClick={() => document.getElementById("photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", background: "#fafafa", marginTop: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600 }}>Photos</label>
+                <div onClick={() => document.getElementById("photo-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 10, padding: "1rem", textAlign: "center", cursor: "pointer", marginTop: 6 }}>
                   {imagePreviews.length > 0 ? (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
                       {imagePreviews.map((p, i) => (
                         <div key={i} style={{ position: "relative", paddingBottom: "100%", background: "#f3f4f6", borderRadius: 6, overflow: "hidden" }}>
                           <img src={p} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-                          <button onClick={e => { e.stopPropagation(); setImageFiles(imageFiles.filter((_, idx) => idx !== i)); setImagePreviews(imagePreviews.filter((_, idx) => idx !== i)); }} style={{ position: "absolute", top: 2, right: 2, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                          <button onClick={e => { e.stopPropagation(); setImageFiles(imageFiles.filter((_, idx) => idx !== i)); setImagePreviews(imagePreviews.filter((_, idx) => idx !== i)); }} style={{ position: "absolute", top: 2, right: 2, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>✕</button>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12, color: "#9ca3af" }}>Cliquez pour ajouter (max 5 images)</div>
+                    <div style={{ fontSize: 12, color: "#9ca3af" }}>Cliquez pour ajouter</div>
                   )}
                   <input id="photo-input" type="file" accept="image/*" multiple onChange={e => { const files = Array.from(e.target.files).slice(0, 5); setImageFiles(files); setImagePreviews(files.map(f => URL.createObjectURL(f))); }} style={{ display: "none" }} />
                 </div>
               </div>
 
               <div style={{ marginBottom: 12, background: "#f9fafb", borderRadius: 10, padding: "1rem" }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Variantes (couleur, taille, pièces, prix)</label>
+                <label style={{ fontSize: 12, fontWeight: 600 }}>Variantes</label>
                 <div style={{ marginTop: 8, display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
                   <input value={newVariante.couleur} onChange={e => setNewVariante({ ...newVariante, couleur: e.target.value })} placeholder="Couleur" style={{ marginBottom: 0, flex: 1, minWidth: 80 }} />
                   <input value={newVariante.taille} onChange={e => setNewVariante({ ...newVariante, taille: e.target.value })} placeholder="Taille" style={{ marginBottom: 0, flex: 1, minWidth: 60 }} />
@@ -646,7 +588,7 @@ export default function FastBuy229() {
 
         {showGererProduits && (
           <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowGererProduits(false); }}>
-            <div className="modal" style={{ maxWidth: "900px", maxHeight: "85vh", display: "flex", flexDirection: "column", padding: 0 }}>
+            <div className="modal" style={{ maxWidth: "900px", display: "flex", flexDirection: "column", padding: 0 }}>
               <div style={{ background: "#f59e0b", color: "#fff", padding: "1rem", fontWeight: 700, borderRadius: "20px 20px 0 0" }}>Gérer Produits</div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                 <div style={{ width: "220px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
@@ -658,27 +600,16 @@ export default function FastBuy229() {
                   ))}
                 </div>
                 {produitEdit ? (
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "1rem", overflowY: "auto" }}>
-                    <div style={{ marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "2px solid #e5e7eb" }}>
-                      <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 4 }}>{produitEdit.title}</h2>
-                      <div style={{ fontSize: 11, color: "#6b7280" }}>Cat: {produitEdit.category}</div>
-                      <div style={{ fontSize: 11, color: "#6b7280" }}>Genre: {produitEdit.genre}</div>
-                    </div>
-
-                    <div style={{ marginBottom: "1.5rem" }}>
-                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.75rem" }}>Modifier</h3>
-                      <input type="number" value={editForm.price} onChange={e => setEditForm({ ...editForm, price: e.target.value })} placeholder="Prix" style={{ marginBottom: 12 }} />
-                      <select value={editForm.etat} onChange={e => setEditForm({ ...editForm, etat: e.target.value })} style={{ marginBottom: 12 }}>
-                        <option>Neuf</option>
-                        <option>Bon état</option>
-                        <option>Occasion</option>
-                      </select>
-                    </div>
-
-                    <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: "1rem" }}>
-                      <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8 }} onClick={() => modifierProduit(produitEdit.id)} disabled={loading}>✏️ Modifier</button>
-                      <button className="btn-primary" style={{ background: "#ef4444" }} onClick={() => supprimerProduit(produitEdit.id)} disabled={loading}>🗑️ Supprimer</button>
-                    </div>
+                  <div style={{ flex: 1, padding: "1rem", overflowY: "auto" }}>
+                    <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 4 }}>{produitEdit.title}</h2>
+                    <input type="number" value={editForm.price} onChange={e => setEditForm({ ...editForm, price: e.target.value })} placeholder="Prix" style={{ marginBottom: 12 }} />
+                    <select value={editForm.etat} onChange={e => setEditForm({ ...editForm, etat: e.target.value })} style={{ marginBottom: 12 }}>
+                      <option>Neuf</option>
+                      <option>Bon état</option>
+                      <option>Occasion</option>
+                    </select>
+                    <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8 }} onClick={() => modifierProduit(produitEdit.id)}>✏️ Modifier</button>
+                    <button className="btn-primary" style={{ background: "#ef4444" }} onClick={() => supprimerProduit(produitEdit.id)}>🗑️ Supprimer</button>
                   </div>
                 ) : (
                   <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>Sélectionne un produit</div>
@@ -691,7 +622,6 @@ export default function FastBuy229() {
         {showGererClients && (
           <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowGererClients(false); }}>
             <div className="modal" style={{ maxWidth: "1200px", maxHeight: "90vh", display: "flex", flexDirection: "column", padding: 0 }}>
-              {/* ONGLETS */}
               <div style={{ display: "flex", background: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
                 <button 
                   onClick={() => setTabAdmin("commandes")}
@@ -702,8 +632,7 @@ export default function FastBuy229() {
                     background: tabAdmin === "commandes" ? "#10b981" : "transparent",
                     color: tabAdmin === "commandes" ? "#fff" : "#6b7280",
                     fontWeight: 700,
-                    cursor: "pointer",
-                    fontSize: "1rem"
+                    cursor: "pointer"
                   }}
                 >
                   📦 TOUTES LES COMMANDES ({allCommandes.length})
@@ -717,20 +646,18 @@ export default function FastBuy229() {
                     background: tabAdmin === "clients" ? "#2563eb" : "transparent",
                     color: tabAdmin === "clients" ? "#fff" : "#6b7280",
                     fontWeight: 700,
-                    cursor: "pointer",
-                    fontSize: "1rem"
+                    cursor: "pointer"
                   }}
                 >
                   👥 PAR CLIENT
                 </button>
               </div>
 
-              {/* TAB 1: TOUTES LES COMMANDES */}
               {tabAdmin === "commandes" ? (
                 <div style={{ flex: 1, overflow: "auto", padding: "1.5rem" }}>
                   <input 
                     type="text"
-                    placeholder="Rechercher par numéro ou client..."
+                    placeholder="Rechercher..."
                     value={filterCommande}
                     onChange={e => setFilterCommande(e.target.value)}
                     style={{ marginBottom: "1.5rem", maxWidth: "400px" }}
@@ -745,28 +672,19 @@ export default function FastBuy229() {
                         border: "2px solid #e5e7eb",
                         borderRadius: "10px",
                         padding: "1.5rem",
-                        background: "#fff",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
+                        background: "#fff"
                       }}>
-                        {/* Header */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "2px solid #e5e7eb" }}>
                           <div>
                             <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#2563eb" }}>{cmd.numero}</div>
                             <div style={{ fontSize: "0.85rem", color: "#6b7280", marginTop: "4px" }}>
-                              {new Date(cmd.created_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                              {new Date(cmd.created_at).toLocaleDateString('fr-FR')}
                             </div>
                           </div>
                           <select 
                             value={cmd.statut}
                             onChange={(e) => changerStatutCommande(cmd.id, e.target.value)}
-                            style={{
-                              padding: "6px 8px",
-                              borderRadius: "6px",
-                              border: "1px solid #e5e7eb",
-                              fontSize: "0.85rem",
-                              fontWeight: 600,
-                              cursor: "pointer"
-                            }}
+                            style={{ padding: "6px 8px", borderRadius: "6px", border: "1px solid #e5e7eb", fontSize: "0.85rem" }}
                           >
                             <option>En attente</option>
                             <option>En cours</option>
@@ -775,7 +693,6 @@ export default function FastBuy229() {
                           </select>
                         </div>
 
-                        {/* Client Info */}
                         <div style={{ marginBottom: "1rem", fontSize: "0.9rem" }}>
                           <div style={{ fontWeight: 600, color: "#1a1a2e", marginBottom: "0.5rem" }}>👤 {cmd.nom}</div>
                           <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: "0.25rem" }}>📧 {cmd.email}</div>
@@ -784,9 +701,8 @@ export default function FastBuy229() {
                           <div style={{ color: "#6b7280", fontSize: "0.85rem" }}>🏠 {cmd.quartier}, {cmd.ville}</div>
                         </div>
 
-                        {/* Articles */}
-                        <div style={{ marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid #e5e7eb", maxHeight: "150px", overflowY: "auto" }}>
-                          <div style={{ fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "#1a1a2e" }}>📦 Articles:</div>
+                        <div style={{ marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid #e5e7eb", maxHeight: "120px", overflowY: "auto" }}>
+                          <div style={{ fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem" }}>📦 Articles:</div>
                           {cmd.articles && JSON.parse(cmd.articles).map((art, i) => (
                             <div key={i} style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: "0.25rem" }}>
                               • {art.title} x{art.qty} = {(art.price * art.qty).toLocaleString()} FCFA
@@ -794,43 +710,35 @@ export default function FastBuy229() {
                           ))}
                         </div>
 
-                        {/* Total */}
-                        <div style={{ 
-                          background: "#eff6ff", 
-                          padding: "0.75rem", 
-                          borderRadius: "6px", 
-                          marginBottom: "0.75rem",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center"
-                        }}>
-                          <span style={{ fontWeight: 600, color: "#1e40af" }}>💰 Total:</span>
-                          <span style={{ fontSize: "1rem", fontWeight: 700, color: "#2563eb" }}>
-                            {cmd.totalFinal?.toLocaleString()} FCFA
-                          </span>
+                        <div style={{ background: "#eff6ff", padding: "0.75rem", borderRadius: "6px", marginBottom: "0.75rem", display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ fontWeight: 600 }}>💰 Total:</span>
+                          <span style={{ fontSize: "1rem", fontWeight: 700, color: "#2563eb" }}>{cmd.totalFinal?.toLocaleString()} FCFA</span>
                         </div>
 
-                        {/* Payment */}
-                        <div style={{ 
-                          background: cmd.paiement === "Confirmé" ? "#d1fae5" : "#fef3c7",
-                          padding: "0.75rem",
-                          borderRadius: "6px",
-                          marginBottom: "0.75rem",
-                          fontSize: "0.85rem",
-                          fontWeight: 600,
-                          color: cmd.paiement === "Confirmé" ? "#065f46" : "#92400e"
-                        }}>
+                        <div style={{ background: cmd.paiement === "Confirmé" ? "#d1fae5" : "#fef3c7", padding: "0.75rem", borderRadius: "6px", marginBottom: "0.75rem", fontSize: "0.85rem", fontWeight: 600, color: cmd.paiement === "Confirmé" ? "#065f46" : "#92400e" }}>
                           💳 Paiement: {cmd.paiement}
                         </div>
 
-                        {/* Capture */}
                         {cmd.capture && (
-                          <div style={{ background: "#d1fae5", padding: "0.5rem", borderRadius: "6px", marginBottom: "0.75rem", fontSize: "0.85rem", color: "#065f46", fontWeight: 600 }}>
-                            ✅ Capture reçue
-                          </div>
+                          <button 
+                            onClick={() => window.open(`https://nuhpdqioggxznceqvpvx.supabase.co/storage/v1/object/public/produits/${cmd.capture}`, '_blank')}
+                            style={{
+                              width: "100%",
+                              padding: "0.75rem",
+                              background: "#d1fae5",
+                              color: "#065f46",
+                              border: "1px solid #6ee7b7",
+                              borderRadius: "6px",
+                              marginBottom: "0.75rem",
+                              fontSize: "0.85rem",
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                          >
+                            👁️ Voir la capture
+                          </button>
                         )}
 
-                        {/* Delete Button */}
                         <button 
                           onClick={() => supprimerCommande(cmd.id)}
                           style={{
@@ -850,15 +758,8 @@ export default function FastBuy229() {
                       </div>
                     ))}
                   </div>
-
-                  {allCommandes.length === 0 && (
-                    <div style={{ textAlign: "center", color: "#9ca3af", padding: "3rem 1rem" }}>
-                      Aucune commande
-                    </div>
-                  )}
                 </div>
               ) : (
-                /* TAB 2: PAR CLIENT */
                 <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                   <div style={{ width: "220px", borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#f9fafb", padding: "1rem" }}>
                     {clients.map(c => (
@@ -871,8 +772,7 @@ export default function FastBuy229() {
 
                   {clientTrouve ? (
                     <div style={{ flex: 1, padding: "1.5rem", overflowY: "auto" }}>
-                      <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>{clientTrouve.nom}</h3>
-                      
+                      <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>{clientTrouve.nom}</h3>
                       <div style={{ background: "#f9fafb", borderRadius: 8, padding: "1rem", marginBottom: "1.5rem" }}>
                         <div style={{ fontSize: "0.9rem", color: "#6b7280", marginBottom: "0.5rem" }}>📧 {clientTrouve.email}</div>
                         <div style={{ fontSize: "0.9rem", color: "#6b7280" }}>📱 {clientTrouve.telephone}</div>
@@ -889,23 +789,20 @@ export default function FastBuy229() {
                       ))}
 
                       <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: "1rem", marginTop: "1rem" }}>
-                        <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.75rem", color: "#1a1a2e" }}>⚙️ Actions</h3>
+                        <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.75rem" }}>⚙️ Actions</h3>
                         <div style={{ position: "relative", marginBottom: 8 }}>
-                          <input type={showPassword.gererClientMdp ? "text" : "password"} value={newMdpClient} onChange={e => setNewMdpClient(e.target.value)} placeholder="Nouveau mot de passe" style={{ fontSize: 12, paddingRight: 40 }} />
+                          <input type={showPassword.gererClientMdp ? "text" : "password"} value={newMdpClient} onChange={e => setNewMdpClient(e.target.value)} placeholder="Nouveau MDP" style={{ fontSize: 12, paddingRight: 40 }} />
                           <button onClick={() => togglePassword("gererClientMdp")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>
                             {showPassword.gererClientMdp ? "👁️" : "👁️‍🗨️"}
                           </button>
                         </div>
-                        <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8, fontSize: 12, padding: "10px" }} onClick={() => changerMdpClient(clientTrouve.id)} disabled={loading}>🔐 Changer MDP</button>
-                        <button className="btn-primary" style={{ background: "#ef4444", fontSize: 12, padding: "10px" }} onClick={() => supprimerClient(clientTrouve.id)} disabled={loading}>🗑️ Supprimer Compte</button>
+                        <button className="btn-primary" style={{ background: "#10b981", marginBottom: 8, fontSize: 12, padding: "10px" }} onClick={() => changerMdpClient(clientTrouve.id)}>🔐 Changer MDP</button>
+                        <button className="btn-primary" style={{ background: "#ef4444", fontSize: 12, padding: "10px" }} onClick={() => supprimerClient(clientTrouve.id)}>🗑️ Supprimer</button>
                       </div>
                     </div>
                   ) : (
                     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>
-                      <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: 14, marginBottom: 8 }}>👈</div>
-                        <div>Sélectionne un client</div>
-                      </div>
+                      👈 Sélectionne un client
                     </div>
                   )}
                 </div>
@@ -1023,12 +920,7 @@ export default function FastBuy229() {
       )}
 
       {showProduit && (
-        <div className="modal-overlay" onClick={e => { 
-          if (e.target === e.currentTarget) {
-            setShowProduit(null);
-            setSelectedVariante(null);
-          }
-        }}>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowProduit(null); setSelectedVariante(null); } }}>
           <div className="modal">
             <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>{showProduit.title}</h2>
             <div style={{ height: 200, background: "#f3f4f6", borderRadius: 12, marginBottom: 12, display: "flex", alignItems: "center" }}>
@@ -1037,16 +929,13 @@ export default function FastBuy229() {
             {showProduit.description && <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>{showProduit.description}</div>}
             {showProduit.variantes && JSON.parse(showProduit.variantes).length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13, color: "#1a1a2e" }}>🎯 Sélectionner une variante</div>
+                <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>🎯 Sélectionner une variante</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
                   {JSON.parse(showProduit.variantes).map((v, i) => (
                     <button 
                       type="button"
                       key={i}
-                      onClick={() => {
-                        console.log("Cliqué variante:", i);
-                        setSelectedVariante(i);
-                      }}
+                      onClick={() => setSelectedVariante(i)}
                       style={{
                         padding: "12px",
                         borderRadius: 8,
@@ -1056,8 +945,7 @@ export default function FastBuy229() {
                         fontSize: 13,
                         fontWeight: 600,
                         color: "#1a1a2e",
-                        textAlign: "left",
-                        transition: "all 0.2s"
+                        textAlign: "left"
                       }}
                     >
                       {selectedVariante === i && "✅ "}
@@ -1073,9 +961,7 @@ export default function FastBuy229() {
       )}
 
       {showContactAdmin && (
-        <div className="modal-overlay" onClick={e => { 
-          if (e.target === e.currentTarget) setShowContactAdmin(false);
-        }}>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowContactAdmin(false); }}>
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Nous Contacter</h2>
             <div style={{ background: "#eff6ff", borderRadius: 12, padding: "1.5rem" }}>
@@ -1097,9 +983,7 @@ export default function FastBuy229() {
       )}
 
       {showPanier && (
-        <div className="modal-overlay" onClick={e => { 
-          if (e.target === e.currentTarget) setShowPanier(false);
-        }}>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowPanier(false); }}>
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1rem" }}>Panier</h2>
             {panier.length === 0 ? (
@@ -1110,7 +994,7 @@ export default function FastBuy229() {
                   <div key={item.key} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: "1px solid #f3f4f6", alignItems: "center" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12, fontWeight: 600 }}>{item.title}</div>
-                      {item.variante && <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 4 }}>🎨 {item.variante.couleur} • {item.variante.taille} • {item.variante.nbrPieces} pcs</div>}
+                      {item.variante && <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 4 }}>🎨 {item.variante.couleur} • {item.variante.taille}</div>}
                       <div style={{ fontSize: 12, color: "#2563eb" }}>{(item.price * item.qty).toLocaleString()} FCFA</div>
                     </div>
                     <div style={{ display: "flex", gap: 4 }}>
@@ -1135,54 +1019,44 @@ export default function FastBuy229() {
       )}
 
       {showCommande && (
-        <div className="modal-overlay" onClick={e => { 
-          if (e.target === e.currentTarget) setShowCommande(false);
-        }}>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowCommande(false); }}>
           <div className="modal">
-            <h2 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: "1.5rem", color: "#1a1a2e" }}>📋 Récapitulatif de Commande</h2>
+            <h2 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: "1.5rem" }}>📋 Commande</h2>
             
-            {/* FORMULAIRE */}
             <div style={{ background: "#f9fafb", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem" }}>
-              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>Vos informations</h3>
+              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem" }}>Vos informations</h3>
               <input placeholder="Nom complet" value={formCmd.nom} onChange={e => setFormCmd({ ...formCmd, nom: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Email" value={formCmd.email} onChange={e => setFormCmd({ ...formCmd, email: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Téléphone" value={formCmd.telephone} onChange={e => setFormCmd({ ...formCmd, telephone: e.target.value })} style={{ marginBottom: 12 }} />
-              <input placeholder="Numéro pour appel livraison" value={formCmd.numeroAppel} onChange={e => setFormCmd({ ...formCmd, numeroAppel: e.target.value })} style={{ marginBottom: 12 }} />
-              <input placeholder="Ville (Porto-Novo, Cotonou, Calavi...)" value={formCmd.ville} onChange={e => setFormCmd({ ...formCmd, ville: e.target.value })} style={{ marginBottom: 12 }} />
+              <input placeholder="Numéro appel livraison" value={formCmd.numeroAppel} onChange={e => setFormCmd({ ...formCmd, numeroAppel: e.target.value })} style={{ marginBottom: 12 }} />
+              <input placeholder="Ville" value={formCmd.ville} onChange={e => setFormCmd({ ...formCmd, ville: e.target.value })} style={{ marginBottom: 12 }} />
               <input placeholder="Quartier" value={formCmd.quartier} onChange={e => setFormCmd({ ...formCmd, quartier: e.target.value })} style={{ marginBottom: 12 }} />
-              <input placeholder="Code promo (optionnel)" value={formCmd.codePromo} onChange={e => setFormCmd({ ...formCmd, codePromo: e.target.value })} style={{ marginBottom: 0 }} />
+              <input placeholder="Code promo" value={formCmd.codePromo} onChange={e => setFormCmd({ ...formCmd, codePromo: e.target.value })} style={{ marginBottom: 0 }} />
             </div>
 
-            {/* CODE PROMO */}
             {client?.premiereCommande && client?.prenom && (
               <div style={{ background: "#eff6ff", border: "2px solid #bfdbfe", borderRadius: 12, padding: "1rem", marginBottom: "1.5rem", fontSize: 12, fontWeight: 600, color: "#1e40af" }}>
-                🎁 <strong>Code promo 1ère commande disponible:</strong> {client.prenom}10 (-10%)
+                🎁 Code promo: {client.prenom}10 (-10%)
               </div>
             )}
 
-            {/* DÉTAILS FACTURE */}
             <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem" }}>
-              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem", color: "#1a1a2e" }}>💰 Détails du paiement</h3>
+              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem" }}>💰 Détails</h3>
               
-              {/* Articles */}
               <div style={{ marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid #e5e7eb" }}>
                 {panier.map((item, i) => (
-                  <div key={i} style={{ marginBottom: "0.5rem", fontSize: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "#6b7280" }}>
-                      <span>{item.title} x{item.qty}</span>
-                      <strong>{(item.price * item.qty).toLocaleString()} FCFA</strong>
-                    </div>
+                  <div key={i} style={{ marginBottom: "0.5rem", fontSize: 12, display: "flex", justifyContent: "space-between" }}>
+                    <span>{item.title} x{item.qty}</span>
+                    <strong>{(item.price * item.qty).toLocaleString()} FCFA</strong>
                   </div>
                 ))}
               </div>
 
-              {/* Sous-total */}
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: "0.75rem", color: "#6b7280" }}>
                 <span>Sous-total</span>
                 <span>{totalPanier.toLocaleString()} FCFA</span>
               </div>
 
-              {/* Réduction */}
               {totalDetails.reduction > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: "0.75rem", color: "#16a34a", fontWeight: 600 }}>
                   <span>Réduction (-10%)</span>
@@ -1190,82 +1064,66 @@ export default function FastBuy229() {
                 </div>
               )}
 
-              {/* Frais livraison */}
               {formCmd.ville && totalDetails.fraisLivraison > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: "0.75rem", color: "#f59e0b" }}>
-                  <span>Frais livraison ({formCmd.ville})</span>
+                  <span>Frais livraison</span>
                   <span>+{totalDetails.fraisLivraison.toLocaleString()} FCFA</span>
                 </div>
               )}
 
-              {/* Livraison gratuite */}
-              {formCmd.ville && totalDetails.fraisLivraison === 0 && totalPanier >= 20000 && (
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: "0.75rem", color: "#16a34a", fontWeight: 600 }}>
-                  <span>🎉 Livraison GRATUITE</span>
-                  <span>Offert</span>
-                </div>
-              )}
-
-              {/* Total final */}
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 700, paddingTop: "1rem", borderTop: "2px solid #2563eb", color: "#2563eb", marginTop: "1rem" }}>
-                <span>Total à payer</span>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 700, paddingTop: "1rem", borderTop: "2px solid #2563eb", color: "#2563eb" }}>
+                <span>Total</span>
                 <span>{totalFinal.toLocaleString()} FCFA</span>
               </div>
             </div>
 
-            {/* PAIEMENT */}
             <div style={{ background: "#fffbeb", border: "2px solid #fde68a", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem", fontSize: 13 }}>
-              <div style={{ fontWeight: 700, marginBottom: "0.75rem", color: "#92400e" }}>📱 Paiement via Mobile Money</div>
-              <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#f59e0b", marginBottom: "0.5rem" }}>{MOMO}</div>
-              <div style={{ fontSize: 12, color: "#b45309", fontWeight: 600 }}>Montant à envoyer: <strong>{totalFinal.toLocaleString()} FCFA</strong></div>
+              <div style={{ fontWeight: 700, marginBottom: "0.75rem" }}>📱 Envoyer à:</div>
+              <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#f59e0b" }}>{MOMO}</div>
+              <div style={{ fontSize: 12, color: "#b45309", fontWeight: 600, marginTop: "0.5rem" }}>Montant: {totalFinal.toLocaleString()} FCFA</div>
             </div>
 
-            {/* CAPTURE */}
             <div onClick={() => document.getElementById("capture-input").click()} style={{ border: "2px dashed #d1d5db", borderRadius: 12, padding: "2rem", textAlign: "center", cursor: "pointer", marginBottom: "1.5rem", background: "#fafafa", fontSize: 13 }}>
               {captureFile ? (
                 <div style={{ color: "#16a34a", fontWeight: 600 }}>✅ Capture reçue</div>
               ) : (
-                <div style={{ color: "#6b7280" }}>📸 Cliquez pour joindre la capture de paiement</div>
+                <div style={{ color: "#6b7280" }}>📸 Cliquez pour joindre la capture</div>
               )}
               <input id="capture-input" type="file" accept="image/*" onChange={e => setCaptureFile(e.target.files[0])} style={{ display: "none" }} />
             </div>
 
-            <button onClick={envoyerCommande} disabled={loading} className="btn-primary" style={{ fontSize: 15, padding: "14px" }}>{loading ? "Envoi en cours..." : "✅ Confirmer la commande"}</button>
+            <button onClick={envoyerCommande} disabled={loading} className="btn-primary">{loading ? "Envoi..." : "✅ Confirmer"}</button>
           </div>
         </div>
       )}
 
       {showConfirm && (
         <div className="modal-overlay">
-          <div className="modal" style={{ textAlign: "center", maxWidth: "500px", maxHeight: "80vh", overflowY: "auto" }}>
+          <div className="modal" style={{ textAlign: "center", maxWidth: "500px" }}>
             <div style={{ fontSize: "3rem", marginBottom: 12 }}>✅</div>
-            <h2 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: 12, color: "#16a34a" }}>Commande Confirmée!</h2>
+            <h2 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: 12, color: "#16a34a" }}>Confirmée!</h2>
             <div style={{ background: "#eff6ff", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
               <div style={{ fontWeight: 700, color: "#2563eb", fontSize: "1.2rem", marginBottom: 4 }}>#{showConfirm.numero}</div>
-              <div style={{ fontSize: 12, color: "#1e40af" }}>Un email de confirmation a été envoyé</div>
             </div>
             
             <div style={{ background: "#f9fafb", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem", textAlign: "left", fontSize: 12 }}>
-              <div style={{ fontWeight: 600, marginBottom: "1rem", color: "#1a1a2e" }}>📦 Récapitulatif de votre commande:</div>
+              <div style={{ fontWeight: 600, marginBottom: "1rem" }}>📦 Résumé:</div>
               {panier.map((item, i) => (
-                <div key={i} style={{ marginBottom: "0.75rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, color: "#6b7280" }}>
-                    <span>{item.title} x{item.qty}</span>
-                    <strong>{(item.price * item.qty).toLocaleString()} FCFA</strong>
-                  </div>
-                  {item.variante && <div style={{ fontSize: 10, color: "#9ca3af", paddingLeft: 12 }}>🎨 {item.variante.couleur} • {item.variante.taille} • {item.variante.nbrPieces} pcs</div>}
+                <div key={i} style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "space-between" }}>
+                  <span>{item.title} x{item.qty}</span>
+                  <strong>{(item.price * item.qty).toLocaleString()} FCFA</strong>
                 </div>
               ))}
-              <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1rem", marginTop: "1rem", display: "flex", justifyContent: "space-between", fontWeight: 700, color: "#2563eb", fontSize: 14 }}>
+              <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1rem", marginTop: "1rem", display: "flex", justifyContent: "space-between", fontWeight: 700, color: "#2563eb" }}>
                 <span>Total:</span>
                 <span>{showConfirm.totalFinal?.toLocaleString()} FCFA</span>
               </div>
             </div>
             
             <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem", fontSize: 12 }}>
-              <div style={{ fontWeight: 600, marginBottom: "0.75rem", color: "#92400e" }}>📱 Envoyer le paiement à:</div>
-              <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#f59e0b", marginBottom: "0.5rem" }}>{MOMO}</div>
-              <div style={{ color: "#b45309", fontWeight: 600 }}>Montant: {showConfirm.totalFinal?.toLocaleString()} FCFA</div>
+              <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}>📱 Paiement:</div>
+              <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#f59e0b" }}>{MOMO}</div>
+              <div style={{ color: "#b45309", fontWeight: 600, marginTop: "0.5rem" }}>Montant: {showConfirm.totalFinal?.toLocaleString()} FCFA</div>
             </div>
             
             <button className="btn-primary" onClick={() => { setShowConfirm(null); setFormCmd({ nom: "", email: "", telephone: "", numeroAppel: "", ville: "", quartier: "", codePromo: "" }); }}>Fermer</button>
@@ -1274,9 +1132,7 @@ export default function FastBuy229() {
       )}
 
       {showLogin && (
-        <div className="modal-overlay" onClick={e => { 
-          if (e.target === e.currentTarget) setShowLogin(false);
-        }}>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowLogin(false); }}>
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>Connexion</h2>
             <input placeholder="Email ou tel" value={loginForm.identifiant} onChange={e => setLoginForm({ ...loginForm, identifiant: e.target.value })} style={{ marginBottom: 12 }} />
@@ -1296,9 +1152,7 @@ export default function FastBuy229() {
       )}
 
       {showInscription && (
-        <div className="modal-overlay" onClick={e => { 
-          if (e.target === e.currentTarget) setShowInscription(false);
-        }}>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowInscription(false); }}>
           <div className="modal">
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "1.5rem" }}>S'inscrire</h2>
             <input placeholder="Prénom" value={inscForm.prenom} onChange={e => setInscForm({ ...inscForm, prenom: e.target.value })} style={{ marginBottom: 12 }} />
