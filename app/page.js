@@ -617,7 +617,7 @@ export default function FastBuy229() {
         return;
       }
       
-      alert("Produit créé!");
+      alert("✅ Produit créé!");
       await chargerProduits();
       setShowAddProduct(false);
       setNewProduct({ title: "", description: "", etat: "Neuf", category: "Vêtements", genre: "Homme" });
@@ -682,8 +682,8 @@ export default function FastBuy229() {
         etat: editForm.etat,
         category: editForm.category,
         genre: editForm.genre,
-        variantes: variantes,
-        images: allImages,
+        variantes: JSON.stringify(variantes),
+        images: JSON.stringify(allImages),
         image: allImages[0] || produitEdit.image
       }).eq("id", produitId);
       
