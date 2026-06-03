@@ -22,13 +22,27 @@ const getFraisLivraison = (ville) => {
 
 const parseVariantes = (variantes) => {
   if (!variantes) return [];
-  if (typeof variantes === 'string') return JSON.parse(variantes);
+  if (typeof variantes === 'string') {
+    try {
+      return JSON.parse(variantes);
+    } catch (e) {
+      console.error("Erreur parse variantes:", e);
+      return [];
+    }
+  }
   return Array.isArray(variantes) ? variantes : [];
 };
 
 const parseImages = (images) => {
   if (!images) return [];
-  if (typeof images === 'string') return JSON.parse(images);
+  if (typeof images === 'string') {
+    try {
+      return JSON.parse(images);
+    } catch (e) {
+      console.error("Erreur parse images:", e);
+      return [];
+    }
+  }
   return Array.isArray(images) ? images : [];
 };
 
@@ -287,7 +301,7 @@ export default function FastBuy229() {
   const choisirGenre = (genre) => { setGenreChoisi(genre); localStorage.setItem("fastbuy_genre", genre); setShowGenreModal(false); };
   
   const ajouterAuPanier = (prod, variante = null) => { 
-    if (!client) { setShowLogin(true); return; } 
+    if (!client) { setShowAuthModal("inscription"); return; } 
     const varianteKey = variante ? `${variante.couleur}-${variante.taille}-${variante.nbrPieces}` : "novar";
     const key = `${prod.id}-${varianteKey}`; 
     setPanier(prev => { 
@@ -587,14 +601,49 @@ export default function FastBuy229() {
     try {
       let imagePaths = [];
       
-      for (const file of imageFiles) {
-        const fileName = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const { data, error: uploadError } = await supabase.storage.from("produits").upload(fileName, file, { upsert: true });
-        if (uploadError) {
-          alert("Erreur upload: " + uploadError.message);
+      for (let idx = 0; idx < imageFiles.length; idx++) {
+        const file = imageFiles[idx];
+        const fileName = `img-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        console.log(`📸 Upload image (${idx + 1}/${imageFiles.length}):`, fileName, "Taille:", file.size, "Type:", file.type);
+        
+        // Vérifier que le fichier est valide
+        if (!file || !(file instanceof File || file instanceof Blob)) {
+          console.error("❌ Fichier invalide:", file);
+          alert("❌ Un fichier est invalide");
           setLoading(false);
           return;
         }
+
+        // Upload avec meilleure gestion d'erreur
+        const { data, error: uploadError } = await supabase.storage
+          .from("produits")
+          .upload(fileName, file, { 
+            upsert: true,
+            contentType: file.type 
+          });
+        
+        if (uploadError) {
+          console.error("❌ Erreur upload détails:", {
+            message: uploadError.message,
+            status: uploadError.status,
+            statusCode: uploadError.statusCode
+          });
+          
+          let errorMsg = uploadError.message;
+          if (uploadError.status === 400) {
+            errorMsg = "Erreur 400: Requête invalide - Vérifiez les permissions Supabase Storage";
+          } else if (uploadError.status === 401) {
+            errorMsg = "Erreur 401: Non authentifié";
+          } else if (uploadError.status === 403) {
+            errorMsg = "Erreur 403: Permissions insuffisantes - Vérifiez les RLS";
+          }
+          
+          alert(`❌ Erreur upload: ${errorMsg}`);
+          setLoading(false);
+          return;
+        }
+        console.log("✅ Image uploadée:", fileName);
         imagePaths.push(fileName);
       }
       
@@ -610,13 +659,17 @@ export default function FastBuy229() {
         variantes: JSON.stringify(variantes)
       };
       
+      console.log("📦 Création produit avec données:", prodData);
+      
       const { error: insertError } = await supabase.from("produits").insert([prodData]);
       if (insertError) {
-        alert("Erreur création: " + insertError.message);
+        console.error("❌ Erreur création produit:", insertError);
+        alert("❌ Erreur création: " + insertError.message);
         setLoading(false);
         return;
       }
       
+      console.log("✅ Produit créé avec succès!");
       alert("✅ Produit créé!");
       await chargerProduits();
       setShowAddProduct(false);
@@ -626,7 +679,8 @@ export default function FastBuy229() {
       setVariantes([]);
       setLoading(false);
     } catch (e) {
-      alert("Erreur: " + e.message);
+      console.error("❌ Exception:", e);
+      alert("❌ Erreur: " + e.message);
       setLoading(false);
     }
   };
